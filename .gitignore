@@ -1,4 +1,4 @@
 node_modules/.package-lock.json
 node_modules/
-duitkau.db-shm
-duitkau.db-wal
+
+public/uploads/*

@@ -5,35 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DuitKau - Riwayat Pengeluaran</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/layout.js"></script>
 </head>
-<body>
-  <div class="db-banner" id="dbBanner">
-    <span class="db-dot"></span>
-    Database tidak terhubung — semua operasi dinonaktifkan
-  </div>
-
-  <nav class="navbar">
-    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
-    <div class="navbar-user">
-      <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
-        <span class="dot"></span> DB
-      </span>
-      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Karyawan</span></span>
-      <button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
-    </div>
-  </nav>
+<body data-page="history">
+  <div id="navbar-placeholder"></div>
 
   <div class="app-layout">
-    <aside class="sidebar">
-      <div class="sidebar-section">Menu</div>
-      <a href="/dashboard.html" class="sidebar-item">
-        <span class="icon">📝</span><span class="label">Input Pengeluaran</span>
-      </a>
-      <a href="/history.html" class="sidebar-item active">
-        <span class="icon">📋</span><span class="label">Riwayat</span>
-      </a>
-    </aside>
+    <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
       <!-- Print header (hidden on screen) -->
@@ -94,15 +72,7 @@
     </main>
   </div>
 
-  <!-- Bottom Nav (mobile) -->
-  <nav class="bottom-nav">
-    <a href="/dashboard.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">📝</span>Input
-    </a>
-    <a href="/history.html" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">📋</span>Riwayat
-    </a>
-  </nav>
+  <div id="bottom-nav-placeholder"></div>
 
   <!-- Lightbox -->
   <div class="lightbox" id="lightbox">
@@ -110,69 +80,15 @@
     <img id="lightboxImg" src="" alt="Bukti transaksi" />
   </div>
 
-  <!-- Password Modal -->
-  <div class="modal-overlay" id="pwdOverlay">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Ubah Password</span>
-        <button class="modal-close" id="pwdClose">✕</button>
-      </div>
-      <div class="modal-body">
-        <div id="pwdAlert" class="alert alert-error"></div>
-        <div id="pwdSuccess" class="alert alert-success"></div>
-        <div class="form-group">
-          <label for="pwdNew">Password Baru</label>
-          <input type="password" id="pwdNew" placeholder="Minimal 6 karakter" />
-        </div>
-        <div class="form-group">
-          <label for="pwdConfirm">Konfirmasi Password</label>
-          <input type="password" id="pwdConfirm" placeholder="Ulangi password baru" />
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="pwdCancel">Batal</button>
-        <button class="btn btn-primary" id="pwdSave">Simpan</button>
-      </div>
-    </div>
-  </div>
+  <div id="modals-placeholder"></div>
 
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    let dbOk = true;
-    let navFullName = '';
-
-    // ─── DB Status ────────────────────────────
-    async function checkDb() {
-      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; } catch { dbOk = false; }
-      const banner = document.getElementById('dbBanner');
-      const ind = document.getElementById('dbIndicator');
-      if (!dbOk) {
-        banner.classList.add('show');
-        ind.className = 'db-status-indicator disconnected';
-        ind.innerHTML = '<span class="dot"></span> DB Mati';
-      } else {
-        banner.classList.remove('show');
-        ind.className = 'db-status-indicator connected';
-        ind.innerHTML = '<span class="dot"></span> DB';
-      }
-    }
-    setInterval(checkDb, 15000);
-
-    // ─── Init ─────────────────────────────────
-    async function init() {
-      await checkDb();
-      try {
-        const me = await fetch('/api/auth/me').then(r => r.json());
-        if (!me.userId) { window.location.href = '/login.html'; return; }
-        if (me.role === 'finance') { window.location.href = '/finance.html'; return; }
-        navFullName = me.fullName;
-        document.getElementById('navName').textContent = me.fullName;
-      } catch { window.location.href = '/login.html'; return; }
-
+    window.onLayoutReady = async function(user) {
       await loadTransactions(null);
-    }
+    };
 
     // ─── Load transactions ────────────────────
     async function loadTransactions(month) {
@@ -229,7 +145,7 @@
     document.getElementById('btnPrint').addEventListener('click', () => {
       const month = document.getElementById('filterMonth').value;
       const label = month ? new Date(month + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Semua Waktu';
-      document.getElementById('printMeta').textContent = `Nama: ${navFullName} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+      document.getElementById('printMeta').textContent = `Nama: ${window.currentUser.fullName} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`;
       window.print();
     });
 
@@ -238,45 +154,8 @@
     document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
     document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
 
-    // ─── Password Modal ───────────────────────
-    function closePwd() { document.getElementById('pwdOverlay').classList.remove('open'); }
-    document.getElementById('pwdBtn').addEventListener('click', () => {
-      document.getElementById('pwdNew').value = '';
-      document.getElementById('pwdConfirm').value = '';
-      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
-      document.getElementById('pwdOverlay').classList.add('open');
-    });
-    document.getElementById('pwdClose').addEventListener('click', closePwd);
-    document.getElementById('pwdCancel').addEventListener('click', closePwd);
-    document.getElementById('pwdOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('pwdOverlay')) closePwd(); });
-    document.getElementById('pwdSave').addEventListener('click', async () => {
-      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
-      const pwd = document.getElementById('pwdNew').value;
-      const conf = document.getElementById('pwdConfirm').value;
-      if (!pwd || pwd.length < 6) { showAlert('pwdAlert', 'Password minimal 6 karakter'); return; }
-      if (pwd !== conf) { showAlert('pwdAlert', 'Konfirmasi password tidak cocok'); return; }
-      const btn = document.getElementById('pwdSave');
-      btn.disabled = true; btn.textContent = 'Menyimpan...';
-      try {
-        const res = await fetch('/api/auth/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
-        const data = await res.json();
-        if (!res.ok) { showAlert('pwdAlert', data.error); return; }
-        showAlert('pwdSuccess', 'Password berhasil diubah');
-        setTimeout(closePwd, 1500);
-      } catch { showAlert('pwdAlert', 'Gagal menyimpan'); }
-      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
-    });
-
-    // ─── Logout ───────────────────────────────
-    document.getElementById('logoutBtn').addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      window.location.href = '/login.html';
-    });
-
     function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
     function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
-
-    init();
   </script>
 </body>
 </html>

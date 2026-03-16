@@ -76,6 +76,28 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS cash_advances (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      description TEXT,
+      initial_amount REAL NOT NULL CHECK(initial_amount > 0),
+      project_id INTEGER REFERENCES projects(id),
+      request_by INTEGER NOT NULL REFERENCES users(id),
+      request_at TEXT DEFAULT (datetime('now','localtime')),
+      open_by INTEGER REFERENCES users(id),
+      open_at TEXT,
+      close_requested_by INTEGER REFERENCES users(id),
+      close_requested_at TEXT,
+      close_request_note TEXT,
+      closed_by INTEGER REFERENCES users(id),
+      closed_at TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','open','pending_close','closed','rejected')),
+      reimbursement_requested INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    )
+  `);
+
   // Migration: tambah kolom baru jika belum ada
   db.all("PRAGMA table_info(transactions)", (err, cols) => {
     if (err) return;
@@ -92,6 +114,8 @@ db.serialize(() => {
       db.run("ALTER TABLE transactions ADD COLUMN project_id INTEGER REFERENCES projects(id)");
     if (!names.includes('category_id'))
       db.run("ALTER TABLE transactions ADD COLUMN category_id INTEGER REFERENCES categories(id)");
+    if (!names.includes('ca_id'))
+      db.run("ALTER TABLE transactions ADD COLUMN ca_id INTEGER REFERENCES cash_advances(id)");
   });
 
   // Seed default users if empty

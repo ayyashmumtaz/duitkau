@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Cash Advance</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/layout.js"></script>
+</head>
+<body data-page="ca">
+  <div id="navbar-placeholder"></div>
+
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+
+    <main class="main-content">
+      <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
+        <h1 class="page-title" style="margin-bottom:0">Cash Advance</h1>
+        <button class="btn btn-primary btn-sm" id="btnNewCA" style="display:none">+ Request CA Baru</button>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+
+      <!-- Finance: pending approvals banner -->
+      <div id="pendingSection" style="display:none; margin-bottom:1.5rem">
+        <div class="card" style="border-left:4px solid var(--orange,#f97316)">
+          <div class="card-title" style="color:var(--orange,#f97316)">⏳ Menunggu Persetujuan</div>
+          <div id="pendingList">
+            <div class="empty"><div class="empty-icon">✅</div>Tidak ada CA yang menunggu persetujuan</div>
+          </div>
+        </div>
+        <div class="card" style="border-left:4px solid var(--blue,#3b82f6); margin-top:1rem">
+          <div class="card-title" style="color:var(--blue,#3b82f6)">🔒 Request Penutupan</div>
+          <div id="pendingCloseList">
+            <div class="empty"><div class="empty-icon">✅</div>Tidak ada request penutupan</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- All CA list -->
+      <div class="card">
+        <div class="card-title">📋 Daftar Cash Advance</div>
+        <div id="caList">
+          <div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="bottom-nav-placeholder"></div>
+
+  <!-- New CA Modal (employee) -->
+  <div class="modal-overlay" id="newCaOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Request Cash Advance</span>
+        <button class="modal-close" id="newCaClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="newCaAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label for="caTitle">Judul CA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="caTitle" placeholder="Contoh: CA Perjalanan Dinas Jakarta" />
+        </div>
+        <div class="form-group">
+          <label for="caDesc">Deskripsi (opsional)</label>
+          <textarea id="caDesc" placeholder="Keterangan tambahan..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="caAmount">Nominal yang Diminta (Rp) <span style="color:var(--red)">*</span></label>
+          <input type="text" id="caAmount" inputmode="numeric" placeholder="Contoh: 500.000" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="caProject">Proyek (opsional)</label>
+          <select id="caProject">
+            <option value="">-- Tidak ada proyek --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="newCaCancel">Batal</button>
+        <button class="btn btn-primary" id="newCaSave">Ajukan Request</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CA Detail Modal -->
+  <div class="modal-overlay" id="detailOverlay">
+    <div class="modal" style="max-width:700px">
+      <div class="modal-header">
+        <span class="modal-title" id="detailTitle">Detail CA</span>
+        <button class="modal-close" id="detailClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="detailAlert" class="alert alert-error"></div>
+        <div id="detailSuccess" class="alert alert-success"></div>
+
+        <div id="detailMeta" style="margin-bottom:1rem; font-size:.875rem; color:var(--gray-600); line-height:1.8"></div>
+
+        <!-- Summary bar -->
+        <div class="summary-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:1rem" id="detailSummary"></div>
+
+        <!-- Actions -->
+        <div id="detailActions" style="margin-bottom:1rem; display:flex; flex-wrap:wrap; gap:.5rem"></div>
+
+        <!-- Request close form (employee) -->
+        <div id="closeRequestForm" style="display:none; margin-bottom:1rem">
+          <div class="form-group">
+            <label for="closeNote">Catatan Penutupan (opsional)</label>
+            <textarea id="closeNote" placeholder="Ringkasan realisasi..."></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" id="submitCloseRequest">Kirim Request Close</button>
+        </div>
+
+        <!-- Transactions table -->
+        <div class="card-title" style="margin-bottom:.5rem">Transaksi Terkait</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Nama</th>
+                <th>Kategori</th>
+                <th class="text-right">Nominal</th>
+                <th>Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="detailTxBody">
+              <tr><td colspan="5"><div class="empty">Belum ada transaksi</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="detailCloseBtn">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <div id="modals-placeholder"></div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => {
+      if (!d) return '–';
+      const iso = d.replace(' ', 'T');
+      return new Date(iso.includes('T') ? iso : iso + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const fmtDateTime = (d) => {
+      if (!d) return '–';
+      return new Date(d.replace(' ', 'T')).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    let openDetailId = null;
+
+    const STATUS_LABEL = {
+      pending: '<span class="badge" style="background:var(--yellow,#fbbf24);color:#7c2d12">Menunggu</span>',
+      open: '<span class="badge badge-masuk">Open</span>',
+      pending_close: '<span class="badge" style="background:var(--blue,#3b82f6);color:#fff">Request Close</span>',
+      closed: '<span class="badge" style="background:var(--gray-400);color:#fff">Closed</span>',
+      rejected: '<span class="badge badge-keluar">Ditolak</span>',
+    };
+
+    window.onLayoutReady = async function(user) {
+      if (user.role === 'employee') {
+        document.getElementById('btnNewCA').style.display = '';
+      } else {
+        document.getElementById('pendingSection').style.display = '';
+      }
+
+      await Promise.all([loadProjects(), loadCAs()]);
+    };
+
+    // ─── Load projects for new CA modal ───────
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects').then(r => r.json());
+        const sel = document.getElementById('caProject');
+        res.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    // ─── Load CAs ─────────────────────────────
+    async function loadCAs() {
+      try {
+        const cas = await fetch('/api/ca').then(r => r.json());
+        renderCAList(cas);
+        if (window.currentUser.role === 'finance') renderPending(cas);
+      } catch {
+        showAlert('mainAlert', 'Gagal memuat data CA');
+      }
+    }
+
+    function renderCAList(cas) {
+      const el = document.getElementById('caList');
+      if (cas.length === 0) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>Belum ada Cash Advance</div>`;
+        return;
+      }
+      el.innerHTML = `<div class="table-wrapper"><table>
+        <thead><tr>
+          <th>Judul</th>
+          ${window.currentUser.role === 'finance' ? '<th>Karyawan</th>' : ''}
+          <th>Nominal</th>
+          <th>Proyek</th>
+          <th>Status</th>
+          <th>Reimburse</th>
+          <th>Dibuat</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${cas.map(ca => `
+            <tr>
+              <td style="font-weight:600">${ca.title}</td>
+              ${window.currentUser.role === 'finance' ? `<td class="text-muted">${ca.request_by_name || '–'}</td>` : ''}
+              <td>${fmt.format(ca.initial_amount)}</td>
+              <td class="text-muted">${ca.project_name || '–'}</td>
+              <td>${STATUS_LABEL[ca.status] || ca.status}</td>
+              <td>${ca.reimbursement_requested ? '<span class="badge badge-masuk">Diminta</span>' : '<span class="text-muted">–</span>'}</td>
+              <td class="text-muted" style="font-size:.8rem">${fmtDate(ca.request_at)}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table></div>`;
+    }
+
+    function renderPending(cas) {
+      const pending = cas.filter(ca => ca.status === 'pending');
+      const pendClose = cas.filter(ca => ca.status === 'pending_close');
+
+      const pendEl = document.getElementById('pendingList');
+      if (pending.length === 0) {
+        pendEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>Tidak ada CA yang menunggu persetujuan</div>`;
+      } else {
+        pendEl.innerHTML = pending.map(ca => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
+            <div>
+              <div style="font-weight:600">${ca.title} <span class="text-muted" style="font-weight:400; font-size:.8rem">— ${ca.request_by_name}</span></div>
+              <div class="text-muted" style="font-size:.8rem">${fmt.format(ca.initial_amount)} · ${fmtDateTime(ca.request_at)}</div>
+            </div>
+            <div style="display:flex;gap:.4rem">
+              <button class="btn btn-primary btn-sm" onclick="approveCa(${ca.id})">Setujui</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectCa(${ca.id})">Tolak</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const closeEl = document.getElementById('pendingCloseList');
+      if (pendClose.length === 0) {
+        closeEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>Tidak ada request penutupan</div>`;
+      } else {
+        closeEl.innerHTML = pendClose.map(ca => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
+            <div>
+              <div style="font-weight:600">${ca.title} <span class="text-muted" style="font-weight:400; font-size:.8rem">— ${ca.request_by_name}</span></div>
+              <div class="text-muted" style="font-size:.8rem">${ca.close_request_note ? `"${ca.close_request_note}"` : 'Tanpa catatan'} · ${fmtDateTime(ca.close_requested_at)}</div>
+            </div>
+            <div style="display:flex;gap:.4rem">
+              <button class="btn btn-primary btn-sm" onclick="approveClose(${ca.id})">Setujui Close</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectClose(${ca.id})">Tolak</button>
+              <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    // ─── CA Actions (finance) ─────────────────
+    async function approveCa(id) {
+      if (!confirm('Setujui CA ini? Status akan berubah menjadi Open.')) return;
+      try {
+        const res = await fetch(`/api/ca/${id}/approve`, { method: 'PATCH' });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        await loadCAs();
+      } catch { alert('Gagal menyetujui CA'); }
+    }
+
+    async function rejectCa(id) {
+      if (!confirm('Tolak CA ini?')) return;
+      try {
+        const res = await fetch(`/api/ca/${id}/reject`, { method: 'PATCH' });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        await loadCAs();
+      } catch { alert('Gagal menolak CA'); }
+    }
+
+    async function approveClose(id) {
+      if (!confirm('Setujui penutupan CA ini?')) return;
+      try {
+        const res = await fetch(`/api/ca/${id}/approve-close`, { method: 'PATCH' });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        await loadCAs();
+        if (openDetailId === id) await refreshDetail(id);
+      } catch { alert('Gagal menutup CA'); }
+    }
+
+    async function rejectClose(id) {
+      if (!confirm('Tolak request penutupan? Status CA kembali menjadi Open.')) return;
+      try {
+        const res = await fetch(`/api/ca/${id}/reject-close`, { method: 'PATCH' });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        await loadCAs();
+        if (openDetailId === id) await refreshDetail(id);
+      } catch { alert('Gagal menolak request close'); }
+    }
+
+    // ─── Detail Modal ─────────────────────────
+    async function openDetail(id) {
+      openDetailId = id;
+      hideAlert('detailAlert'); hideAlert('detailSuccess');
+      document.getElementById('detailTxBody').innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>`;
+      document.getElementById('detailOverlay').classList.add('open');
+      await refreshDetail(id);
+    }
+
+    async function refreshDetail(id) {
+      try {
+        const ca = await fetch(`/api/ca/${id}`).then(r => r.json());
+        if (ca.error) { showAlert('detailAlert', ca.error); return; }
+
+        document.getElementById('detailTitle').textContent = ca.title;
+
+        let meta = '';
+        if (ca.description) meta += `<div><strong>Deskripsi:</strong> ${ca.description}</div>`;
+        meta += `<div><strong>Status:</strong> ${STATUS_LABEL[ca.status] || ca.status}</div>`;
+        meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'} pada ${fmtDateTime(ca.request_at)}</div>`;
+        if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} pada ${fmtDateTime(ca.open_at)}</div>`;
+        if (ca.close_requested_by_name) meta += `<div><strong>Request close oleh:</strong> ${ca.close_requested_by_name} pada ${fmtDateTime(ca.close_requested_at)}${ca.close_request_note ? ` — "${ca.close_request_note}"` : ''}</div>`;
+        if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} pada ${fmtDateTime(ca.closed_at)}</div>`;
+        if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
+        if (ca.reimbursement_requested) meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">Diminta</span></div>`;
+        document.getElementById('detailMeta').innerHTML = meta;
+
+        const txs = ca.transactions || [];
+        const totalKeluar = txs.filter(t => t.type === 'keluar').reduce((s, t) => s + t.amount, 0);
+        const totalMasuk = txs.filter(t => t.type === 'masuk').reduce((s, t) => s + t.amount, 0);
+        const sisa = ca.initial_amount + totalMasuk - totalKeluar;
+        document.getElementById('detailSummary').innerHTML = `
+          <div class="summary-card masuk"><div class="summary-label">Dana CA</div><div class="summary-value green">${fmt.format(ca.initial_amount)}</div></div>
+          <div class="summary-card keluar"><div class="summary-label">Total Pengeluaran</div><div class="summary-value red">${fmt.format(totalKeluar)}</div></div>
+          <div class="summary-card ${sisa >= 0 ? 'net-positive' : 'net-negative'}">
+            <div class="summary-label">${sisa >= 0 ? 'Sisa Dana' : 'Kekurangan'}</div>
+            <div class="summary-value ${sisa >= 0 ? 'blue' : 'red'}">${fmt.format(Math.abs(sisa))}</div>
+          </div>
+        `;
+
+        // Action buttons
+        const actionsEl = document.getElementById('detailActions');
+        actionsEl.innerHTML = '';
+        document.getElementById('closeRequestForm').style.display = 'none';
+
+        if (window.currentUser.role === 'finance') {
+          if (ca.status === 'pending') {
+            actionsEl.innerHTML = `
+              <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>
+            `;
+          } else if (ca.status === 'pending_close') {
+            actionsEl.innerHTML = `
+              <button class="btn btn-primary btn-sm" onclick="approveClose(${id})">Setujui Penutupan</button>
+              <button class="btn btn-ghost btn-sm" onclick="rejectClose(${id})">Tolak Penutupan</button>
+            `;
+          }
+        } else {
+          // employee
+          if (ca.status === 'open') {
+            actionsEl.innerHTML = `<button class="btn btn-primary btn-sm" id="btnRequestClose">Request Close</button>`;
+            document.getElementById('btnRequestClose').addEventListener('click', () => {
+              document.getElementById('closeRequestForm').style.display = '';
+              document.getElementById('btnRequestClose').style.display = 'none';
+            });
+          } else if (ca.status === 'closed' && !ca.reimbursement_requested) {
+            const label = sisa > 0 ? 'Request Reimburse (Ada Sisa Dana)' : 'Request Reimburse (Kurang)';
+            actionsEl.innerHTML = `<button class="btn btn-primary btn-sm" id="btnReimburse">${label}</button>`;
+            document.getElementById('btnReimburse').addEventListener('click', async () => {
+              if (!confirm('Ajukan request reimburse?')) return;
+              const res = await fetch(`/api/ca/${id}/request-reimburse`, { method: 'PATCH' });
+              if (res.ok) { showAlert('detailSuccess', 'Request reimburse berhasil diajukan'); await refreshDetail(id); await loadCAs(); }
+              else { const d = await res.json(); showAlert('detailAlert', d.error); }
+            });
+          }
+        }
+
+        // Transaction table
+        if (txs.length === 0) {
+          document.getElementById('detailTxBody').innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>Belum ada transaksi terkait</div></td></tr>`;
+        } else {
+          document.getElementById('detailTxBody').innerHTML = txs.map(tx => `
+            <tr class="${tx.type}">
+              <td>${fmtDate(tx.date)}</td>
+              <td>${tx.name}${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}</td>
+              <td class="text-muted">${tx.category_name || '–'}</td>
+              <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+              <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (err) {
+        console.error(err);
+        showAlert('detailAlert', 'Gagal memuat detail CA');
+      }
+    }
+
+    // Request close handler
+    document.getElementById('submitCloseRequest').addEventListener('click', async () => {
+      const note = document.getElementById('closeNote').value.trim();
+      try {
+        const res = await fetch(`/api/ca/${openDetailId}/request-close`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note })
+        });
+        if (!res.ok) { const d = await res.json(); showAlert('detailAlert', d.error); return; }
+        showAlert('detailSuccess', 'Request close berhasil dikirim. Menunggu persetujuan finance.');
+        document.getElementById('closeNote').value = '';
+        document.getElementById('closeRequestForm').style.display = 'none';
+        await refreshDetail(openDetailId);
+        await loadCAs();
+      } catch { showAlert('detailAlert', 'Gagal mengirim request close'); }
+    });
+
+    function closeDetail() {
+      document.getElementById('detailOverlay').classList.remove('open');
+      openDetailId = null;
+    }
+    document.getElementById('detailClose').addEventListener('click', closeDetail);
+    document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);
+    document.getElementById('detailOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('detailOverlay')) closeDetail(); });
+
+    // ─── New CA Modal ─────────────────────────
+    function formatThousands(raw) {
+      const digits = raw.replace(/\D/g, '');
+      if (!digits) return '';
+      return parseInt(digits, 10).toLocaleString('id-ID');
+    }
+    document.getElementById('caAmount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    function openNewCA() {
+      document.getElementById('caTitle').value = '';
+      document.getElementById('caDesc').value = '';
+      document.getElementById('caAmount').value = '';
+      document.getElementById('caProject').value = '';
+      hideAlert('newCaAlert');
+      document.getElementById('newCaOverlay').classList.add('open');
+    }
+    function closeNewCA() { document.getElementById('newCaOverlay').classList.remove('open'); }
+    document.getElementById('btnNewCA').addEventListener('click', openNewCA);
+    document.getElementById('newCaClose').addEventListener('click', closeNewCA);
+    document.getElementById('newCaCancel').addEventListener('click', closeNewCA);
+    document.getElementById('newCaOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('newCaOverlay')) closeNewCA(); });
+
+    document.getElementById('newCaSave').addEventListener('click', async () => {
+      hideAlert('newCaAlert');
+      const title = document.getElementById('caTitle').value.trim();
+      const desc = document.getElementById('caDesc').value.trim();
+      const amountRaw = document.getElementById('caAmount').value.replace(/\./g, '').replace(',', '.');
+      const amount = parseFloat(amountRaw);
+      const projectId = document.getElementById('caProject').value;
+
+      if (!title) { showAlert('newCaAlert', 'Judul CA wajib diisi'); return; }
+      if (isNaN(amount) || amount <= 0) { showAlert('newCaAlert', 'Nominal harus berupa angka positif'); return; }
+
+      const btn = document.getElementById('newCaSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/ca', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description: desc || null, initial_amount: amount, project_id: projectId || null })
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert('newCaAlert', data.error); return; }
+        closeNewCA();
+        await loadCAs();
+      } catch { showAlert('newCaAlert', 'Gagal menyimpan CA'); }
+      finally { btn.disabled = false; btn.textContent = 'Ajukan Request'; }
+    });
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
+
+    function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+    function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+  </script>
+</body>
+</html>

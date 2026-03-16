@@ -69,6 +69,73 @@ body {
 .navbar-user strong { color: var(--gray-800); }
 .navbar-greeting { display: flex; align-items: center; gap: .35rem; }
 
+/* ─── NOTIFICATION BELL ───────────────────── */
+.notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: .2rem .3rem;
+  color: var(--gray-500);
+  text-decoration: none;
+  line-height: 1;
+  border-radius: 6px;
+  transition: color .12s, background .12s;
+}
+.notif-btn:hover { color: var(--gray-800); background: var(--gray-100); }
+.notif-count {
+  position: absolute;
+  top: -3px; right: -5px;
+  background: var(--red);
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 700;
+  min-width: 15px;
+  height: 15px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  pointer-events: none;
+}
+/* Sidebar CA badge */
+.sidebar-notif {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: .6rem;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+/* Bottom nav CA badge */
+.bottom-notif {
+  position: absolute;
+  top: -2px; right: -4px;
+  background: var(--red);
+  color: #fff;
+  font-size: .55rem;
+  font-weight: 700;
+  min-width: 13px;
+  height: 13px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  pointer-events: none;
+}
+
 /* ─── SIDEBAR LAYOUT ─────────────────────── */
 .app-layout {
   display: flex;
@@ -164,6 +231,59 @@ body {
 .bottom-nav-item.active { color: var(--blue); }
 .bottom-nav-item:hover { color: var(--gray-800); }
 .bottom-nav-icon { font-size: 1.2rem; line-height: 1; }
+
+/* ─── NOTIFICATION POPUP ─────────────────── */
+.notif-popup {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 290px;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.13);
+  z-index: 200;
+  overflow: hidden;
+  max-height: 380px;
+  overflow-y: auto;
+}
+.notif-popup-header {
+  padding: .6rem 1rem;
+  font-weight: 700;
+  font-size: .8rem;
+  color: var(--gray-500);
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-50);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.notif-popup-item {
+  display: block;
+  padding: .65rem 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: background .1s;
+}
+.notif-popup-item:hover { background: var(--gray-50); }
+.notif-popup-empty {
+  padding: 1.25rem 1rem;
+  color: var(--gray-400);
+  font-size: .8rem;
+  text-align: center;
+}
+.notif-popup-footer {
+  display: block;
+  padding: .5rem 1rem;
+  font-size: .8rem;
+  color: var(--blue);
+  text-align: center;
+  text-decoration: none;
+  border-top: 1px solid var(--gray-100);
+  transition: background .1s;
+}
+.notif-popup-footer:hover { background: var(--gray-50); }
 
 /* ─── RESPONSIVE ──────────────────────────── */
 @media (max-width: 767px) {

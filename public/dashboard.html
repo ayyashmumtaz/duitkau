@@ -6,38 +6,16 @@
   <title>DuitKau - Dashboard Karyawan</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <script src="/js/layout.js"></script>
   <script src="/js/utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 </head>
-<body>
-  <div class="db-banner" id="dbBanner">
-    <span class="db-dot"></span>
-    Database tidak terhubung — semua operasi dinonaktifkan
-  </div>
-
-  <nav class="navbar">
-    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
-    <div class="navbar-user">
-      <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
-        <span class="dot"></span> DB
-      </span>
-      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Karyawan</span></span>
-      <button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>
-      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
-    </div>
-  </nav>
+<body data-page="dashboard">
+  <div id="navbar-placeholder"></div>
 
   <div class="app-layout">
-    <aside class="sidebar">
-      <div class="sidebar-section">Menu</div>
-      <a href="/dashboard.html" class="sidebar-item active">
-        <span class="icon">📝</span><span class="label">Input Pengeluaran</span>
-      </a>
-      <a href="/history.html" class="sidebar-item">
-        <span class="icon">📋</span><span class="label">Riwayat</span>
-      </a>
-    </aside>
+    <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
       <h1 class="page-title">Input Pengeluaran</h1>
@@ -75,6 +53,12 @@
               <label for="projectId">Proyek (opsional)</label>
               <select id="projectId">
                 <option value="">-- Tidak ada proyek --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="caId">Cash Advance (opsional)</label>
+              <select id="caId">
+                <option value="">-- Tidak terkait CA --</option>
               </select>
             </div>
 
@@ -127,19 +111,10 @@
           </div>
         </div>
       </div>
-
     </main>
   </div>
 
-  <!-- Bottom Nav (mobile) -->
-  <nav class="bottom-nav">
-    <a href="/dashboard.html" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">📝</span>Input
-    </a>
-    <a href="/history.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">📋</span>Riwayat
-    </a>
-  </nav>
+  <div id="bottom-nav-placeholder"></div>
 
   <!-- Edit Draft Modal -->
   <div class="modal-overlay" id="editDraftOverlay">
@@ -180,6 +155,12 @@
           </select>
         </div>
         <div class="form-group">
+          <label for="editCaId">Cash Advance (opsional)</label>
+          <select id="editCaId">
+            <option value="">-- Tidak terkait CA --</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>Foto Bukti</label>
           <div id="editCurrentPreview" style="margin-bottom:.5rem">
             <img id="editCurrentImg" src="" style="width:60px;height:60px;object-fit:cover;border-radius:6px;display:none" />
@@ -201,32 +182,6 @@
     </div>
   </div>
 
-  <!-- Password Modal -->
-  <div class="modal-overlay" id="pwdOverlay">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Ubah Password</span>
-        <button class="modal-close" id="pwdClose">✕</button>
-      </div>
-      <div class="modal-body">
-        <div id="pwdAlert" class="alert alert-error"></div>
-        <div id="pwdSuccess" class="alert alert-success"></div>
-        <div class="form-group">
-          <label for="pwdNew">Password Baru</label>
-          <input type="password" id="pwdNew" placeholder="Minimal 6 karakter" />
-        </div>
-        <div class="form-group">
-          <label for="pwdConfirm">Konfirmasi Password</label>
-          <input type="password" id="pwdConfirm" placeholder="Ulangi password baru" />
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="pwdCancel">Batal</button>
-        <button class="btn btn-primary" id="pwdSave">Simpan</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Confirm Modal -->
   <div class="modal-overlay" id="confirmOverlay">
     <div class="modal">
@@ -243,11 +198,12 @@
     </div>
   </div>
 
+  <div id="modals-placeholder"></div>
+
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    // ─── Date helpers ─────────────────────────
     function parseDateDMY(val) {
       const p = val.split('/');
       if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) return null;
@@ -260,7 +216,6 @@
     const fpDate = flatpickr('#date', fpOpts);
     const fpEditDate = flatpickr('#editDate', fpOpts);
 
-    // ─── Nominal auto-format ──────────────────
     function formatThousands(raw) {
       const digits = raw.replace(/\D/g, '');
       if (!digits) return '';
@@ -277,70 +232,44 @@
       this.setSelectionRange(pos + diff, pos + diff);
     });
 
-    let dbOk = true;
-    let draftItems = []; // { name, amount, date, note, previewUrl, file, projectId, projectName, categoryId, categoryName }
+    let draftItems = [];
 
-    // ─── DB Status ────────────────────────────
-    async function checkDb() {
-      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; } catch { dbOk = false; }
-      const banner = document.getElementById('dbBanner');
-      const ind = document.getElementById('dbIndicator');
-      const submitBtn = document.getElementById('submitAllBtn');
-      if (!dbOk) {
-        banner.classList.add('show');
-        ind.className = 'db-status-indicator disconnected';
-        ind.innerHTML = '<span class="dot"></span> DB Mati';
-        if (submitBtn) submitBtn.disabled = true;
-      } else {
-        banner.classList.remove('show');
-        ind.className = 'db-status-indicator connected';
-        ind.innerHTML = '<span class="dot"></span> DB';
-        if (submitBtn) submitBtn.disabled = draftItems.length === 0;
-      }
-    }
-    setInterval(checkDb, 15000);
+    // DB status hook (disable submit when DB is down)
+    window.onDbStatusChange = (ok) => {
+      const btn = document.getElementById('submitAllBtn');
+      if (btn) btn.disabled = !ok || draftItems.length === 0;
+    };
 
-    // ─── Load categories ───────────────────────
     async function loadCategories() {
       try {
         const res = await fetch('/api/categories').then(r => r.json());
         const sel = document.getElementById('categoryId');
-        res.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.name;
-          sel.appendChild(opt);
-        });
+        res.forEach(c => { const o = document.createElement('option'); o.value = c.id; o.textContent = c.name; sel.appendChild(o); });
       } catch {}
     }
 
-    // ─── Load projects ─────────────────────────
     async function loadProjects() {
       try {
         const res = await fetch('/api/projects').then(r => r.json());
         const sel = document.getElementById('projectId');
-        res.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          sel.appendChild(opt);
+        res.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
+      } catch {}
+    }
+
+    async function loadCAs() {
+      try {
+        const res = await fetch('/api/ca').then(r => r.json());
+        const sel = document.getElementById('caId');
+        res.filter(ca => ca.status === 'open').forEach(ca => {
+          const o = document.createElement('option'); o.value = ca.id; o.textContent = ca.title; sel.appendChild(o);
         });
       } catch {}
     }
 
-    // ─── Init ─────────────────────────────────
-    async function init() {
-      await checkDb();
-      try {
-        const me = await fetch('/api/auth/me').then(r => r.json());
-        if (!me.userId) { window.location.href = '/login.html'; return; }
-        if (me.role === 'finance') { window.location.href = '/finance.html'; return; }
-        document.getElementById('navName').textContent = me.fullName;
-      } catch { window.location.href = '/login.html'; return; }
-
+    window.onLayoutReady = async function () {
       fpDate.setDate(new Date(), true);
-      await Promise.all([loadCategories(), loadProjects()]);
-    }
+      await Promise.all([loadCategories(), loadProjects(), loadCAs()]);
+    };
 
     // ─── Preview foto ─────────────────────────
     document.getElementById('proofImage').addEventListener('change', function () {
@@ -361,18 +290,18 @@
     document.getElementById('addItemForm').addEventListener('submit', (e) => {
       e.preventDefault();
       hideAlert('formAlert');
-
       const name = document.getElementById('name').value.trim();
       const amount = parseAmount(document.getElementById('amount').value);
-      const dateRaw = document.getElementById('date').value;
-      const date = parseDateDMY(dateRaw);
+      const date = parseDateDMY(document.getElementById('date').value);
       const note = document.getElementById('note').value.trim();
-      const fileInput = document.getElementById('proofImage');
-      const file = fileInput.files[0];
+      const file = document.getElementById('proofImage').files[0];
       const categoryId = document.getElementById('categoryId').value;
       const categoryName = document.getElementById('categoryId').options[document.getElementById('categoryId').selectedIndex].text;
       const projectId = document.getElementById('projectId').value;
       const projectName = document.getElementById('projectId').options[document.getElementById('projectId').selectedIndex].text;
+      const caEl = document.getElementById('caId');
+      const caId = caEl.value;
+      const caName = caEl.options[caEl.selectedIndex].text;
 
       if (!file) { showAlert('formAlert', 'Bukti foto wajib disertakan'); return; }
       if (!name) { showAlert('formAlert', 'Nama pengeluaran wajib diisi'); return; }
@@ -380,12 +309,8 @@
       if (!date) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
       if (!categoryId) { showAlert('formAlert', 'Kategori wajib dipilih'); return; }
 
-      const previewUrl = document.getElementById('previewImg').src;
-
-      draftItems.push({ name, amount, date, note, previewUrl, file, categoryId, categoryName, projectId, projectName });
+      draftItems.push({ name, amount, date, note, previewUrl: document.getElementById('previewImg').src, file, categoryId, categoryName, projectId, projectName, caId, caName });
       renderDraft();
-
-      // Reset form
       document.getElementById('addItemForm').reset();
       fpDate.setDate(new Date(), true);
       document.getElementById('previewWrap').classList.remove('show');
@@ -397,22 +322,12 @@
       const list = document.getElementById('draftList');
       const itemsEl = document.getElementById('draftItems');
       const submitBtn = document.getElementById('submitAllBtn');
-
-      if (draftItems.length === 0) {
-        empty.style.display = '';
-        list.style.display = 'none';
-        return;
-      }
-
-      empty.style.display = 'none';
-      list.style.display = '';
-
-      const total = draftItems.reduce((s, i) => s + i.amount, 0);
-      document.getElementById('draftTotal').textContent = fmt.format(total);
+      if (draftItems.length === 0) { empty.style.display = ''; list.style.display = 'none'; return; }
+      empty.style.display = 'none'; list.style.display = '';
+      document.getElementById('draftTotal').textContent = fmt.format(draftItems.reduce((s, i) => s + i.amount, 0));
       document.getElementById('draftCount').textContent = draftItems.length + ' item';
       document.getElementById('submitCount').textContent = draftItems.length;
-      submitBtn.disabled = !dbOk;
-
+      submitBtn.disabled = !window.getDbOk();
       itemsEl.innerHTML = draftItems.map((item, idx) => `
         <div style="display:flex; align-items:flex-start; gap:.6rem; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
           <img src="${item.previewUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0" />
@@ -422,62 +337,48 @@
             <div class="text-muted" style="font-size:.75rem">${fmtDate(item.date)}${item.note ? ' · ' + item.note : ''}</div>
             ${item.categoryId ? '<div class="text-muted" style="font-size:.7rem">🏷️ ' + item.categoryName + '</div>' : ''}
             ${item.projectId ? '<div class="text-muted" style="font-size:.7rem">📁 ' + item.projectName + '</div>' : ''}
+            ${item.caId ? '<div class="text-muted" style="font-size:.7rem">💰 ' + item.caName + '</div>' : ''}
           </div>
           <div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0">
             <button class="btn btn-ghost btn-sm" onclick="openEditDraft(${idx})" title="Edit item">✏️</button>
             <button class="btn btn-ghost btn-sm" onclick="removeDraftItem(${idx})" title="Hapus">✕</button>
           </div>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
-    function removeDraftItem(idx) {
-      draftItems.splice(idx, 1);
-      renderDraft();
-    }
+    function removeDraftItem(idx) { draftItems.splice(idx, 1); renderDraft(); }
 
     document.getElementById('clearDraftBtn').addEventListener('click', () => {
       if (!confirm('Hapus semua item dari antrian?')) return;
-      draftItems = [];
-      renderDraft();
+      draftItems = []; renderDraft();
     });
 
     // ─── Submit batch ──────────────────────────
     document.getElementById('submitAllBtn').addEventListener('click', async () => {
-      if (!dbOk) return showAlert('draftAlert', 'Database tidak terhubung');
+      if (!window.getDbOk()) return showAlert('draftAlert', 'Database tidak terhubung');
       if (draftItems.length === 0) return;
       hideAlert('draftAlert'); hideAlert('draftSuccess');
-
-      const fmt2 = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
       const total = draftItems.reduce((s, i) => s + i.amount, 0);
-      const details = `<strong>${draftItems.length} pengeluaran</strong> akan disimpan.<br>Total: <strong>${fmt2.format(total)}</strong><br><br>` +
-        draftItems.map((it, i) => `${i+1}. ${it.name} — ${fmt2.format(it.amount)}`).join('<br>');
+      const details = `<strong>${draftItems.length} pengeluaran</strong> akan disimpan.<br>Total: <strong>${fmt.format(total)}</strong><br><br>` +
+        draftItems.map((it, i) => `${i+1}. ${it.name} — ${fmt.format(it.amount)}`).join('<br>');
       const ok = await showConfirm('Submit Semua Pengeluaran?', details);
       if (!ok) return;
-
       const btn = document.getElementById('submitAllBtn');
-      btn.disabled = true;
-      btn.textContent = 'Menyimpan...';
-
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
       const fd = new FormData();
-      const itemsMeta = draftItems.map(({ name, amount, date, note, categoryId, projectId }) => ({ name, amount, date, note, category_id: categoryId || null, project_id: projectId || null }));
+      const itemsMeta = draftItems.map(({ name, amount, date, note, categoryId, projectId, caId }) =>
+        ({ name, amount, date, note, category_id: categoryId || null, project_id: projectId || null, ca_id: caId || null }));
       fd.append('items', JSON.stringify(itemsMeta));
       draftItems.forEach((item, idx) => fd.append(`proof_${idx}`, item.file));
-
       try {
         const res = await fetch('/api/transactions/batch', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok) { showAlert('draftAlert', data.error); return; }
-
         showAlert('draftSuccess', `✅ ${draftItems.length} pengeluaran berhasil disimpan!`);
-        draftItems = [];
-        renderDraft();
+        draftItems = []; renderDraft();
         setTimeout(() => hideAlert('draftSuccess'), 4000);
       } catch { showAlert('draftAlert', 'Gagal menyimpan batch'); }
-      finally {
-        btn.disabled = false;
-        renderDraft();
-      }
+      finally { btn.disabled = false; renderDraft(); }
     });
 
     // ─── Edit Draft Modal ─────────────────────
@@ -488,60 +389,44 @@
       document.getElementById('editAmount').value = item.amount.toLocaleString('id-ID');
       fpEditDate.setDate(item.date, true);
       document.getElementById('editNote').value = item.note || '';
-
-      // Mirror category options
       const catSel = document.getElementById('editCategoryId');
       catSel.innerHTML = '<option value="">-- Pilih kategori --</option>';
       document.getElementById('categoryId').querySelectorAll('option:not(:first-child)').forEach(o => catSel.appendChild(o.cloneNode(true)));
       catSel.value = item.categoryId || '';
-
-      // Mirror project options
       const projSel = document.getElementById('editProjectId');
       projSel.innerHTML = '<option value="">-- Tidak ada proyek --</option>';
       document.getElementById('projectId').querySelectorAll('option:not(:first-child)').forEach(o => projSel.appendChild(o.cloneNode(true)));
       projSel.value = item.projectId || '';
-
-      // Show current photo
+      const caSel = document.getElementById('editCaId');
+      caSel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
+      document.getElementById('caId').querySelectorAll('option:not(:first-child)').forEach(o => caSel.appendChild(o.cloneNode(true)));
+      caSel.value = item.caId || '';
       const curImg = document.getElementById('editCurrentImg');
-      curImg.src = item.previewUrl;
-      curImg.style.display = '';
-
-      // Reset new photo picker
+      curImg.src = item.previewUrl; curImg.style.display = '';
       document.getElementById('editProofImage').value = '';
       document.getElementById('editPreviewWrap').classList.remove('show');
       document.getElementById('editPreviewImg').src = '';
-
       hideAlert('editDraftAlert');
       document.getElementById('editDraftOverlay').classList.add('open');
     }
 
-    function closeEditDraft() {
-      document.getElementById('editDraftOverlay').classList.remove('open');
-    }
-
+    function closeEditDraft() { document.getElementById('editDraftOverlay').classList.remove('open'); }
     document.getElementById('editDraftClose').addEventListener('click', closeEditDraft);
     document.getElementById('editDraftCancel').addEventListener('click', closeEditDraft);
-    document.getElementById('editDraftOverlay').addEventListener('click', (e) => {
-      if (e.target === document.getElementById('editDraftOverlay')) closeEditDraft();
-    });
+    document.getElementById('editDraftOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('editDraftOverlay')) closeEditDraft(); });
 
     document.getElementById('editAmount').addEventListener('input', function () {
-      const pos = this.selectionStart;
-      const before = this.value.length;
+      const pos = this.selectionStart; const before = this.value.length;
       this.value = formatThousands(this.value);
-      const diff = this.value.length - before;
-      this.setSelectionRange(pos + diff, pos + diff);
+      const diff = this.value.length - before; this.setSelectionRange(pos + diff, pos + diff);
     });
-
     document.getElementById('editProofImage').addEventListener('change', function () {
-      const file = this.files[0];
-      const wrap = document.getElementById('editPreviewWrap');
+      const file = this.files[0]; const wrap = document.getElementById('editPreviewWrap');
       if (!file) { wrap.classList.remove('show'); return; }
       const reader = new FileReader();
       reader.onload = (e) => { document.getElementById('editPreviewImg').src = e.target.result; wrap.classList.add('show'); };
       reader.readAsDataURL(file);
     });
-
     document.getElementById('editDraftSave').addEventListener('click', () => {
       hideAlert('editDraftAlert');
       const idx = parseInt(document.getElementById('editDraftIdx').value);
@@ -550,73 +435,27 @@
       const date = parseDateDMY(document.getElementById('editDate').value);
       const note = document.getElementById('editNote').value.trim();
       const catSel = document.getElementById('editCategoryId');
+      const projSel = document.getElementById('editProjectId');
+      const editCaSel = document.getElementById('editCaId');
       const categoryId = catSel.value;
       const categoryName = catSel.options[catSel.selectedIndex]?.text || '';
-      const projSel = document.getElementById('editProjectId');
       const projectId = projSel.value;
       const projectName = projSel.options[projSel.selectedIndex]?.text || '';
+      const caId = editCaSel.value;
+      const caName = editCaSel.options[editCaSel.selectedIndex]?.text || '';
       const newFile = document.getElementById('editProofImage').files[0];
-
       if (!name) { showAlert('editDraftAlert', 'Nama pengeluaran wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('editDraftAlert', 'Nominal harus angka positif'); return; }
       if (!date) { showAlert('editDraftAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
       if (!categoryId) { showAlert('editDraftAlert', 'Kategori wajib dipilih'); return; }
-
       const item = draftItems[idx];
-      item.name = name;
-      item.amount = amount;
-      item.date = date;
-      item.note = note;
-      item.categoryId = categoryId;
-      item.categoryName = categoryName;
-      item.projectId = projectId;
-      item.projectName = projectName;
-
-      if (newFile) {
-        item.file = newFile;
-        item.previewUrl = document.getElementById('editPreviewImg').src;
-      }
-
-      closeEditDraft();
-      renderDraft();
+      Object.assign(item, { name, amount, date, note, categoryId, categoryName, projectId, projectName, caId, caName });
+      if (newFile) { item.file = newFile; item.previewUrl = document.getElementById('editPreviewImg').src; }
+      closeEditDraft(); renderDraft();
     });
-
-    // ─── Password Modal ───────────────────────
-    function closePwd() { document.getElementById('pwdOverlay').classList.remove('open'); }
-    document.getElementById('pwdBtn').addEventListener('click', () => {
-      document.getElementById('pwdNew').value = '';
-      document.getElementById('pwdConfirm').value = '';
-      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
-      document.getElementById('pwdOverlay').classList.add('open');
-    });
-    document.getElementById('pwdClose').addEventListener('click', closePwd);
-    document.getElementById('pwdCancel').addEventListener('click', closePwd);
-    document.getElementById('pwdOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('pwdOverlay')) closePwd(); });
-    document.getElementById('pwdSave').addEventListener('click', async () => {
-      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
-      const pwd = document.getElementById('pwdNew').value;
-      const confirm = document.getElementById('pwdConfirm').value;
-      if (!pwd || pwd.length < 6) { showAlert('pwdAlert', 'Password minimal 6 karakter'); return; }
-      if (pwd !== confirm) { showAlert('pwdAlert', 'Konfirmasi password tidak cocok'); return; }
-      const btn = document.getElementById('pwdSave');
-      btn.disabled = true; btn.textContent = 'Menyimpan...';
-      try {
-        const res = await fetch('/api/auth/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
-        const data = await res.json();
-        if (!res.ok) { showAlert('pwdAlert', data.error); return; }
-        showAlert('pwdSuccess', 'Password berhasil diubah');
-        setTimeout(closePwd, 1500);
-      } catch { showAlert('pwdAlert', 'Gagal menyimpan'); }
-      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
-    });
-
-    // ─── Logout ───────────────────────────────
-    document.getElementById('logoutBtn').addEventListener('click', async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; });
 
     function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
     function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
-
-    init();
   </script>
 </body>
 </html>

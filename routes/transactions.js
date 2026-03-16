@@ -83,7 +83,7 @@ router.post('/batch', upload.any(), async (req, res) => {
     await db.runAsync('BEGIN TRANSACTION');
     const insertedList = [];
     for (let i = 0; i < items.length; i++) {
-      const { name, amount, date, note, project_id, category_id } = items[i];
+      const { name, amount, date, note, project_id, category_id, ca_id } = items[i];
       const parsedAmount = parseFloat(amount);
       if (!name?.trim() || isNaN(parsedAmount) || parsedAmount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         await db.runAsync('ROLLBACK');
@@ -100,10 +100,11 @@ router.post('/batch', upload.any(), async (req, res) => {
       }
       const projectId = project_id ? parseInt(project_id) || null : null;
       const categoryId = parseInt(category_id);
+      const caId = ca_id ? parseInt(ca_id) || null : null;
       const result = await db.runAsync(
-        `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id)
-         VALUES (?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?, ?)`,
-        [req.session.userId, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId]
+        `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
+         VALUES (?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
+        [req.session.userId, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId, caId]
       );
       const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
       insertedList.push(inserted);

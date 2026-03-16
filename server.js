@@ -45,6 +45,7 @@ app.use('/api/employees', require('./routes/employees'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/share', require('./routes/share'));
 app.use('/api/categories', require('./routes/categories'));
+app.use('/api/ca', require('./routes/ca'));
 
 app.get('/', (req, res) => {
   res.redirect('/login.html');
