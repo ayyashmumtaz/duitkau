@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DuitKau - Dashboard Karyawan</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="/js/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 </head>
 <body>
   <div class="db-banner" id="dbBanner">
@@ -56,7 +59,7 @@
             </div>
             <div class="form-group">
               <label for="date">Tanggal</label>
-              <input type="date" id="date" required />
+              <input type="text" id="date" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" required />
             </div>
             <div class="form-group">
               <label for="note">Catatan (opsional)</label>
@@ -138,6 +141,66 @@
     </a>
   </nav>
 
+  <!-- Edit Draft Modal -->
+  <div class="modal-overlay" id="editDraftOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Item Antrian</span>
+        <button class="modal-close" id="editDraftClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="editDraftAlert" class="alert alert-error"></div>
+        <input type="hidden" id="editDraftIdx" />
+        <div class="form-group">
+          <label for="editName">Nama Pengeluaran</label>
+          <input type="text" id="editName" placeholder="Nama pengeluaran" />
+        </div>
+        <div class="form-group">
+          <label for="editAmount">Nominal (Rp)</label>
+          <input type="text" id="editAmount" inputmode="numeric" placeholder="Contoh: 50.000" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="editDate">Tanggal</label>
+          <input type="text" id="editDate" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="editNote">Catatan (opsional)</label>
+          <textarea id="editNote" placeholder="Keterangan tambahan..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editCategoryId">Kategori <span style="color:var(--red)">*</span></label>
+          <select id="editCategoryId">
+            <option value="">-- Pilih kategori --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editProjectId">Proyek (opsional)</label>
+          <select id="editProjectId">
+            <option value="">-- Tidak ada proyek --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Foto Bukti</label>
+          <div id="editCurrentPreview" style="margin-bottom:.5rem">
+            <img id="editCurrentImg" src="" style="width:60px;height:60px;object-fit:cover;border-radius:6px;display:none" />
+          </div>
+          <div class="file-input-wrap">
+            <input type="file" id="editProofImage" accept="image/*" capture="environment" />
+          </div>
+          <div class="file-input-hint" style="font-size:.75rem">Biarkan kosong untuk tetap menggunakan foto lama</div>
+          <div class="proof-preview-wrap" id="editPreviewWrap">
+            <div class="proof-preview-label">Preview baru:</div>
+            <img id="editPreviewImg" src="" alt="Preview" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="editDraftCancel">Batal</button>
+        <button class="btn btn-primary" id="editDraftSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Password Modal -->
   <div class="modal-overlay" id="pwdOverlay">
     <div class="modal">
@@ -183,6 +246,19 @@
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // ─── Date helpers ─────────────────────────
+    function parseDateDMY(val) {
+      const p = val.split('/');
+      if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) return null;
+      const iso = `${p[2]}-${p[1]}-${p[0]}`;
+      const d = new Date(iso + 'T00:00:00');
+      if (isNaN(d.getTime())) return null;
+      return iso;
+    }
+    const fpOpts = { dateFormat: 'd/m/Y', allowInput: true, locale: 'id' };
+    const fpDate = flatpickr('#date', fpOpts);
+    const fpEditDate = flatpickr('#editDate', fpOpts);
 
     // ─── Nominal auto-format ──────────────────
     function formatThousands(raw) {
@@ -262,7 +338,7 @@
         document.getElementById('navName').textContent = me.fullName;
       } catch { window.location.href = '/login.html'; return; }
 
-      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      fpDate.setDate(new Date(), true);
       await Promise.all([loadCategories(), loadProjects()]);
     }
 
@@ -288,7 +364,8 @@
 
       const name = document.getElementById('name').value.trim();
       const amount = parseAmount(document.getElementById('amount').value);
-      const date = document.getElementById('date').value;
+      const dateRaw = document.getElementById('date').value;
+      const date = parseDateDMY(dateRaw);
       const note = document.getElementById('note').value.trim();
       const fileInput = document.getElementById('proofImage');
       const file = fileInput.files[0];
@@ -297,13 +374,10 @@
       const projectId = document.getElementById('projectId').value;
       const projectName = document.getElementById('projectId').options[document.getElementById('projectId').selectedIndex].text;
 
-      if (!file) {
-        showAlert('formAlert', 'Bukti foto wajib disertakan');
-        return;
-      }
+      if (!file) { showAlert('formAlert', 'Bukti foto wajib disertakan'); return; }
       if (!name) { showAlert('formAlert', 'Nama pengeluaran wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('formAlert', 'Nominal harus berupa angka positif'); return; }
-      if (!date) { showAlert('formAlert', 'Tanggal wajib diisi'); return; }
+      if (!date) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
       if (!categoryId) { showAlert('formAlert', 'Kategori wajib dipilih'); return; }
 
       const previewUrl = document.getElementById('previewImg').src;
@@ -313,7 +387,7 @@
 
       // Reset form
       document.getElementById('addItemForm').reset();
-      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      fpDate.setDate(new Date(), true);
       document.getElementById('previewWrap').classList.remove('show');
       document.getElementById('previewImg').src = '';
     });
@@ -349,7 +423,10 @@
             ${item.categoryId ? '<div class="text-muted" style="font-size:.7rem">🏷️ ' + item.categoryName + '</div>' : ''}
             ${item.projectId ? '<div class="text-muted" style="font-size:.7rem">📁 ' + item.projectName + '</div>' : ''}
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="removeDraftItem(${idx})" title="Hapus dari antrian" style="flex-shrink:0">✕</button>
+          <div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" onclick="openEditDraft(${idx})" title="Edit item">✏️</button>
+            <button class="btn btn-ghost btn-sm" onclick="removeDraftItem(${idx})" title="Hapus">✕</button>
+          </div>
         </div>
       `).join('');
     }
@@ -401,6 +478,107 @@
         btn.disabled = false;
         renderDraft();
       }
+    });
+
+    // ─── Edit Draft Modal ─────────────────────
+    function openEditDraft(idx) {
+      const item = draftItems[idx];
+      document.getElementById('editDraftIdx').value = idx;
+      document.getElementById('editName').value = item.name;
+      document.getElementById('editAmount').value = item.amount.toLocaleString('id-ID');
+      fpEditDate.setDate(item.date, true);
+      document.getElementById('editNote').value = item.note || '';
+
+      // Mirror category options
+      const catSel = document.getElementById('editCategoryId');
+      catSel.innerHTML = '<option value="">-- Pilih kategori --</option>';
+      document.getElementById('categoryId').querySelectorAll('option:not(:first-child)').forEach(o => catSel.appendChild(o.cloneNode(true)));
+      catSel.value = item.categoryId || '';
+
+      // Mirror project options
+      const projSel = document.getElementById('editProjectId');
+      projSel.innerHTML = '<option value="">-- Tidak ada proyek --</option>';
+      document.getElementById('projectId').querySelectorAll('option:not(:first-child)').forEach(o => projSel.appendChild(o.cloneNode(true)));
+      projSel.value = item.projectId || '';
+
+      // Show current photo
+      const curImg = document.getElementById('editCurrentImg');
+      curImg.src = item.previewUrl;
+      curImg.style.display = '';
+
+      // Reset new photo picker
+      document.getElementById('editProofImage').value = '';
+      document.getElementById('editPreviewWrap').classList.remove('show');
+      document.getElementById('editPreviewImg').src = '';
+
+      hideAlert('editDraftAlert');
+      document.getElementById('editDraftOverlay').classList.add('open');
+    }
+
+    function closeEditDraft() {
+      document.getElementById('editDraftOverlay').classList.remove('open');
+    }
+
+    document.getElementById('editDraftClose').addEventListener('click', closeEditDraft);
+    document.getElementById('editDraftCancel').addEventListener('click', closeEditDraft);
+    document.getElementById('editDraftOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('editDraftOverlay')) closeEditDraft();
+    });
+
+    document.getElementById('editAmount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    document.getElementById('editProofImage').addEventListener('change', function () {
+      const file = this.files[0];
+      const wrap = document.getElementById('editPreviewWrap');
+      if (!file) { wrap.classList.remove('show'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => { document.getElementById('editPreviewImg').src = e.target.result; wrap.classList.add('show'); };
+      reader.readAsDataURL(file);
+    });
+
+    document.getElementById('editDraftSave').addEventListener('click', () => {
+      hideAlert('editDraftAlert');
+      const idx = parseInt(document.getElementById('editDraftIdx').value);
+      const name = document.getElementById('editName').value.trim();
+      const amount = parseAmount(document.getElementById('editAmount').value);
+      const date = parseDateDMY(document.getElementById('editDate').value);
+      const note = document.getElementById('editNote').value.trim();
+      const catSel = document.getElementById('editCategoryId');
+      const categoryId = catSel.value;
+      const categoryName = catSel.options[catSel.selectedIndex]?.text || '';
+      const projSel = document.getElementById('editProjectId');
+      const projectId = projSel.value;
+      const projectName = projSel.options[projSel.selectedIndex]?.text || '';
+      const newFile = document.getElementById('editProofImage').files[0];
+
+      if (!name) { showAlert('editDraftAlert', 'Nama pengeluaran wajib diisi'); return; }
+      if (isNaN(amount) || amount <= 0) { showAlert('editDraftAlert', 'Nominal harus angka positif'); return; }
+      if (!date) { showAlert('editDraftAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
+      if (!categoryId) { showAlert('editDraftAlert', 'Kategori wajib dipilih'); return; }
+
+      const item = draftItems[idx];
+      item.name = name;
+      item.amount = amount;
+      item.date = date;
+      item.note = note;
+      item.categoryId = categoryId;
+      item.categoryName = categoryName;
+      item.projectId = projectId;
+      item.projectName = projectName;
+
+      if (newFile) {
+        item.file = newFile;
+        item.previewUrl = document.getElementById('editPreviewImg').src;
+      }
+
+      closeEditDraft();
+      renderDraft();
     });
 
     // ─── Password Modal ───────────────────────

@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DuitKau - Input untuk Karyawan</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="/js/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 </head>
 <body>
   <div class="db-banner" id="dbBanner">
@@ -82,7 +85,7 @@
             </div>
             <div class="form-group">
               <label for="date">Tanggal Transaksi</label>
-              <input type="date" id="date" required />
+              <input type="text" id="date" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" required />
             </div>
             <div class="form-group">
               <label for="note">Catatan (opsional)</label>
@@ -223,6 +226,17 @@
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     let dbOk = true;
 
+    // ─── Date helpers ─────────────────────────
+    function parseDateDMY(val) {
+      const p = val.split('/');
+      if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) return null;
+      const iso = `${p[2]}-${p[1]}-${p[0]}`;
+      const d = new Date(iso + 'T00:00:00');
+      if (isNaN(d.getTime())) return null;
+      return iso;
+    }
+    const fpDate = flatpickr('#date', { dateFormat: 'd/m/Y', allowInput: true, locale: 'id' });
+
     // ─── Nominal auto-format ──────────────────
     function formatThousands(raw) {
       const digits = raw.replace(/\D/g, '');
@@ -270,7 +284,7 @@
         document.getElementById('navName').textContent = me.fullName;
       } catch { window.location.href = '/login.html'; return; }
 
-      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      fpDate.setDate(new Date(), true);
 
       await Promise.all([loadEmployees(), loadCategories(), loadProjects(), loadToday()]);
     }
@@ -370,12 +384,15 @@
       const btn = document.getElementById('submitBtn');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
 
+      const parsedDate = parseDateDMY(document.getElementById('date').value);
+      if (!parsedDate) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); btn.disabled = false; btn.textContent = 'Simpan Transaksi'; return; }
+
       const fd = new FormData();
       fd.append('userId', document.getElementById('userId').value);
       fd.append('type', document.getElementById('type').value);
       fd.append('name', document.getElementById('name').value);
       fd.append('amount', parseAmount(document.getElementById('amount').value));
-      fd.append('date', document.getElementById('date').value);
+      fd.append('date', parsedDate);
       fd.append('note', document.getElementById('note').value);
       fd.append('category_id', document.getElementById('categoryId').value || '');
       fd.append('project_id', document.getElementById('projectId').value || '');
@@ -390,7 +407,7 @@
         const empNameFull = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text;
         showAlert('formSuccess', `✅ Transaksi untuk ${empNameFull.split(' (')[0]} berhasil disimpan!`);
         document.getElementById('txForm').reset();
-        document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+        fpDate.setDate(new Date(), true);
         document.getElementById('previewWrap').classList.remove('show');
         await loadToday();
         setTimeout(() => hideAlert('formSuccess'), 4000);

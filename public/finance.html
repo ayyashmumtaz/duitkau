@@ -175,11 +175,7 @@
         document.getElementById('navName').textContent = me.fullName;
       } catch { window.location.href = '/login.html'; return; }
 
-      const now = new Date();
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      document.getElementById('filterMonth').value = ym;
-
-      await loadSummary(ym);
+      await loadSummary(null);
     }
 
     // ─── Laporan ──────────────────────────────
