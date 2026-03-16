@@ -84,6 +84,41 @@
     </div>
   </div>
 
+  <!-- Edit CA Modal (finance) -->
+  <div class="modal-overlay" id="editCaOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Cash Advance</span>
+        <button class="modal-close" id="editCaClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="editCaAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label for="editCaTitle">Judul CA <span style="color:var(--red)">*</span></label>
+          <input type="text" id="editCaTitle" placeholder="Contoh: CA Perjalanan Dinas Jakarta" />
+        </div>
+        <div class="form-group">
+          <label for="editCaDesc">Deskripsi (opsional)</label>
+          <textarea id="editCaDesc" placeholder="Keterangan tambahan..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editCaAmount">Nominal (Rp) <span style="color:var(--red)">*</span></label>
+          <input type="text" id="editCaAmount" inputmode="numeric" placeholder="Contoh: 500.000" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="editCaProject">Proyek (opsional)</label>
+          <select id="editCaProject">
+            <option value="">-- Tidak ada proyek --</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="editCaCancel">Batal</button>
+        <button class="btn btn-primary" id="editCaSave">Simpan Perubahan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CA Detail Modal -->
   <div class="modal-overlay" id="detailOverlay">
     <div class="modal" style="max-width:700px">
@@ -181,12 +216,18 @@
     async function loadProjects() {
       try {
         const res = await fetch('/api/projects').then(r => r.json());
-        const sel = document.getElementById('caProject');
+        const sel1 = document.getElementById('caProject');
+        const sel2 = document.getElementById('editCaProject');
         res.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          sel.appendChild(opt);
+          const opt1 = document.createElement('option');
+          opt1.value = p.id;
+          opt1.textContent = p.name;
+          sel1.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = p.id;
+          opt2.textContent = p.name;
+          sel2.appendChild(opt2);
         });
       } catch {}
     }
@@ -318,6 +359,8 @@
     }
 
     // ─── Detail Modal ─────────────────────────
+    let currentCaData = null;
+
     async function openDetail(id) {
       openDetailId = id;
       hideAlert('detailAlert'); hideAlert('detailSuccess');
@@ -364,16 +407,19 @@
         document.getElementById('closeRequestForm').style.display = 'none';
 
         if (window.currentUser.role === 'finance') {
+          let editBtn = `<button class="btn btn-ghost btn-sm" onclick="openEditCa()">Edit CA</button>`;
           if (ca.status === 'pending') {
-            actionsEl.innerHTML = `
+            actionsEl.innerHTML = editBtn + `
               <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
               <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>
             `;
           } else if (ca.status === 'pending_close') {
-            actionsEl.innerHTML = `
+            actionsEl.innerHTML = editBtn + `
               <button class="btn btn-primary btn-sm" onclick="approveClose(${id})">Setujui Penutupan</button>
               <button class="btn btn-ghost btn-sm" onclick="rejectClose(${id})">Tolak Penutupan</button>
             `;
+          } else {
+            actionsEl.innerHTML = editBtn;
           }
         } else {
           // employee
@@ -409,6 +455,8 @@
             </tr>
           `).join('');
         }
+        
+        currentCaData = ca;
       } catch (err) {
         console.error(err);
         showAlert('detailAlert', 'Gagal memuat detail CA');
@@ -494,6 +542,57 @@
         await loadCAs();
       } catch { showAlert('newCaAlert', 'Gagal menyimpan CA'); }
       finally { btn.disabled = false; btn.textContent = 'Ajukan Request'; }
+    });
+
+    // ─── Edit CA Modal (Finance) ──────────────
+    document.getElementById('editCaAmount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    function openEditCa() {
+      if (!currentCaData) return;
+      document.getElementById('editCaTitle').value = currentCaData.title || '';
+      document.getElementById('editCaDesc').value = currentCaData.description || '';
+      document.getElementById('editCaAmount').value = formatThousands(currentCaData.initial_amount.toString());
+      document.getElementById('editCaProject').value = currentCaData.project_id || '';
+      hideAlert('editCaAlert');
+      document.getElementById('editCaOverlay').classList.add('open');
+    }
+    function closeEditCA() { document.getElementById('editCaOverlay').classList.remove('open'); }
+    document.getElementById('editCaClose').addEventListener('click', closeEditCA);
+    document.getElementById('editCaCancel').addEventListener('click', closeEditCA);
+    document.getElementById('editCaOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('editCaOverlay')) closeEditCA(); });
+
+    document.getElementById('editCaSave').addEventListener('click', async () => {
+      hideAlert('editCaAlert');
+      const title = document.getElementById('editCaTitle').value.trim();
+      const desc = document.getElementById('editCaDesc').value.trim();
+      const amountRaw = document.getElementById('editCaAmount').value.replace(/\./g, '').replace(',', '.');
+      const amount = parseFloat(amountRaw);
+      const projectId = document.getElementById('editCaProject').value;
+
+      if (!title) { showAlert('editCaAlert', 'Judul CA wajib diisi'); return; }
+      if (isNaN(amount) || amount <= 0) { showAlert('editCaAlert', 'Nominal harus berupa angka positif'); return; }
+
+      const btn = document.getElementById('editCaSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/ca/' + currentCaData.id, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description: desc || null, initial_amount: amount, project_id: projectId || null })
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert('editCaAlert', data.error); return; }
+        closeEditCA();
+        await refreshDetail(currentCaData.id);
+        await loadCAs();
+      } catch { showAlert('editCaAlert', 'Gagal update CA'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; }
     });
 
     // ─── Lightbox ─────────────────────────────

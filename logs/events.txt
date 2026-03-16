@@ -3,3 +3,16 @@
 [2026-03-16T19:41:41.374Z] [FINANCE:pakchris] (::1) | DELETE_PROJECT | Menghapus proyek "Proyek Meratus Line" (ID: 2)
 [2026-03-16T19:42:41.974Z] [SYSTEM:System] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-16T19:57:33.540Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:06:20.421Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:06:25.327Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:06:48.756Z] [FINANCE:pakchris] (::1) | FINANCE_INPUT_TX | Finance input transaksi "CA Cair" untuk karyawan ID 7 (masuk)
+[2026-03-16T20:07:06.320Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:07:08.985Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-16T20:07:40.998Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:07:44.347Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:07:58.764Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:10:13.484Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:10:15.772Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-16T20:11:04.412Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:11:11.850Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:11:21.765Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login

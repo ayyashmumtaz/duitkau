@@ -60,6 +60,7 @@
                 <th>Nama</th>
                 <th>Jenis</th>
                 <th>Kategori</th>
+                <th>Cash Advance</th>
                 <th>Proyek</th>
                 <th class="text-right">Nominal</th>
                 <th>Diinput oleh</th>
@@ -67,7 +68,7 @@
               </tr>
             </thead>
             <tbody id="txBody">
-              <tr><td colspan="8"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
+              <tr><td colspan="9"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -127,7 +128,7 @@
     function renderTable(txs) {
       const tbody = document.getElementById('txBody');
       if (txs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div>Belum ada transaksi</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>Belum ada transaksi</div></td></tr>`;
         return;
       }
       tbody.innerHTML = txs.map(tx => `
@@ -139,6 +140,7 @@
           </td>
           <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
           <td class="text-muted">${tx.category_name || '–'}</td>
+          <td class="text-muted">${tx.ca_title || '–'}</td>
           <td class="text-muted">${tx.project_name || '–'}</td>
           <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
           <td class="text-muted" style="font-size:.8rem">${tx.input_by_name || '–'}</td>
