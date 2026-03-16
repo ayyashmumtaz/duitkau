@@ -6,7 +6,7 @@ const router = express.Router();
 
 // User generates a share token (finance can share any, employee only their own)
 router.post('/', requireLogin, async (req, res) => {
-  let { userId, periodType, periodValue, projectId, label } = req.body;
+  let { userId, periodType, periodValue, projectId, categoryId, caId, label } = req.body;
   
   if (req.session.role !== 'finance') {
     userId = req.session.userId;
@@ -16,7 +16,9 @@ router.post('/', requireLogin, async (req, res) => {
     userId: userId || 'all',
     periodType: periodType || 'month',
     periodValue: periodValue || '',
-    projectId: projectId || ''
+    projectId: projectId || '',
+    categoryId: categoryId || '',
+    caId: caId || ''
   });
   const token = crypto.randomBytes(20).toString('hex');
   try {
@@ -36,17 +38,20 @@ router.get('/:token', async (req, res) => {
     let params = [];
     if (p.userId && p.userId !== 'all') { whereClauses.push('t.user_id = ?'); params.push(p.userId); }
     if (p.projectId) { whereClauses.push('t.project_id = ?'); params.push(p.projectId); }
+    if (p.categoryId) { whereClauses.push('t.category_id = ?'); params.push(p.categoryId); }
+    if (p.caId) { whereClauses.push('t.ca_id = ?'); params.push(p.caId); }
     if (p.periodType === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(p.periodValue)) { whereClauses.push("t.date = ?"); params.push(p.periodValue); }
     else if (p.periodType === 'month' && /^\d{4}-\d{2}$/.test(p.periodValue)) { whereClauses.push("strftime('%Y-%m', t.date) = ?"); params.push(p.periodValue); }
     else if (p.periodType === 'year' && /^\d{4}$/.test(p.periodValue)) { whereClauses.push("strftime('%Y', t.date) = ?"); params.push(p.periodValue); }
 
     const where = 'WHERE ' + whereClauses.join(' AND ');
     const rows = await db.allAsync(
-      `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name
+      `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name, ca.title as ca_title
        FROM transactions t
        JOIN users u ON t.user_id = u.id
        LEFT JOIN projects pr ON t.project_id = pr.id
        LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN cash_advances ca ON t.ca_id = ca.id
        ${where} ORDER BY u.full_name, t.date DESC`,
       params
     );
@@ -54,7 +59,7 @@ router.get('/:token', async (req, res) => {
     const grouped = {};
     for (const r of rows) {
       if (!grouped[r.user_id]) grouped[r.user_id] = { userId: r.user_id, username: r.username, fullName: r.full_name, transactions: [], totalMasuk: 0, totalKeluar: 0 };
-      grouped[r.user_id].transactions.push({ id: r.id, type: r.type, name: r.name, amount: r.amount, date: r.date, note: r.note, proof_image: r.proof_image, project_name: r.project_name, category_name: r.category_name });
+      grouped[r.user_id].transactions.push({ id: r.id, type: r.type, name: r.name, amount: r.amount, date: r.date, note: r.note, proof_image: r.proof_image, project_name: r.project_name, category_name: r.category_name, ca_title: r.ca_title });
       if (r.type === 'masuk') grouped[r.user_id].totalMasuk += r.amount;
       else grouped[r.user_id].totalKeluar += r.amount;
     }

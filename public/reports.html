@@ -72,6 +72,13 @@
             </select>
           </div>
 
+          <div class="form-group" style="margin-bottom:0">
+            <label>Cash Advance</label>
+            <select id="filterCa">
+              <option value="">Semua CA</option>
+            </select>
+          </div>
+
           <div class="btn-search" style="padding-bottom:0">
             <button class="btn btn-primary" id="btnSearch" style="width:100%; white-space:nowrap">
               Cari
@@ -159,7 +166,7 @@
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
     window.onLayoutReady = async function(user) {
-      await Promise.all([loadEmployees(), loadProjects(), loadCategories()]);
+      await Promise.all([loadEmployees(), loadProjects(), loadCategories(), loadCAs()]);
       updatePeriodInput();
 
       // Set default period to current month
@@ -203,6 +210,19 @@
           const opt = document.createElement('option');
           opt.value = c.id;
           opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    async function loadCAs() {
+      try {
+        const res = await fetch('/api/ca').then(r => r.json());
+        const sel = document.getElementById('filterCa');
+        res.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = `[${c.status.toUpperCase()}] ${c.title}`;
           sel.appendChild(opt);
         });
       } catch {}
@@ -260,10 +280,13 @@
       }
 
       const categoryId = document.getElementById('filterCategory').value;
+      const caId = document.getElementById('filterCa').value;
+      
       const params = new URLSearchParams({ userId: employeeId, periodType });
       if (periodType !== 'all') params.append('periodValue', periodValue);
       if (projectId) params.append('projectId', projectId);
       if (categoryId) params.append('categoryId', categoryId);
+      if (caId) params.append('caId', caId);
 
       const btn = document.getElementById('btnSearch');
       btn.disabled = true;
@@ -354,6 +377,7 @@
                       <th>Jenis</th>
                       <th class="text-right">Nominal</th>
                       <th>Kategori</th>
+                      <th>Cash Advance</th>
                       <th>Proyek</th>
                       <th>Bukti</th>
                       <th>Catatan</th>
@@ -367,6 +391,7 @@
                         <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
                         <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
                         <td class="text-muted">${tx.category_name || '–'}</td>
+                        <td class="text-muted">${tx.ca_title || '–'}</td>
                         <td class="text-muted">${tx.project_name || '–'}</td>
                         <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
                         <td class="text-muted">${tx.note || '–'}</td>
@@ -410,6 +435,9 @@
       const periodType = document.getElementById('periodType').value;
       const periodValue = document.getElementById('periodValue').value;
       const projectId = document.getElementById('filterProject').value;
+      const categoryId = document.getElementById('filterCategory').value;
+      const caId = document.getElementById('filterCa').value;
+      
       const empLabel = document.getElementById('filterEmployee').options[document.getElementById('filterEmployee').selectedIndex].text;
       const label = `${empLabel} — ${periodType === 'all' ? 'Semua Waktu' : periodValue}`;
 
@@ -419,7 +447,7 @@
         const res = await fetch('/api/share', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId: employeeId, periodType, periodValue, projectId, label })
+          body: JSON.stringify({ userId: employeeId, periodType, periodValue, projectId, categoryId, caId, label })
         });
         const data = await res.json();
         const fullUrl = window.location.origin + data.url;
