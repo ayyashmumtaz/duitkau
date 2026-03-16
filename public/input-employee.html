@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Input untuk Karyawan</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/utils.js"></script>
+</head>
+<body>
+  <div class="db-banner" id="dbBanner">
+    <span class="db-dot"></span>
+    Database tidak terhubung — semua operasi dinonaktifkan
+  </div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected"><span class="dot"></span> DB</span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Finance</span></span>
+      <button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/finance.html" class="sidebar-item">
+        <span class="icon">📊</span><span class="label">Dashboard</span>
+      </a>
+      <a href="/input-employee.html" class="sidebar-item active">
+        <span class="icon">➕</span><span class="label">Input Karyawan</span>
+      </a>
+      <a href="/employees.html" class="sidebar-item">
+        <span class="icon">👥</span><span class="label">Kelola Karyawan</span>
+      </a>
+      <a href="/projects.html" class="sidebar-item">
+        <span class="icon">📁</span><span class="label">Proyek</span>
+      </a>
+      <a href="/reports.html" class="sidebar-item">
+        <span class="icon">📋</span><span class="label">Laporan Detail</span>
+      </a>
+    </aside>
+
+    <main class="main-content">
+      <h1 class="page-title">Input Transaksi untuk Karyawan</h1>
+      <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">Transaksi yang diinput oleh finance langsung berstatus <strong>Disetujui</strong>.</p>
+
+      <div class="grid-2">
+        <!-- FORM -->
+        <div class="card no-print">
+          <div class="card-title">✏️ Form Input</div>
+          <div id="formAlert" class="alert alert-error"></div>
+          <div id="formSuccess" class="alert alert-success"></div>
+
+          <form id="txForm">
+            <div class="form-group">
+              <label for="userId">Karyawan</label>
+              <select id="userId" required>
+                <option value="">-- Pilih karyawan --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="type">Jenis Transaksi</label>
+              <select id="type" required>
+                <option value="">-- Pilih jenis --</option>
+                <option value="masuk">💚 Masuk (Pemasukan)</option>
+                <option value="keluar">❤️ Keluar (Pengeluaran)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="name">Nama Transaksi</label>
+              <input type="text" id="name" placeholder="Contoh: Gaji Maret, Reimburse BBM..." required />
+            </div>
+            <div class="form-group">
+              <label for="amount">Nominal (Rp)</label>
+              <input type="text" id="amount" inputmode="numeric" placeholder="Contoh: 5.000.000" autocomplete="off" required />
+            </div>
+            <div class="form-group">
+              <label for="date">Tanggal Transaksi</label>
+              <input type="date" id="date" required />
+            </div>
+            <div class="form-group">
+              <label for="note">Catatan (opsional)</label>
+              <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="projectId">Proyek (opsional)</label>
+              <select id="projectId">
+                <option value="">-- Tidak ada proyek --</option>
+              </select>
+            </div>
+
+            <!-- Bukti Foto -->
+            <div class="form-group">
+              <label>Bukti Transaksi (Foto)</label>
+              <div class="file-input-wrap">
+                <input type="file" id="proofImage" accept="image/*" capture="environment" />
+              </div>
+              <div class="file-input-hint">📷 Bisa pilih dari galeri atau ambil foto langsung</div>
+              <div class="proof-preview-wrap" id="previewWrap">
+                <div class="proof-preview-label">Preview:</div>
+                <img id="previewImg" src="" alt="Preview" />
+                <div class="proof-remove" id="removePreview">✕ Hapus foto</div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
+              Simpan Transaksi
+            </button>
+          </form>
+        </div>
+
+        <!-- Riwayat input oleh finance hari ini -->
+        <div class="card">
+          <div class="card-title">📋 Input Hari Ini</div>
+          <div id="tableAlert" class="alert alert-error"></div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Karyawan</th>
+                  <th>Nama</th>
+                  <th>Jenis</th>
+                  <th class="text-right">Nominal</th>
+                  <th>Bukti</th>
+                </tr>
+              </thead>
+              <tbody id="todayBody">
+                <tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/finance.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📊</span>Dashboard
+    </a>
+    <a href="/input-employee.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">➕</span>Input
+    </a>
+    <a href="/employees.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">👥</span>Karyawan
+    </a>
+    <a href="/projects.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📁</span>Proyek
+    </a>
+    <a href="/reports.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📋</span>Laporan
+    </a>
+  </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
+      </div>
+      <div class="modal-body">
+        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Profil</span>
+        <button class="modal-close" id="profileClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="profileAlert" class="alert alert-error"></div>
+        <div id="profileSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="profileName">Nama Lengkap</label>
+          <input type="text" id="profileName" />
+        </div>
+        <div class="form-group">
+          <label for="profileUsername">Username</label>
+          <input type="text" id="profileUsername" />
+        </div>
+        <div class="form-group">
+          <label for="profilePassword">Password Baru</label>
+          <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ingin ubah" />
+          <small class="text-muted" style="margin-top:.25rem;display:block">Minimal 6 karakter jika diisi</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="profileCancel">Batal</button>
+        <button class="btn btn-primary" id="profileSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    let dbOk = true;
+
+    // ─── Nominal auto-format ──────────────────
+    function formatThousands(raw) {
+      const digits = raw.replace(/\D/g, '');
+      if (!digits) return '';
+      return parseInt(digits, 10).toLocaleString('id-ID');
+    }
+    function parseAmount(formatted) {
+      return parseFloat(formatted.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    document.getElementById('amount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    // ─── DB Status ────────────────────────────
+    async function checkDb() {
+      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; } catch { dbOk = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      const submitBtn = document.getElementById('submitBtn');
+      if (!dbOk) {
+        banner.classList.add('show');
+        ind.className = 'db-status-indicator disconnected';
+        ind.innerHTML = '<span class="dot"></span> DB Mati';
+        submitBtn.disabled = true;
+      } else {
+        banner.classList.remove('show');
+        ind.className = 'db-status-indicator connected';
+        ind.innerHTML = '<span class="dot"></span> DB';
+        submitBtn.disabled = false;
+      }
+    }
+    setInterval(checkDb, 15000);
+
+    // ─── Init ─────────────────────────────────
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role !== 'finance') { window.location.href = '/dashboard.html'; return; }
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+
+      await Promise.all([loadEmployees(), loadProjects(), loadToday()]);
+    }
+
+    async function loadEmployees() {
+      const res = await fetch('/api/finance/employees').then(r => r.json());
+      const sel = document.getElementById('userId');
+      res.forEach(emp => {
+        const opt = document.createElement('option');
+        opt.value = emp.id;
+        opt.textContent = emp.full_name + ' (@' + emp.username + ')';
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects').then(r => r.json());
+        const sel = document.getElementById('projectId');
+        res.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    async function loadToday() {
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        // Ambil laporan hari ini dari semua karyawan
+        const data = await fetch(`/api/finance/report?userId=all&periodType=date&periodValue=${today}`).then(r => r.json());
+        const allTx = data.flatMap(emp => emp.transactions.map(tx => ({ ...tx, fullName: emp.fullName, username: emp.username })));
+        const tbody = document.getElementById('todayBody');
+        if (allTx.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
+          return;
+        }
+        tbody.innerHTML = allTx.map(tx => `
+          <tr class="${tx.type}">
+            <td>${tx.fullName}</td>
+            <td>${tx.name}</td>
+            <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
+            <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+            <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
+          </tr>
+        `).join('');
+      } catch { showAlert('tableAlert', 'Gagal memuat riwayat'); }
+    }
+
+    // ─── Preview foto ─────────────────────────
+    document.getElementById('proofImage').addEventListener('change', function () {
+      const file = this.files[0];
+      const wrap = document.getElementById('previewWrap');
+      if (!file) { wrap.classList.remove('show'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => { document.getElementById('previewImg').src = e.target.result; wrap.classList.add('show'); };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('removePreview').addEventListener('click', () => {
+      document.getElementById('proofImage').value = '';
+      document.getElementById('previewWrap').classList.remove('show');
+    });
+
+    // ─── Submit ───────────────────────────────
+    document.getElementById('txForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!dbOk) return showAlert('formAlert', 'Database tidak terhubung');
+      hideAlert('formAlert'); hideAlert('formSuccess');
+
+      // Confirm before submit
+      const empName = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text.split(' (')[0];
+      const typeTxt = document.getElementById('type').value === 'masuk' ? 'Pemasukan' : 'Pengeluaran';
+      const amtTxt = fmt.format(parseAmount(document.getElementById('amount').value));
+      const projSel = document.getElementById('projectId');
+      const projTxt = projSel.value ? projSel.options[projSel.selectedIndex].text : '–';
+      const details = `Karyawan: <strong>${empName}</strong><br>Jenis: <strong>${typeTxt}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Proyek: <strong>${projTxt}</strong>`;
+      const ok = await showConfirm('Simpan Transaksi?', details);
+      if (!ok) return;
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+
+      const fd = new FormData();
+      fd.append('userId', document.getElementById('userId').value);
+      fd.append('type', document.getElementById('type').value);
+      fd.append('name', document.getElementById('name').value);
+      fd.append('amount', parseAmount(document.getElementById('amount').value));
+      fd.append('date', document.getElementById('date').value);
+      fd.append('note', document.getElementById('note').value);
+      fd.append('project_id', document.getElementById('projectId').value || '');
+      const file = document.getElementById('proofImage').files[0];
+      if (file) fd.append('proof_image', file);
+
+      try {
+        const res = await fetch('/api/finance/input-employee', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { showAlert('formAlert', data.error); return; }
+
+        const empNameFull = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text;
+        showAlert('formSuccess', `✅ Transaksi untuk ${empNameFull.split(' (')[0]} berhasil disimpan!`);
+        document.getElementById('txForm').reset();
+        document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('previewWrap').classList.remove('show');
+        await loadToday();
+        setTimeout(() => hideAlert('formSuccess'), 4000);
+      } catch { showAlert('formAlert', 'Gagal menyimpan transaksi'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan Transaksi'; }
+    });
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+    function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+
+    // ─── Profile Modal ────────────────────────
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      const me = { fullName: document.getElementById('navName').textContent };
+      fetch('/api/auth/me').then(r=>r.json()).then(d => {
+        document.getElementById('profileName').value = d.fullName;
+        document.getElementById('profileUsername').value = d.username;
+        document.getElementById('profilePassword').value = '';
+        hideAlert('profileAlert'); hideAlert('profileSuccess');
+        document.getElementById('profileOverlay').classList.add('open');
+      });
+    });
+    function closeProfile() { document.getElementById('profileOverlay').classList.remove('open'); }
+    document.getElementById('profileClose').addEventListener('click', closeProfile);
+    document.getElementById('profileCancel').addEventListener('click', closeProfile);
+    document.getElementById('profileOverlay').addEventListener('click', (e) => { if (e.target===document.getElementById('profileOverlay')) closeProfile(); });
+    document.getElementById('profileSave').addEventListener('click', async () => {
+      hideAlert('profileAlert'); hideAlert('profileSuccess');
+      const body = {
+        full_name: document.getElementById('profileName').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        password: document.getElementById('profilePassword').value,
+      };
+      const btn = document.getElementById('profileSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/profile', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('profileAlert', data.error); return; }
+        document.getElementById('navName').textContent = data.fullName;
+        showAlert('profileSuccess', 'Profil berhasil diperbarui');
+        setTimeout(closeProfile, 1500);
+      } catch { showAlert('profileAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    init();
+  </script>
+</body>
+</html>

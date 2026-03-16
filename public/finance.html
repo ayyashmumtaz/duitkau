@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Dashboard Finance</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="db-banner" id="dbBanner">
+    <span class="db-dot"></span>
+    Database tidak terhubung — semua operasi dinonaktifkan
+  </div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected"><span class="dot"></span> DB</span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Finance</span></span>
+      <button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/finance.html" class="sidebar-item active">
+        <span class="icon">📊</span><span class="label">Dashboard</span>
+      </a>
+      <a href="/input-employee.html" class="sidebar-item">
+        <span class="icon">➕</span><span class="label">Input Karyawan</span>
+      </a>
+      <a href="/employees.html" class="sidebar-item">
+        <span class="icon">👥</span><span class="label">Kelola Karyawan</span>
+      </a>
+      <a href="/projects.html" class="sidebar-item">
+        <span class="icon">📁</span><span class="label">Proyek</span>
+      </a>
+      <a href="/reports.html" class="sidebar-item">
+        <span class="icon">📋</span><span class="label">Laporan Detail</span>
+      </a>
+    </aside>
+
+    <main class="main-content">
+      <!-- ── Laporan ──────────────────────── -->
+      <div class="flex items-center justify-between" style="margin-bottom:1.25rem; flex-wrap:wrap; gap:.75rem">
+        <h2 style="font-size:1rem; font-weight:700">📊 Laporan Keuangan</h2>
+        <div class="filter-bar" style="margin-bottom:0">
+          <label>Periode:</label>
+          <input type="month" id="filterMonth" />
+          <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
+        </div>
+      </div>
+
+      <div class="summary-grid" style="grid-template-columns:repeat(4,1fr)">
+        <div class="summary-card masuk">
+          <div class="summary-label">Total Pemasukan</div>
+          <div class="summary-value green" id="grandMasuk">Rp 0</div>
+        </div>
+        <div class="summary-card keluar">
+          <div class="summary-label">Total Pengeluaran</div>
+          <div class="summary-value red" id="grandKeluar">Rp 0</div>
+        </div>
+        <div class="summary-card net-positive">
+          <div class="summary-label">Total Sisa Dana</div>
+          <div class="summary-value blue" id="grandSisa">Rp 0</div>
+        </div>
+        <div class="summary-card net-negative">
+          <div class="summary-label">Total Klaim</div>
+          <div class="summary-value orange" id="grandKlaim">Rp 0</div>
+        </div>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+
+      <div id="employeeList">
+        <div class="card" style="text-align:center; padding:2rem; color:var(--gray-400)">
+          🔄 Memuat data...
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/finance.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📊</span>Dashboard
+    </a>
+    <a href="/input-employee.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">➕</span>Input
+    </a>
+    <a href="/employees.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">👥</span>Karyawan
+    </a>
+    <a href="/projects.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📁</span>Proyek
+    </a>
+    <a href="/reports.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📋</span>Laporan
+    </a>
+  </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Profil</span>
+        <button class="modal-close" id="profileClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="profileAlert" class="alert alert-error"></div>
+        <div id="profileSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="profileName">Nama Lengkap</label>
+          <input type="text" id="profileName" />
+        </div>
+        <div class="form-group">
+          <label for="profileUsername">Username</label>
+          <input type="text" id="profileUsername" />
+        </div>
+        <div class="form-group">
+          <label for="profilePassword">Password Baru</label>
+          <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ingin ubah" />
+          <small class="text-muted" style="margin-top:.25rem;display:block">Minimal 6 karakter jika diisi</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="profileCancel">Batal</button>
+        <button class="btn btn-primary" id="profileSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    let dbOk = true;
+
+    // ─── DB Status ────────────────────────────
+    async function checkDb() {
+      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; }
+      catch { dbOk = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      if (!dbOk) {
+        banner.classList.add('show');
+        ind.className = 'db-status-indicator disconnected';
+        ind.innerHTML = '<span class="dot"></span> DB Mati';
+      } else {
+        banner.classList.remove('show');
+        ind.className = 'db-status-indicator connected';
+        ind.innerHTML = '<span class="dot"></span> DB';
+      }
+    }
+    setInterval(checkDb, 15000);
+
+    // ─── Init ─────────────────────────────────
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role !== 'finance') { window.location.href = '/dashboard.html'; return; }
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('filterMonth').value = ym;
+
+      await loadSummary(ym);
+    }
+
+    // ─── Laporan ──────────────────────────────
+    async function loadSummary(month) {
+      const url = month ? `/api/finance/summary?month=${month}` : '/api/finance/summary';
+      try {
+        const data = await fetch(url).then(r => { if (!r.ok) throw new Error(); return r.json(); });
+        renderSummary(data);
+        renderEmployees(data, month);
+      } catch {
+        document.getElementById('mainAlert').textContent = 'Gagal memuat data laporan';
+        document.getElementById('mainAlert').classList.add('show');
+      }
+    }
+
+    function renderSummary(data) {
+      const totMasuk = data.reduce((s, e) => s + e.totalMasuk, 0);
+      const totKeluar = data.reduce((s, e) => s + e.totalKeluar, 0);
+      const totSisa = data.reduce((s, e) => s + (e.net > 0 ? e.net : 0), 0);
+      const totKlaim = data.reduce((s, e) => s + (e.net < 0 ? Math.abs(e.net) : 0), 0);
+      document.getElementById('grandMasuk').textContent = fmt.format(totMasuk);
+      document.getElementById('grandKeluar').textContent = fmt.format(totKeluar);
+      document.getElementById('grandSisa').textContent = fmt.format(totSisa);
+      document.getElementById('grandKlaim').textContent = fmt.format(totKlaim);
+    }
+
+    function renderEmployees(data, month) {
+      const container = document.getElementById('employeeList');
+      if (data.length === 0) {
+        container.innerHTML = `<div class="card"><div class="empty"><div class="empty-icon">📭</div>Tidak ada transaksi${month ? ' pada periode ini' : ''}</div></div>`;
+        return;
+      }
+      container.innerHTML = data.map(emp => `
+        <div class="employee-block">
+          <details open>
+            <summary>
+              <div class="employee-name">👤 ${emp.fullName} <span class="text-muted" style="font-weight:400;font-size:.8rem">@${emp.username}</span></div>
+              <div class="employee-stats">
+                <div class="emp-stat"><span class="emp-stat-label">Masuk</span><span class="emp-stat-val amount-masuk">${fmt.format(emp.totalMasuk)}</span></div>
+                <div class="emp-stat"><span class="emp-stat-label">Keluar</span><span class="emp-stat-val amount-keluar">${fmt.format(emp.totalKeluar)}</span></div>
+                <div class="emp-stat"><span class="emp-stat-label ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:600">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</span><span class="emp-stat-val ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${fmt.format(Math.abs(emp.net))}</span></div>
+              </div>
+            </summary>
+            <div class="employee-body">
+              ${emp.transactions.length === 0
+                ? `<div class="empty" style="padding:1.5rem"><div class="empty-icon">📭</div>Tidak ada transaksi</div>`
+                : `<div class="table-wrapper"><table>
+                    <thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Proyek</th><th>Bukti</th><th>Catatan</th></tr></thead>
+                    <tbody>
+                      ${emp.transactions.map(tx => `
+                        <tr class="${tx.type}">
+                          <td>${fmtDate(tx.date)}</td>
+                          <td>${tx.name}</td>
+                          <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
+                          <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                          <td class="text-muted">${tx.project_name || '–'}</td>
+                          <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
+                          <td class="text-muted">${tx.note || '–'}</td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                    <tfoot>
+                      <tr style="background:var(--gray-50)">
+                        <td colspan="3" style="padding:.6rem .9rem;font-weight:600;font-size:.8rem;color:var(--gray-600)">SUBTOTAL</td>
+                        <td class="text-right" style="padding:.6rem .9rem">
+                          <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
+                          <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
+                        </td>
+                        <td colspan="3" style="padding:.6rem .9rem">
+                          <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
+                          <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">${fmt.format(Math.abs(emp.net))}</span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table></div>`
+              }
+            </div>
+          </details>
+        </div>
+      `).join('');
+    }
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+    });
+
+    // ─── Filter ───────────────────────────────
+    document.getElementById('filterMonth').addEventListener('change', (e) => loadSummary(e.target.value || null));
+    document.getElementById('clearFilter').addEventListener('click', () => {
+      document.getElementById('filterMonth').value = ''; loadSummary(null);
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    // ─── Profile Modal ────────────────────────
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      const me = { fullName: document.getElementById('navName').textContent };
+      fetch('/api/auth/me').then(r=>r.json()).then(d => {
+        document.getElementById('profileName').value = d.fullName;
+        document.getElementById('profileUsername').value = d.username;
+        document.getElementById('profilePassword').value = '';
+        hideAlert('profileAlert'); hideAlert('profileSuccess');
+        document.getElementById('profileOverlay').classList.add('open');
+      });
+    });
+    function closeProfile() { document.getElementById('profileOverlay').classList.remove('open'); }
+    document.getElementById('profileClose').addEventListener('click', closeProfile);
+    document.getElementById('profileCancel').addEventListener('click', closeProfile);
+    document.getElementById('profileOverlay').addEventListener('click', (e) => { if (e.target===document.getElementById('profileOverlay')) closeProfile(); });
+    document.getElementById('profileSave').addEventListener('click', async () => {
+      hideAlert('profileAlert'); hideAlert('profileSuccess');
+      const body = {
+        full_name: document.getElementById('profileName').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        password: document.getElementById('profilePassword').value,
+      };
+      const btn = document.getElementById('profileSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/profile', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('profileAlert', data.error); return; }
+        document.getElementById('navName').textContent = data.fullName;
+        showAlert('profileSuccess', 'Profil berhasil diperbarui');
+        setTimeout(closeProfile, 1500);
+      } catch { showAlert('profileAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    init();
+  </script>
+</body>
+</html>

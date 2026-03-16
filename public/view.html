@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Laporan Bersama</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body { background: var(--gray-100); }
+    .view-container { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .view-header { display: flex; align-items: center; gap: .85rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .view-header img { height: 40px; }
+    .view-header-info { flex: 1; }
+    .view-header-info h1 { font-size: 1.1rem; font-weight: 700; color: var(--gray-800); }
+    .view-header-info p { font-size: .8rem; color: var(--gray-400); margin-top: .15rem; }
+    .view-meta { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: .85rem 1.1rem; margin-bottom: 1.25rem; font-size: .82rem; color: var(--gray-600); display: flex; gap: 1.5rem; flex-wrap: wrap; }
+    .view-meta span strong { color: var(--gray-800); }
+    .error-state { text-align: center; padding: 4rem 1rem; }
+    .error-state .error-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .error-state h2 { font-size: 1.2rem; font-weight: 700; color: var(--gray-800); margin-bottom: .5rem; }
+    .error-state p { color: var(--gray-400); font-size: .9rem; }
+    @media print {
+      .no-print { display: none !important; }
+      .view-container { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="view-container">
+    <div id="loadingState" style="text-align:center; padding:4rem 1rem; color:var(--gray-400)">
+      <div style="font-size:2rem; margin-bottom:.75rem">🔄</div>
+      Memuat laporan...
+    </div>
+
+    <div id="errorState" class="error-state" style="display:none">
+      <div class="error-icon">🔒</div>
+      <h2>Link Tidak Valid</h2>
+      <p>Link laporan ini tidak ditemukan atau sudah tidak berlaku.</p>
+    </div>
+
+    <div id="reportContent" style="display:none">
+      <!-- Print header -->
+      <div class="print-header">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <h2>Laporan Keuangan</h2>
+        <p id="printMeta"></p>
+      </div>
+
+      <!-- View header -->
+      <div class="view-header no-print">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <div class="view-header-info">
+          <h1 id="reportTitle">Laporan Keuangan</h1>
+          <p id="reportMeta"></p>
+        </div>
+        <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">Download PDF</button>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-grid" id="summaryCards" style="grid-template-columns:repeat(4,1fr); margin-bottom:1.25rem">
+        <div class="summary-card masuk">
+          <div class="summary-label">Total Pemasukan</div>
+          <div class="summary-value green" id="resMasuk">Rp 0</div>
+        </div>
+        <div class="summary-card keluar">
+          <div class="summary-label">Total Pengeluaran</div>
+          <div class="summary-value red" id="resKeluar">Rp 0</div>
+        </div>
+        <div class="summary-card net-positive">
+          <div class="summary-label">Total Sisa Dana</div>
+          <div class="summary-value blue" id="resSisa">Rp 0</div>
+        </div>
+        <div class="summary-card net-negative">
+          <div class="summary-label">Total Klaim</div>
+          <div class="summary-value orange" id="resKlaim">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsArea"></div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    const token = new URLSearchParams(location.search).get('token');
+
+    if (!token) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = '';
+    } else {
+      fetch('/api/share/' + token)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = '';
+            return;
+          }
+          renderReport(data);
+        })
+        .catch(() => {
+          document.getElementById('loadingState').style.display = 'none';
+          document.getElementById('errorState').style.display = '';
+        });
+    }
+
+    function renderReport(data) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('reportContent').style.display = '';
+
+      const label = data.label || 'Laporan Keuangan';
+      const genDate = new Date(data.generatedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      document.title = 'DuitKau - ' + label;
+      document.getElementById('reportTitle').textContent = label;
+      document.getElementById('reportMeta').textContent = 'Dibuat: ' + genDate;
+      document.getElementById('printMeta').textContent = label + ' | Dicetak: ' + new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      const { data: employees } = data;
+
+      if (!employees || employees.length === 0) {
+        document.getElementById('summaryCards').style.display = 'none';
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="card">
+            <div class="empty"><div class="empty-icon">📭</div>Tidak ada transaksi ditemukan</div>
+          </div>`;
+        return;
+      }
+
+      // Summary
+      const totMasuk = employees.reduce((s, e) => s + e.totalMasuk, 0);
+      const totKeluar = employees.reduce((s, e) => s + e.totalKeluar, 0);
+      const totSisa = employees.reduce((s, e) => s + (e.net > 0 ? e.net : 0), 0);
+      const totKlaim = employees.reduce((s, e) => s + (e.net < 0 ? Math.abs(e.net) : 0), 0);
+
+      document.getElementById('resMasuk').textContent = fmt.format(totMasuk);
+      document.getElementById('resKeluar').textContent = fmt.format(totKeluar);
+      document.getElementById('resSisa').textContent = fmt.format(totSisa);
+      document.getElementById('resKlaim').textContent = fmt.format(totKlaim);
+
+      // Per-employee accordion
+      document.getElementById('resultsArea').innerHTML = employees.map(emp => `
+        <div class="employee-block">
+          <details open>
+            <summary>
+              <div class="employee-name">👤 ${emp.fullName} <span class="text-muted" style="font-weight:400;font-size:.8rem">@${emp.username}</span>
+                <span class="text-muted" style="font-size:.75rem; margin-left:.5rem">(${emp.transactions.length} transaksi)</span>
+              </div>
+              <div class="employee-stats">
+                <div class="emp-stat">
+                  <span class="emp-stat-label">Masuk</span>
+                  <span class="emp-stat-val amount-masuk">${fmt.format(emp.totalMasuk)}</span>
+                </div>
+                <div class="emp-stat">
+                  <span class="emp-stat-label">Keluar</span>
+                  <span class="emp-stat-val amount-keluar">${fmt.format(emp.totalKeluar)}</span>
+                </div>
+                <div class="emp-stat">
+                  <span class="emp-stat-label ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:600">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</span>
+                  <span class="emp-stat-val ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">
+                    ${fmt.format(Math.abs(emp.net))}
+                  </span>
+                </div>
+              </div>
+            </summary>
+            <div class="employee-body">
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tanggal</th>
+                      <th>Nama Transaksi</th>
+                      <th>Jenis</th>
+                      <th class="text-right">Nominal</th>
+                      <th>Proyek</th>
+                      <th>Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${emp.transactions.map(tx => `
+                      <tr class="${tx.type}">
+                        <td>${fmtDate(tx.date)}</td>
+                        <td>${tx.name}</td>
+                        <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
+                        <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                        <td class="text-muted">${tx.project_name || '–'}</td>
+                        <td class="text-muted">${tx.note || '–'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background:var(--gray-50)">
+                      <td colspan="3" style="padding:.6rem .9rem; font-weight:600; font-size:.8rem; color:var(--gray-600)">SUBTOTAL</td>
+                      <td class="text-right" style="padding:.6rem .9rem">
+                        <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
+                        <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
+                      </td>
+                      <td colspan="2" style="padding:.6rem .9rem">
+                        <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
+                        <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">
+                          ${fmt.format(Math.abs(emp.net))}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </details>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

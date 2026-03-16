@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Dashboard Karyawan</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/utils.js"></script>
+</head>
+<body>
+  <div class="db-banner" id="dbBanner">
+    <span class="db-dot"></span>
+    Database tidak terhubung — semua operasi dinonaktifkan
+  </div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
+        <span class="dot"></span> DB
+      </span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Karyawan</span></span>
+      <button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/dashboard.html" class="sidebar-item active">
+        <span class="icon">📝</span><span class="label">Pengeluaran</span>
+      </a>
+    </aside>
+
+    <main class="main-content">
+      <!-- Print header (hidden on screen) -->
+      <div class="print-header">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <h2>Riwayat Pengeluaran</h2>
+        <p id="printMeta"></p>
+      </div>
+
+      <h1 class="page-title">Input Pengeluaran</h1>
+
+      <!-- Summary -->
+      <div class="summary-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:1.25rem">
+        <div class="summary-card keluar">
+          <div class="summary-label">Total Pengeluaran (bulan ini)</div>
+          <div class="summary-value red" id="totalKeluar">Rp 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Jumlah Transaksi (bulan ini)</div>
+          <div class="summary-value blue" id="jumlahTx">0</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- FORM -->
+        <div class="card no-print">
+          <div class="card-title">❤️ Tambah Pengeluaran</div>
+          <div id="formAlert" class="alert alert-error"></div>
+
+          <form id="addItemForm" autocomplete="off">
+            <div class="form-group">
+              <label for="name">Nama Pengeluaran</label>
+              <input type="text" id="name" placeholder="Contoh: Biaya Makan, Transportasi, dll." required />
+            </div>
+            <div class="form-group">
+              <label for="amount">Nominal (Rp)</label>
+              <input type="text" id="amount" inputmode="numeric" placeholder="Contoh: 50.000" autocomplete="off" required />
+            </div>
+            <div class="form-group">
+              <label for="date">Tanggal</label>
+              <input type="date" id="date" required />
+            </div>
+            <div class="form-group">
+              <label for="note">Catatan (opsional)</label>
+              <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="projectId">Proyek (opsional)</label>
+              <select id="projectId">
+                <option value="">-- Tidak ada proyek --</option>
+              </select>
+            </div>
+
+            <!-- Bukti Foto (wajib) -->
+            <div class="form-group">
+              <label>Bukti Transaksi (Foto) <span style="color:var(--red)">*</span></label>
+              <div class="file-input-wrap">
+                <input type="file" id="proofImage" accept="image/*" capture="environment" />
+              </div>
+              <div class="file-input-hint">📷 Wajib — pilih dari galeri atau ambil foto langsung</div>
+              <div class="proof-preview-wrap" id="previewWrap">
+                <div class="proof-preview-label">Preview:</div>
+                <img id="previewImg" src="" alt="Preview" />
+                <div class="proof-remove" id="removePreview">✕ Hapus foto</div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="addBtn">
+              Tambah ke Daftar
+            </button>
+          </form>
+        </div>
+
+        <!-- DRAFT ANTRIAN -->
+        <div class="card no-print">
+          <div class="card-title">🗂️ Antrian Pengeluaran</div>
+          <div id="draftAlert" class="alert alert-error"></div>
+          <div id="draftSuccess" class="alert alert-success"></div>
+
+          <div id="draftEmpty" class="empty" style="padding:1.5rem 0">
+            <div class="empty-icon">📋</div>
+            Belum ada item. Tambahkan pengeluaran dari form.
+          </div>
+
+          <div id="draftList" style="display:none">
+            <div id="draftItems"></div>
+            <div style="border-top:1px solid var(--gray-200); margin-top:.75rem; padding-top:.75rem; display:flex; justify-content:space-between; align-items:center">
+              <div>
+                <div style="font-size:.75rem; color:var(--gray-500)">Total antrian</div>
+                <div class="amount-keluar" style="font-weight:700; font-size:1.05rem" id="draftTotal">Rp 0</div>
+              </div>
+              <div style="font-size:.8rem; color:var(--gray-500)" id="draftCount">0 item</div>
+            </div>
+            <button class="btn btn-primary btn-full" id="submitAllBtn" style="margin-top:.85rem">
+              Submit Semua (<span id="submitCount">0</span> item)
+            </button>
+            <button class="btn btn-ghost btn-full" id="clearDraftBtn" style="margin-top:.4rem; font-size:.8rem">
+              Hapus Semua Draft
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIWAYAT -->
+      <div class="card" style="margin-top:1.25rem" id="historyCard">
+        <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
+          <div class="card-title" style="margin-bottom:0">Riwayat Pengeluaran</div>
+          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
+            <div class="filter-bar" style="margin-bottom:0">
+              <input type="month" id="filterMonth" />
+              <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
+            </div>
+            <button class="btn btn-ghost btn-sm" id="btnPrint">Download PDF</button>
+          </div>
+        </div>
+
+        <div id="tableAlert" class="alert alert-error"></div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Nama</th>
+                <th class="text-right">Nominal</th>
+                <th>Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="txBody">
+              <tr><td colspan="4"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/dashboard.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📝</span>Pengeluaran
+    </a>
+  </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <!-- Password Modal -->
+  <div class="modal-overlay" id="pwdOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Ubah Password</span>
+        <button class="modal-close" id="pwdClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="pwdAlert" class="alert alert-error"></div>
+        <div id="pwdSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="pwdNew">Password Baru</label>
+          <input type="password" id="pwdNew" placeholder="Minimal 6 karakter" />
+        </div>
+        <div class="form-group">
+          <label for="pwdConfirm">Konfirmasi Password</label>
+          <input type="password" id="pwdConfirm" placeholder="Ulangi password baru" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="pwdCancel">Batal</button>
+        <button class="btn btn-primary" id="pwdSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
+      </div>
+      <div class="modal-body">
+        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // ─── Nominal auto-format ──────────────────
+    function formatThousands(raw) {
+      const digits = raw.replace(/\D/g, '');
+      if (!digits) return '';
+      return parseInt(digits, 10).toLocaleString('id-ID');
+    }
+    function parseAmount(formatted) {
+      return parseFloat(formatted.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    document.getElementById('amount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    let dbOk = true;
+    let draftItems = []; // { name, amount, date, note, previewUrl, file, projectId, projectName }
+
+    // ─── DB Status ────────────────────────────
+    async function checkDb() {
+      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; } catch { dbOk = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      const submitBtn = document.getElementById('submitAllBtn');
+      if (!dbOk) {
+        banner.classList.add('show');
+        ind.className = 'db-status-indicator disconnected';
+        ind.innerHTML = '<span class="dot"></span> DB Mati';
+        if (submitBtn) submitBtn.disabled = true;
+      } else {
+        banner.classList.remove('show');
+        ind.className = 'db-status-indicator connected';
+        ind.innerHTML = '<span class="dot"></span> DB';
+        if (submitBtn) submitBtn.disabled = draftItems.length === 0;
+      }
+    }
+    setInterval(checkDb, 15000);
+
+    // ─── Load projects ─────────────────────────
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects').then(r => r.json());
+        const sel = document.getElementById('projectId');
+        res.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    // ─── Init ─────────────────────────────────
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role === 'finance') { window.location.href = '/finance.html'; return; }
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('filterMonth').value = ym;
+      await Promise.all([loadProjects(), loadTransactions(ym)]);
+    }
+
+    // ─── Load history ─────────────────────────
+    async function loadTransactions(month) {
+      const url = month ? `/api/transactions?month=${month}` : '/api/transactions';
+      try {
+        const txs = await fetch(url).then(r => r.json());
+        renderTable(txs);
+        updateSummary(txs);
+      } catch { showAlert('tableAlert', 'Gagal memuat transaksi'); }
+    }
+
+    function renderTable(txs) {
+      const tbody = document.getElementById('txBody');
+      if (txs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>Belum ada pengeluaran</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = txs.map(tx => `
+        <tr class="keluar">
+          <td>${fmtDate(tx.date)}</td>
+          <td>
+            <div>${tx.name}</div>
+            ${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}
+            ${tx.project_name ? `<div class="text-muted" style="font-size:.7rem">📁 ${tx.project_name}</div>` : ''}
+          </td>
+          <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
+          <td>
+            ${tx.proof_image
+              ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" title="Lihat bukti" />`
+              : `<span class="text-muted">–</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateSummary(txs) {
+      const total = txs.reduce((s, t) => s + t.amount, 0);
+      document.getElementById('totalKeluar').textContent = fmt.format(total);
+      document.getElementById('jumlahTx').textContent = txs.length + ' transaksi';
+    }
+
+    // ─── Preview foto ─────────────────────────
+    document.getElementById('proofImage').addEventListener('change', function () {
+      const file = this.files[0];
+      const wrap = document.getElementById('previewWrap');
+      if (!file) { wrap.classList.remove('show'); return; }
+      const reader = new FileReader();
+      reader.onload = (e) => { document.getElementById('previewImg').src = e.target.result; wrap.classList.add('show'); };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('removePreview').addEventListener('click', () => {
+      document.getElementById('proofImage').value = '';
+      document.getElementById('previewWrap').classList.remove('show');
+      document.getElementById('previewImg').src = '';
+    });
+
+    // ─── Add to draft ──────────────────────────
+    document.getElementById('addItemForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      hideAlert('formAlert');
+
+      const name = document.getElementById('name').value.trim();
+      const amount = parseAmount(document.getElementById('amount').value);
+      const date = document.getElementById('date').value;
+      const note = document.getElementById('note').value.trim();
+      const fileInput = document.getElementById('proofImage');
+      const file = fileInput.files[0];
+      const projectId = document.getElementById('projectId').value;
+      const projectName = document.getElementById('projectId').options[document.getElementById('projectId').selectedIndex].text;
+
+      if (!file) {
+        showAlert('formAlert', 'Bukti foto wajib disertakan');
+        return;
+      }
+      if (!name) { showAlert('formAlert', 'Nama pengeluaran wajib diisi'); return; }
+      if (isNaN(amount) || amount <= 0) { showAlert('formAlert', 'Nominal harus berupa angka positif'); return; }
+      if (!date) { showAlert('formAlert', 'Tanggal wajib diisi'); return; }
+
+      const previewUrl = document.getElementById('previewImg').src;
+
+      draftItems.push({ name, amount, date, note, previewUrl, file, projectId, projectName });
+      renderDraft();
+
+      // Reset form
+      document.getElementById('addItemForm').reset();
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('previewWrap').classList.remove('show');
+      document.getElementById('previewImg').src = '';
+    });
+
+    function renderDraft() {
+      const empty = document.getElementById('draftEmpty');
+      const list = document.getElementById('draftList');
+      const itemsEl = document.getElementById('draftItems');
+      const submitBtn = document.getElementById('submitAllBtn');
+
+      if (draftItems.length === 0) {
+        empty.style.display = '';
+        list.style.display = 'none';
+        return;
+      }
+
+      empty.style.display = 'none';
+      list.style.display = '';
+
+      const total = draftItems.reduce((s, i) => s + i.amount, 0);
+      document.getElementById('draftTotal').textContent = fmt.format(total);
+      document.getElementById('draftCount').textContent = draftItems.length + ' item';
+      document.getElementById('submitCount').textContent = draftItems.length;
+      submitBtn.disabled = !dbOk;
+
+      itemsEl.innerHTML = draftItems.map((item, idx) => `
+        <div style="display:flex; align-items:flex-start; gap:.6rem; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
+          <img src="${item.previewUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; cursor:pointer"
+               onclick="openLightbox('${item.previewUrl}')" />
+          <div style="flex:1; min-width:0">
+            <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${item.name}</div>
+            <div class="amount-keluar" style="font-size:.8rem">${fmt.format(item.amount)}</div>
+            <div class="text-muted" style="font-size:.75rem">${fmtDate(item.date)}${item.note ? ' · ' + item.note : ''}</div>
+            ${item.projectId ? '<div class="text-muted" style="font-size:.7rem">📁 ' + item.projectName + '</div>' : ''}
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="removeDraftItem(${idx})" title="Hapus dari antrian" style="flex-shrink:0">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function removeDraftItem(idx) {
+      draftItems.splice(idx, 1);
+      renderDraft();
+    }
+
+    document.getElementById('clearDraftBtn').addEventListener('click', () => {
+      if (!confirm('Hapus semua item dari antrian?')) return;
+      draftItems = [];
+      renderDraft();
+    });
+
+    // ─── Submit batch ──────────────────────────
+    document.getElementById('submitAllBtn').addEventListener('click', async () => {
+      if (!dbOk) return showAlert('draftAlert', 'Database tidak terhubung');
+      if (draftItems.length === 0) return;
+      hideAlert('draftAlert'); hideAlert('draftSuccess');
+
+      const fmt2 = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+      const total = draftItems.reduce((s, i) => s + i.amount, 0);
+      const details = `<strong>${draftItems.length} pengeluaran</strong> akan disimpan.<br>Total: <strong>${fmt2.format(total)}</strong><br><br>` +
+        draftItems.map((it, i) => `${i+1}. ${it.name} — ${fmt2.format(it.amount)}`).join('<br>');
+      const ok = await showConfirm('Submit Semua Pengeluaran?', details);
+      if (!ok) return;
+
+      const btn = document.getElementById('submitAllBtn');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      const fd = new FormData();
+      const itemsMeta = draftItems.map(({ name, amount, date, note, projectId }) => ({ name, amount, date, note, project_id: projectId || null }));
+      fd.append('items', JSON.stringify(itemsMeta));
+      draftItems.forEach((item, idx) => fd.append(`proof_${idx}`, item.file));
+
+      try {
+        const res = await fetch('/api/transactions/batch', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { showAlert('draftAlert', data.error); return; }
+
+        showAlert('draftSuccess', `✅ ${draftItems.length} pengeluaran berhasil disimpan!`);
+        draftItems = [];
+        renderDraft();
+        const currentMonth = document.getElementById('filterMonth').value || null;
+        await loadTransactions(currentMonth);
+        setTimeout(() => hideAlert('draftSuccess'), 4000);
+      } catch { showAlert('draftAlert', 'Gagal menyimpan batch'); }
+      finally {
+        btn.disabled = false;
+        renderDraft();
+      }
+    });
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
+
+    // ─── Filter ───────────────────────────────
+    document.getElementById('filterMonth').addEventListener('change', (e) => loadTransactions(e.target.value || null));
+    document.getElementById('clearFilter').addEventListener('click', () => { document.getElementById('filterMonth').value = ''; loadTransactions(null); });
+
+    // ─── Print / PDF ──────────────────────────
+    document.getElementById('btnPrint').addEventListener('click', () => {
+      const month = document.getElementById('filterMonth').value;
+      const label = month ? new Date(month + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Semua Waktu';
+      document.getElementById('printMeta').textContent = `Nama: ${document.getElementById('navName').textContent} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}`;
+      window.print();
+    });
+
+    // ─── Password Modal ───────────────────────
+    function closePwd() { document.getElementById('pwdOverlay').classList.remove('open'); }
+    document.getElementById('pwdBtn').addEventListener('click', () => {
+      document.getElementById('pwdNew').value = '';
+      document.getElementById('pwdConfirm').value = '';
+      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
+      document.getElementById('pwdOverlay').classList.add('open');
+    });
+    document.getElementById('pwdClose').addEventListener('click', closePwd);
+    document.getElementById('pwdCancel').addEventListener('click', closePwd);
+    document.getElementById('pwdOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('pwdOverlay')) closePwd(); });
+    document.getElementById('pwdSave').addEventListener('click', async () => {
+      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
+      const pwd = document.getElementById('pwdNew').value;
+      const confirm = document.getElementById('pwdConfirm').value;
+      if (!pwd || pwd.length < 6) { showAlert('pwdAlert', 'Password minimal 6 karakter'); return; }
+      if (pwd !== confirm) { showAlert('pwdAlert', 'Konfirmasi password tidak cocok'); return; }
+      const btn = document.getElementById('pwdSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('pwdAlert', data.error); return; }
+        showAlert('pwdSuccess', 'Password berhasil diubah');
+        setTimeout(closePwd, 1500);
+      } catch { showAlert('pwdAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login.html'; });
+
+    function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+    function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+
+    init();
+  </script>
+</body>
+</html>

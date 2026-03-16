@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Kelola Proyek</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/utils.js"></script>
+</head>
+<body>
+  <div class="db-banner" id="dbBanner"><span class="db-dot"></span>Database tidak terhubung — semua operasi dinonaktifkan</div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected"><span class="dot"></span> DB</span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Finance</span></span>
+      <button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/finance.html" class="sidebar-item">
+        <span class="icon">📊</span><span class="label">Dashboard</span>
+      </a>
+      <a href="/input-employee.html" class="sidebar-item">
+        <span class="icon">➕</span><span class="label">Input Karyawan</span>
+      </a>
+      <a href="/employees.html" class="sidebar-item">
+        <span class="icon">👥</span><span class="label">Kelola Karyawan</span>
+      </a>
+      <a href="/projects.html" class="sidebar-item active">
+        <span class="icon">📁</span><span class="label">Proyek</span>
+      </a>
+      <a href="/reports.html" class="sidebar-item">
+        <span class="icon">📋</span><span class="label">Laporan Detail</span>
+      </a>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <div class="flex items-center justify-between" style="margin-bottom:1.25rem">
+        <h1 class="page-title" style="margin-bottom:0">Kelola Proyek</h1>
+        <button class="btn btn-primary" id="btnAdd">+ Tambah Proyek</button>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+      <div id="mainSuccess" class="alert alert-success"></div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama Proyek</th>
+                <th>Deskripsi</th>
+                <th>Jumlah Transaksi</th>
+                <th>Dibuat</th>
+                <th class="text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="projBody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Tambah/Edit -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">Tambah Proyek</span>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modalAlert" class="alert alert-error"></div>
+        <form id="projForm">
+          <input type="hidden" id="projId" />
+          <div class="form-group">
+            <label for="projName">Nama Proyek</label>
+            <input type="text" id="projName" placeholder="Contoh: Proyek Alfa" required />
+          </div>
+          <div class="form-group">
+            <label for="projDesc">Deskripsi (opsional)</label>
+            <textarea id="projDesc" placeholder="Keterangan singkat proyek..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnCancel">Batal</button>
+        <button class="btn btn-primary" id="btnSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Hapus -->
+  <div class="modal-overlay" id="deleteOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Hapus Proyek</span>
+        <button class="modal-close" id="deleteClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Hapus proyek <strong id="deleteName"></strong>?</p>
+        <p class="text-muted mt-1" style="font-size:.85rem">Transaksi yang terhubung ke proyek ini akan kehilangan asosiasi proyeknya, namun tidak dihapus.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btnDeleteCancel">Batal</button>
+        <button class="btn btn-danger" id="btnDeleteConfirm">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
+      </div>
+      <div class="modal-body">
+        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/finance.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📊</span>Dashboard
+    </a>
+    <a href="/input-employee.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">➕</span>Input
+    </a>
+    <a href="/employees.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">👥</span>Karyawan
+    </a>
+    <a href="/projects.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📁</span>Proyek
+    </a>
+    <a href="/reports.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📋</span>Laporan
+    </a>
+  </nav>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Profil</span>
+        <button class="modal-close" id="profileClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="profileAlert" class="alert alert-error"></div>
+        <div id="profileSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="profileName">Nama Lengkap</label>
+          <input type="text" id="profileName" />
+        </div>
+        <div class="form-group">
+          <label for="profileUsername">Username</label>
+          <input type="text" id="profileUsername" />
+        </div>
+        <div class="form-group">
+          <label for="profilePassword">Password Baru</label>
+          <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ingin ubah" />
+          <small class="text-muted" style="margin-top:.25rem;display:block">Minimal 6 karakter jika diisi</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="profileCancel">Batal</button>
+        <button class="btn btn-primary" id="profileSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmtDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    let deleteTargetId = null;
+
+    async function checkDb() {
+      let ok = true;
+      try { const r = await fetch('/api/health'); ok = (await r.json()).db; } catch { ok = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      if (!ok) { banner.classList.add('show'); ind.className = 'db-status-indicator disconnected'; ind.innerHTML = '<span class="dot"></span> DB Mati'; }
+      else { banner.classList.remove('show'); ind.className = 'db-status-indicator connected'; ind.innerHTML = '<span class="dot"></span> DB'; }
+    }
+    setInterval(checkDb, 15000);
+
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role !== 'finance') { window.location.href = '/dashboard.html'; return; }
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      await loadProjects();
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects');
+        const data = await res.json();
+        renderTable(data);
+      } catch {
+        showAlert('mainAlert', 'Gagal memuat data proyek');
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById('projBody');
+      if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📁</div>Belum ada proyek</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = data.map((proj, i) => `
+        <tr>
+          <td class="text-muted">${i + 1}</td>
+          <td><strong>${proj.name}</strong></td>
+          <td class="text-muted">${proj.description || '–'}</td>
+          <td class="text-muted">${proj.tx_count} transaksi</td>
+          <td class="text-muted">${fmtDate(proj.created_at)}</td>
+          <td class="text-right">
+            <button class="btn btn-ghost btn-sm" onclick="openEdit(${proj.id}, '${proj.name.replace(/'/g, "\\'")}', '${(proj.description || '').replace(/'/g, "\\'")}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${proj.id}, '${proj.name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ─── Modal Tambah/Edit ────────────────────
+    function openAdd() {
+      document.getElementById('modalTitle').textContent = 'Tambah Proyek';
+      document.getElementById('projId').value = '';
+      document.getElementById('projName').value = '';
+      document.getElementById('projDesc').value = '';
+      hideAlert('modalAlert');
+      document.getElementById('modalOverlay').classList.add('open');
+      document.getElementById('projName').focus();
+    }
+
+    function openEdit(id, name, description) {
+      document.getElementById('modalTitle').textContent = 'Edit Proyek';
+      document.getElementById('projId').value = id;
+      document.getElementById('projName').value = name;
+      document.getElementById('projDesc').value = description;
+      hideAlert('modalAlert');
+      document.getElementById('modalOverlay').classList.add('open');
+      document.getElementById('projName').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    document.getElementById('btnAdd').addEventListener('click', openAdd);
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    document.getElementById('btnCancel').addEventListener('click', closeModal);
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('modalOverlay')) closeModal();
+    });
+
+    document.getElementById('btnSave').addEventListener('click', async () => {
+      hideAlert('modalAlert');
+      const id = document.getElementById('projId').value;
+      const body = {
+        name: document.getElementById('projName').value.trim(),
+        description: document.getElementById('projDesc').value.trim(),
+      };
+
+      if (!body.name) {
+        showAlert('modalAlert', 'Nama proyek wajib diisi');
+        return;
+      }
+
+      const btn = document.getElementById('btnSave');
+      btn.disabled = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `/api/projects/${id}` : '/api/projects';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert('modalAlert', data.error); return; }
+
+        closeModal();
+        showAlert('mainSuccess', id ? 'Proyek berhasil diperbarui!' : 'Proyek berhasil ditambahkan!');
+        await loadProjects();
+        setTimeout(() => hideAlert('mainSuccess'), 3000);
+      } catch {
+        showAlert('modalAlert', 'Terjadi kesalahan, coba lagi');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Simpan';
+      }
+    });
+
+    // ─── Modal Hapus ──────────────────────────
+    function openDelete(id, name) {
+      deleteTargetId = id;
+      document.getElementById('deleteName').textContent = name;
+      document.getElementById('deleteOverlay').classList.add('open');
+    }
+
+    function closeDelete() {
+      document.getElementById('deleteOverlay').classList.remove('open');
+      deleteTargetId = null;
+    }
+
+    document.getElementById('deleteClose').addEventListener('click', closeDelete);
+    document.getElementById('btnDeleteCancel').addEventListener('click', closeDelete);
+    document.getElementById('deleteOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('deleteOverlay')) closeDelete();
+    });
+
+    document.getElementById('btnDeleteConfirm').addEventListener('click', async () => {
+      if (!deleteTargetId) return;
+      const btn = document.getElementById('btnDeleteConfirm');
+      btn.disabled = true;
+      btn.textContent = 'Menghapus...';
+      try {
+        const res = await fetch(`/api/projects/${deleteTargetId}`, { method: 'DELETE' });
+        if (!res.ok && res.status !== 204) {
+          const d = await res.json();
+          alert(d.error || 'Gagal menghapus');
+          return;
+        }
+        closeDelete();
+        showAlert('mainSuccess', 'Proyek berhasil dihapus');
+        await loadProjects();
+        setTimeout(() => hideAlert('mainSuccess'), 3000);
+      } catch {
+        alert('Terjadi kesalahan');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Hapus';
+      }
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    function showAlert(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideAlert(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // ─── Profile Modal ────────────────────────
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      const me = { fullName: document.getElementById('navName').textContent };
+      fetch('/api/auth/me').then(r=>r.json()).then(d => {
+        document.getElementById('profileName').value = d.fullName;
+        document.getElementById('profileUsername').value = d.username;
+        document.getElementById('profilePassword').value = '';
+        hideAlert('profileAlert'); hideAlert('profileSuccess');
+        document.getElementById('profileOverlay').classList.add('open');
+      });
+    });
+    function closeProfile() { document.getElementById('profileOverlay').classList.remove('open'); }
+    document.getElementById('profileClose').addEventListener('click', closeProfile);
+    document.getElementById('profileCancel').addEventListener('click', closeProfile);
+    document.getElementById('profileOverlay').addEventListener('click', (e) => { if (e.target===document.getElementById('profileOverlay')) closeProfile(); });
+    document.getElementById('profileSave').addEventListener('click', async () => {
+      hideAlert('profileAlert'); hideAlert('profileSuccess');
+      const body = {
+        full_name: document.getElementById('profileName').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        password: document.getElementById('profilePassword').value,
+      };
+      const btn = document.getElementById('profileSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/profile', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('profileAlert', data.error); return; }
+        document.getElementById('navName').textContent = data.fullName;
+        showAlert('profileSuccess', 'Profil berhasil diperbarui');
+        setTimeout(closeProfile, 1500);
+      } catch { showAlert('profileAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    init();
+  </script>
+</body>
+</html>

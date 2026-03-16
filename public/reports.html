@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Laporan Karyawan</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/utils.js"></script>
+</head>
+<body>
+  <div class="db-banner" id="dbBanner"><span class="db-dot"></span>Database tidak terhubung — semua operasi dinonaktifkan</div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected"><span class="dot"></span> DB</span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Finance</span></span>
+      <button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/finance.html" class="sidebar-item">
+        <span class="icon">📊</span><span class="label">Dashboard</span>
+      </a>
+      <a href="/input-employee.html" class="sidebar-item">
+        <span class="icon">➕</span><span class="label">Input Karyawan</span>
+      </a>
+      <a href="/employees.html" class="sidebar-item">
+        <span class="icon">👥</span><span class="label">Kelola Karyawan</span>
+      </a>
+      <a href="/projects.html" class="sidebar-item">
+        <span class="icon">📁</span><span class="label">Proyek</span>
+      </a>
+      <a href="/reports.html" class="sidebar-item active">
+        <span class="icon">📋</span><span class="label">Laporan Detail</span>
+      </a>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+      <!-- Print header (hidden on screen) -->
+      <div class="print-header">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <h2>Laporan Keuangan Karyawan</h2>
+        <p id="printMeta"></p>
+      </div>
+
+      <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
+        <h1 class="page-title" style="margin-bottom:0">Laporan Karyawan</h1>
+        <div style="display:flex; gap:.5rem">
+          <button class="btn btn-ghost btn-sm" id="btnPrint" style="display:none">Download PDF</button>
+          <button class="btn btn-ghost btn-sm" id="btnShare" style="display:none">Bagikan Link</button>
+        </div>
+      </div>
+
+      <!-- Filter Panel -->
+      <div class="card no-print" style="margin-bottom:1.25rem">
+        <div class="card-title">🔍 Filter Laporan</div>
+        <div class="report-filter-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap:.85rem; align-items:end">
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Karyawan</label>
+            <select id="filterEmployee">
+              <option value="all">Semua Karyawan</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Tipe Periode</label>
+            <select id="periodType">
+              <option value="month">Per Bulan</option>
+              <option value="year">Per Tahun</option>
+              <option value="date">Tanggal Tertentu</option>
+              <option value="all">Semua Waktu</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0" id="periodValueGroup">
+            <label id="periodValueLabel">Pilih Bulan</label>
+            <input type="month" id="periodValue" />
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Proyek</label>
+            <select id="filterProject">
+              <option value="">Semua Proyek</option>
+            </select>
+          </div>
+
+          <div class="btn-search" style="padding-bottom:0">
+            <button class="btn btn-primary" id="btnSearch" style="width:100%; white-space:nowrap">
+              Cari
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+
+      <!-- Summary Cards -->
+      <div class="summary-grid" id="summaryCards" style="display:none; grid-template-columns:repeat(4,1fr)">
+        <div class="summary-card masuk">
+          <div class="summary-label">Total Pemasukan</div>
+          <div class="summary-value green" id="resMasuk">Rp 0</div>
+        </div>
+        <div class="summary-card keluar">
+          <div class="summary-label">Total Pengeluaran</div>
+          <div class="summary-value red" id="resKeluar">Rp 0</div>
+        </div>
+        <div class="summary-card net-positive">
+          <div class="summary-label">Total Sisa Dana</div>
+          <div class="summary-value blue" id="resSisa">Rp 0</div>
+        </div>
+        <div class="summary-card net-negative">
+          <div class="summary-label">Total Klaim</div>
+          <div class="summary-value orange" id="resKlaim">Rp 0</div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsArea"></div>
+    </main>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/finance.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📊</span>Dashboard
+    </a>
+    <a href="/input-employee.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">➕</span>Input
+    </a>
+    <a href="/employees.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">👥</span>Karyawan
+    </a>
+    <a href="/projects.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📁</span>Proyek
+    </a>
+    <a href="/reports.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📋</span>Laporan
+    </a>
+  </nav>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
+      </div>
+      <div class="modal-body">
+        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Share Modal -->
+  <div class="modal-overlay" id="shareOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Link Laporan</span>
+        <button class="modal-close" id="shareClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.85rem; color:var(--gray-600); margin-bottom:.75rem">Link ini bisa dibuka siapapun tanpa login. Salin dan kirim via WhatsApp / SMS.</p>
+        <div style="display:flex; gap:.5rem">
+          <input type="text" id="shareUrl" readonly style="flex:1; font-size:.8rem" />
+          <button class="btn btn-primary btn-sm" id="copyUrl">Salin</button>
+        </div>
+        <div style="margin-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" id="waShare">WhatsApp</button>
+          <button class="btn btn-ghost btn-sm" id="smsShare">SMS</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div class="modal-overlay" id="profileOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Edit Profil</span>
+        <button class="modal-close" id="profileClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="profileAlert" class="alert alert-error"></div>
+        <div id="profileSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="profileName">Nama Lengkap</label>
+          <input type="text" id="profileName" />
+        </div>
+        <div class="form-group">
+          <label for="profileUsername">Username</label>
+          <input type="text" id="profileUsername" />
+        </div>
+        <div class="form-group">
+          <label for="profilePassword">Password Baru</label>
+          <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ingin ubah" />
+          <small class="text-muted" style="margin-top:.25rem;display:block">Minimal 6 karakter jika diisi</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="profileCancel">Batal</button>
+        <button class="btn btn-primary" id="profileSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // ─── Init ───────────────────────────────
+    async function checkDb() {
+      let ok = true;
+      try { const r = await fetch('/api/health'); ok = (await r.json()).db; } catch { ok = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      if (!ok) { banner.classList.add('show'); ind.className = 'db-status-indicator disconnected'; ind.innerHTML = '<span class="dot"></span> DB Mati'; }
+      else { banner.classList.remove('show'); ind.className = 'db-status-indicator connected'; ind.innerHTML = '<span class="dot"></span> DB'; }
+    }
+    setInterval(checkDb, 15000);
+
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role !== 'finance') { window.location.href = '/dashboard.html'; return; }
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      await Promise.all([loadEmployees(), loadProjects()]);
+      updatePeriodInput();
+
+      // Set default period to current month
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('periodValue').value = ym;
+    }
+
+    async function loadEmployees() {
+      try {
+        const res = await fetch('/api/employees');
+        const data = await res.json();
+        const sel = document.getElementById('filterEmployee');
+        data.forEach(emp => {
+          const opt = document.createElement('option');
+          opt.value = emp.id;
+          opt.textContent = emp.full_name + ' (@' + emp.username + ')';
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/projects').then(r => r.json());
+        const sel = document.getElementById('filterProject');
+        res.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    // ─── Period type change ──────────────────
+    document.getElementById('periodType').addEventListener('change', updatePeriodInput);
+
+    function updatePeriodInput() {
+      const type = document.getElementById('periodType').value;
+      const group = document.getElementById('periodValueGroup');
+      const label = document.getElementById('periodValueLabel');
+      const input = document.getElementById('periodValue');
+
+      if (type === 'all') {
+        group.style.visibility = 'hidden';
+        return;
+      }
+
+      group.style.visibility = 'visible';
+
+      if (type === 'month') {
+        label.textContent = 'Pilih Bulan';
+        input.type = 'month';
+        input.placeholder = '';
+      } else if (type === 'year') {
+        label.textContent = 'Pilih Tahun';
+        input.type = 'number';
+        input.min = '2000';
+        input.max = '2100';
+        input.step = '1';
+        input.placeholder = 'Contoh: 2024';
+        input.value = new Date().getFullYear();
+      } else if (type === 'date') {
+        label.textContent = 'Pilih Tanggal';
+        input.type = 'date';
+        input.placeholder = '';
+        input.value = new Date().toISOString().slice(0, 10);
+      }
+    }
+
+    // ─── Search ──────────────────────────────
+    document.getElementById('btnSearch').addEventListener('click', search);
+
+    async function search() {
+      hideAlert('mainAlert');
+      const employeeId = document.getElementById('filterEmployee').value;
+      const periodType = document.getElementById('periodType').value;
+      const periodValue = document.getElementById('periodValue').value;
+      const projectId = document.getElementById('filterProject').value;
+
+      if (periodType !== 'all' && !periodValue) {
+        showAlert('mainAlert', 'Pilih periode terlebih dahulu');
+        return;
+      }
+
+      const params = new URLSearchParams({ userId: employeeId, periodType });
+      if (periodType !== 'all') params.append('periodValue', periodValue);
+      if (projectId) params.append('projectId', projectId);
+
+      const btn = document.getElementById('btnSearch');
+      btn.disabled = true;
+      btn.textContent = 'Mencari...';
+
+      try {
+        const res = await fetch('/api/finance/report?' + params.toString());
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderResults(data);
+      } catch {
+        showAlert('mainAlert', 'Gagal mengambil data laporan');
+        document.getElementById('summaryCards').style.display = 'none';
+        document.getElementById('resultsArea').innerHTML = '';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Cari';
+      }
+    }
+
+    function renderResults(data) {
+      const summaryEl = document.getElementById('summaryCards');
+      document.getElementById('btnPrint').style.display = 'none';
+      document.getElementById('btnShare').style.display = 'none';
+
+      if (data.length === 0) {
+        summaryEl.style.display = 'none';
+        document.getElementById('resultsArea').innerHTML = `
+          <div class="card">
+            <div class="empty"><div class="empty-icon">📭</div>Tidak ada transaksi ditemukan</div>
+          </div>`;
+        return;
+      }
+
+      // Summary
+      const totMasuk = data.reduce((s, e) => s + e.totalMasuk, 0);
+      const totKeluar = data.reduce((s, e) => s + e.totalKeluar, 0);
+      const totSisa = data.reduce((s, e) => s + (e.net > 0 ? e.net : 0), 0);
+      const totKlaim = data.reduce((s, e) => s + (e.net < 0 ? Math.abs(e.net) : 0), 0);
+
+      document.getElementById('resMasuk').textContent = fmt.format(totMasuk);
+      document.getElementById('resKeluar').textContent = fmt.format(totKeluar);
+      document.getElementById('resSisa').textContent = fmt.format(totSisa);
+      document.getElementById('resKlaim').textContent = fmt.format(totKlaim);
+      summaryEl.style.display = 'grid';
+
+      // Show print/share buttons and set meta
+      const empLabel = document.getElementById('filterEmployee').options[document.getElementById('filterEmployee').selectedIndex].text;
+      const periodType = document.getElementById('periodType').value;
+      const periodValue = document.getElementById('periodValue').value;
+      const periodLabel = periodType === 'all' ? 'Semua Waktu' : periodValue;
+      document.getElementById('printMeta').textContent = `Karyawan: ${empLabel} | Periode: ${periodLabel} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}`;
+      document.getElementById('btnPrint').style.display = '';
+      document.getElementById('btnShare').style.display = '';
+
+      // Per-employee accordion
+      document.getElementById('resultsArea').innerHTML = data.map(emp => `
+        <div class="employee-block">
+          <details open>
+            <summary>
+              <div class="employee-name">👤 ${emp.fullName} <span class="text-muted" style="font-weight:400;font-size:.8rem">@${emp.username}</span>
+                <span class="text-muted" style="font-size:.75rem; margin-left:.5rem">(${emp.transactions.length} transaksi)</span>
+              </div>
+              <div class="employee-stats">
+                <div class="emp-stat">
+                  <span class="emp-stat-label">Masuk</span>
+                  <span class="emp-stat-val amount-masuk">${fmt.format(emp.totalMasuk)}</span>
+                </div>
+                <div class="emp-stat">
+                  <span class="emp-stat-label">Keluar</span>
+                  <span class="emp-stat-val amount-keluar">${fmt.format(emp.totalKeluar)}</span>
+                </div>
+                <div class="emp-stat">
+                  <span class="emp-stat-label ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:600">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</span>
+                  <span class="emp-stat-val ${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">
+                    ${fmt.format(Math.abs(emp.net))}
+                  </span>
+                </div>
+              </div>
+            </summary>
+            <div class="employee-body">
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Tanggal</th>
+                      <th>Nama Transaksi</th>
+                      <th>Jenis</th>
+                      <th class="text-right">Nominal</th>
+                      <th>Proyek</th>
+                      <th>Catatan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${emp.transactions.map(tx => `
+                      <tr class="${tx.type}">
+                        <td>${fmtDate(tx.date)}</td>
+                        <td>${tx.name}</td>
+                        <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
+                        <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                        <td class="text-muted">${tx.project_name || '–'}</td>
+                        <td class="text-muted">${tx.note || '–'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background:var(--gray-50)">
+                      <td colspan="3" style="padding:.6rem .9rem; font-weight:600; font-size:.8rem; color:var(--gray-600)">SUBTOTAL</td>
+                      <td class="text-right" style="padding:.6rem .9rem">
+                        <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
+                        <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
+                      </td>
+                      <td colspan="2" style="padding:.6rem .9rem">
+                        <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
+                        <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">
+                          ${fmt.format(Math.abs(emp.net))}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </details>
+        </div>
+      `).join('');
+    }
+
+    // ─── Print / PDF ──────────────────────────
+    document.getElementById('btnPrint').addEventListener('click', () => window.print());
+
+    // ─── Share Link ───────────────────────────
+    document.getElementById('btnShare').addEventListener('click', async () => {
+      const employeeId = document.getElementById('filterEmployee').value;
+      const periodType = document.getElementById('periodType').value;
+      const periodValue = document.getElementById('periodValue').value;
+      const projectId = document.getElementById('filterProject').value;
+      const empLabel = document.getElementById('filterEmployee').options[document.getElementById('filterEmployee').selectedIndex].text;
+      const label = `${empLabel} — ${periodType === 'all' ? 'Semua Waktu' : periodValue}`;
+
+      const btn = document.getElementById('btnShare');
+      btn.disabled = true; btn.textContent = 'Membuat link...';
+      try {
+        const res = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: employeeId, periodType, periodValue, projectId, label })
+        });
+        const data = await res.json();
+        const fullUrl = window.location.origin + data.url;
+        await navigator.clipboard.writeText(fullUrl).catch(() => {});
+        hideAlert('mainAlert');
+        // Show share modal
+        document.getElementById('shareUrl').value = fullUrl;
+        document.getElementById('shareOverlay').classList.add('open');
+      } catch { showAlert('mainAlert', 'Gagal membuat link'); }
+      finally { btn.disabled = false; btn.textContent = 'Bagikan Link'; }
+    });
+
+    document.getElementById('shareClose').addEventListener('click', () => document.getElementById('shareOverlay').classList.remove('open'));
+    document.getElementById('copyUrl').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('shareUrl').value);
+      document.getElementById('copyUrl').textContent = 'Tersalin!';
+      setTimeout(() => document.getElementById('copyUrl').textContent = 'Salin', 2000);
+    });
+    document.getElementById('waShare').addEventListener('click', () => {
+      const url = document.getElementById('shareUrl').value;
+      window.open('https://wa.me/?text=' + encodeURIComponent('Laporan keuangan: ' + url), '_blank');
+    });
+    document.getElementById('smsShare').addEventListener('click', () => {
+      const url = document.getElementById('shareUrl').value;
+      window.location.href = 'sms:?body=' + encodeURIComponent('Laporan keuangan: ' + url);
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    function showAlert(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideAlert(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // ─── Profile Modal ────────────────────────
+    document.getElementById('profileBtn').addEventListener('click', () => {
+      const me = { fullName: document.getElementById('navName').textContent };
+      fetch('/api/auth/me').then(r=>r.json()).then(d => {
+        document.getElementById('profileName').value = d.fullName;
+        document.getElementById('profileUsername').value = d.username;
+        document.getElementById('profilePassword').value = '';
+        hideAlert('profileAlert'); hideAlert('profileSuccess');
+        document.getElementById('profileOverlay').classList.add('open');
+      });
+    });
+    function closeProfile() { document.getElementById('profileOverlay').classList.remove('open'); }
+    document.getElementById('profileClose').addEventListener('click', closeProfile);
+    document.getElementById('profileCancel').addEventListener('click', closeProfile);
+    document.getElementById('profileOverlay').addEventListener('click', (e) => { if (e.target===document.getElementById('profileOverlay')) closeProfile(); });
+    document.getElementById('profileSave').addEventListener('click', async () => {
+      hideAlert('profileAlert'); hideAlert('profileSuccess');
+      const body = {
+        full_name: document.getElementById('profileName').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        password: document.getElementById('profilePassword').value,
+      };
+      const btn = document.getElementById('profileSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/profile', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('profileAlert', data.error); return; }
+        document.getElementById('navName').textContent = data.fullName;
+        showAlert('profileSuccess', 'Profil berhasil diperbarui');
+        setTimeout(closeProfile, 1500);
+      } catch { showAlert('profileAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "duitkau",
+  "version": "1.0.0",
+  "description": "Aplikasi tracing laporan keuangan perusahaan",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
+    "multer": "^2.1.1",
+    "sqlite3": "^5.1.7"
+  }
+}
