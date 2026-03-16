@@ -216,4 +216,21 @@ function groupByEmployee(rows) {
   return Object.values(grouped).map(e => ({ ...e, net: e.totalMasuk - e.totalKeluar }));
 }
 
+// ─── Hapus Transaksi (HANYA FINANCE) ─────────────────────────
+router.delete('/delete-transaction/:id', async (req, res) => {
+  try {
+    const txId = req.params.id;
+    const tx = await db.getAsync('SELECT id FROM transactions WHERE id = ?', [txId]);
+    if (!tx) {
+      return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+    }
+    
+    await db.runAsync('DELETE FROM transactions WHERE id = ?', [txId]);
+    res.json({ message: 'Transaksi berhasil dihapus' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal menghapus transaksi' });
+  }
+});
+
 module.exports = router;

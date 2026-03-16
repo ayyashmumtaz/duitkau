@@ -4,9 +4,14 @@ const db = require('../database');
 const { requireLogin, requireFinance } = require('../middleware/auth');
 const router = express.Router();
 
-// Finance generates a share token
-router.post('/', requireLogin, requireFinance, async (req, res) => {
-  const { userId, periodType, periodValue, projectId, label } = req.body;
+// User generates a share token (finance can share any, employee only their own)
+router.post('/', requireLogin, async (req, res) => {
+  let { userId, periodType, periodValue, projectId, label } = req.body;
+  
+  if (req.session.role !== 'finance') {
+    userId = req.session.userId;
+  }
+  
   const params = JSON.stringify({
     userId: userId || 'all',
     periodType: periodType || 'month',

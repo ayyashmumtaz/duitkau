@@ -44,6 +44,7 @@
       </div>
 
       <div id="mainAlert" class="alert alert-error"></div>
+      <div id="mainSuccess" class="alert alert-success"></div>
 
       <div id="employeeList">
         <div class="card" style="text-align:center; padding:2rem; color:var(--gray-400)">
@@ -59,6 +60,22 @@
   <div class="lightbox" id="lightbox">
     <div class="lightbox-close" id="lightboxClose">✕</div>
     <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <!-- Confirm Modal -->
+  <div class="modal-overlay" id="confirmOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
+      </div>
+      <div class="modal-body">
+        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
+        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
+      </div>
+    </div>
   </div>
 
   <div id="modals-placeholder"></div>
@@ -116,7 +133,7 @@
               ${emp.transactions.length === 0
                 ? `<div class="empty" style="padding:1.5rem"><div class="empty-icon">📭</div>Tidak ada transaksi</div>`
                 : `<div class="table-wrapper"><table>
-                    <thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Kategori</th><th>Proyek</th><th>Bukti</th><th>Catatan</th></tr></thead>
+                    <thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Kategori</th><th>Proyek</th><th>Bukti</th><th>Catatan</th><th class="text-center">Aksi</th></tr></thead>
                     <tbody>
                       ${emp.transactions.map(tx => `
                         <tr class="${tx.type}">
@@ -128,6 +145,9 @@
                           <td class="text-muted">${tx.project_name || '–'}</td>
                           <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
                           <td class="text-muted">${tx.note || '–'}</td>
+                          <td class="text-center">
+                            <button class="btn btn-ghost btn-sm text-red" style="padding:.2rem .5rem" onclick="deleteTx(${tx.id}, '${tx.name.replace(/'/g, "\\'")}')">🗑️</button>
+                          </td>
                         </tr>
                       `).join('')}
                     </tbody>
@@ -167,6 +187,62 @@
     document.getElementById('clearFilter').addEventListener('click', () => {
       document.getElementById('filterMonth').value = ''; loadSummary(null);
     });
+
+    // ─── Confirm Dialog ───────────────────────
+    function showConfirm(title, htmlContent) {
+      return new Promise((resolve) => {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmDetails').innerHTML = htmlContent;
+        const overlay = document.getElementById('confirmOverlay');
+        overlay.classList.add('open');
+
+        const btnOk = document.getElementById('confirmOk');
+        const btnCancel = document.getElementById('confirmCancel');
+        
+        const cleanup = () => {
+          btnOk.removeEventListener('click', onOk);
+          btnCancel.removeEventListener('click', onCancel);
+          overlay.classList.remove('open');
+        };
+
+        const onOk = () => { cleanup(); resolve(true); };
+        const onCancel = () => { cleanup(); resolve(false); };
+
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+      });
+    }
+
+    // ─── Hapus Transaksi ──────────────────────
+    async function deleteTx(id, name) {
+      document.getElementById('mainAlert').classList.remove('show');
+      document.getElementById('mainSuccess').classList.remove('show');
+
+      const ok = await showConfirm('Hapus Transaksi?', `Apakah Anda yakin ingin menghapus transaksi <strong>${name}</strong>? Data yang dihapus tidak dapat dikembalikan.`);
+      if (!ok) return;
+
+      try {
+        const res = await fetch(`/api/finance/delete-transaction/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+          const err = await res.json();
+          document.getElementById('mainAlert').textContent = err.error || 'Gagal menghapus transaksi';
+          document.getElementById('mainAlert').classList.add('show');
+          return;
+        }
+        
+        // Refresh laporan
+        const month = document.getElementById('filterMonth').value || null;
+        await loadSummary(month);
+
+        // Show Success Alert
+        document.getElementById('mainSuccess').textContent = `✅ Transaksi "${name}" berhasil dihapus.`;
+        document.getElementById('mainSuccess').classList.add('show');
+        setTimeout(() => document.getElementById('mainSuccess').classList.remove('show'), 4000);
+      } catch (e) {
+        document.getElementById('mainAlert').textContent = 'Gagal menghapus transaksi';
+        document.getElementById('mainAlert').classList.add('show');
+      }
+    }
   </script>
 </body>
 </html>

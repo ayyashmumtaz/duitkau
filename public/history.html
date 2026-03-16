@@ -23,7 +23,10 @@
 
       <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
         <h1 class="page-title" style="margin-bottom:0">Riwayat Pengeluaran</h1>
-        <button class="btn btn-ghost btn-sm no-print" id="btnPrint">Download PDF</button>
+        <div style="display:flex; gap:.5rem">
+          <button class="btn btn-ghost btn-sm no-print" id="btnShare">Bagikan Link</button>
+          <button class="btn btn-ghost btn-sm no-print" id="btnPrint">Download PDF</button>
+        </div>
       </div>
 
       <!-- Summary -->
@@ -81,6 +84,27 @@
   </div>
 
   <div id="modals-placeholder"></div>
+
+  <!-- Share Modal -->
+  <div class="modal-overlay" id="shareOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Link Laporan</span>
+        <button class="modal-close" id="shareClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.85rem; color:var(--gray-600); margin-bottom:.75rem">Link ini bisa dibuka siapapun tanpa login. Salin dan kirim via WhatsApp / SMS.</p>
+        <div style="display:flex; gap:.5rem">
+          <input type="text" id="shareUrl" readonly style="flex:1; font-size:.8rem" />
+          <button class="btn btn-primary btn-sm" id="copyUrl">Salin</button>
+        </div>
+        <div style="margin-top:.75rem; display:flex; gap:.5rem; flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" id="waShare">WhatsApp</button>
+          <button class="btn btn-ghost btn-sm" id="smsShare">SMS</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
@@ -147,6 +171,47 @@
       const label = month ? new Date(month + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Semua Waktu';
       document.getElementById('printMeta').textContent = `Nama: ${window.currentUser.fullName} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`;
       window.print();
+    });
+
+    // ─── Share Link ───────────────────────────
+    document.getElementById('btnShare').addEventListener('click', async () => {
+      const month = document.getElementById('filterMonth').value;
+      const periodType = month ? 'month' : 'all';
+      const periodValue = month || '';
+      const label = `${window.currentUser.fullName} — ${periodType === 'all' ? 'Semua Waktu' : periodValue}`;
+
+      const btn = document.getElementById('btnShare');
+      btn.disabled = true; btn.textContent = 'Membuat link...';
+      try {
+        const res = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: window.currentUser.userId, periodType, periodValue, projectId: '', label })
+        });
+        const data = await res.json();
+        const fullUrl = window.location.origin + data.url;
+        await navigator.clipboard.writeText(fullUrl).catch(() => {});
+        hideAlert('tableAlert');
+        // Show share modal
+        document.getElementById('shareUrl').value = fullUrl;
+        document.getElementById('shareOverlay').classList.add('open');
+      } catch { showAlert('tableAlert', 'Gagal membuat link'); }
+      finally { btn.disabled = false; btn.textContent = 'Bagikan Link'; }
+    });
+
+    document.getElementById('shareClose').addEventListener('click', () => document.getElementById('shareOverlay').classList.remove('open'));
+    document.getElementById('copyUrl').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('shareUrl').value);
+      document.getElementById('copyUrl').textContent = 'Tersalin!';
+      setTimeout(() => document.getElementById('copyUrl').textContent = 'Salin', 2000);
+    });
+    document.getElementById('waShare').addEventListener('click', () => {
+      const url = document.getElementById('shareUrl').value;
+      window.open('https://wa.me/?text=' + encodeURIComponent('Catatan Riwayat Transaksi (' + window.currentUser.fullName + '): ' + url), '_blank');
+    });
+    document.getElementById('smsShare').addEventListener('click', () => {
+      const url = document.getElementById('shareUrl').value;
+      window.location.href = 'sms:?body=' + encodeURIComponent('Catatan Riwayat Transaksi (' + window.currentUser.fullName + '): ' + url);
     });
 
     // ─── Lightbox ─────────────────────────────
