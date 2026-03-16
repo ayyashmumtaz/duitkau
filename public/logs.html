@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Event Log</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/js/layout.js"></script>
+  <style>
+    .log-container {
+      background: var(--gray-800);
+      color: #00ff00;
+      font-family: monospace;
+      padding: 1rem;
+      border-radius: 8px;
+      height: 60vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body data-page="logs">
+  <div id="navbar-placeholder"></div>
+
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+
+    <main class="main-content">
+      <div class="flex items-center justify-between" style="margin-bottom:1.25rem; flex-wrap:wrap; gap:.75rem">
+        <h2 style="font-size:1rem; font-weight:700">📜 Log Aktivitas (Event Log)</h2>
+        <div>
+          <button class="btn btn-primary btn-sm" id="btnDownload">Download TXT</button>
+        </div>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+
+      <div class="card">
+        <div class="card-title">Rekaman Histori Sistem</div>
+        <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 1rem;">
+          Log ini mengunci semua riwayat pembuatan, perubahan, dan penghapusan data secara permanen dan tidak dapat dihapus melalui antarmuka ini.
+        </p>
+        <div class="log-container" id="logViewer">Memuat log...</div>
+      </div>
+    </main>
+  </div>
+
+  <div id="bottom-nav-placeholder"></div>
+  <div id="modals-placeholder"></div>
+
+  <script>
+    window.onLayoutReady = async function(user) {
+      if (user.role !== 'finance') {
+        window.location.href = '/dashboard.html';
+        return;
+      }
+      await fetchLogs();
+    };
+
+    async function fetchLogs() {
+      try {
+        const res = await fetch('/api/logs');
+        if (!res.ok) throw new Error();
+        const text = await res.text();
+        const logViewer = document.getElementById('logViewer');
+        logViewer.textContent = text || 'Belum ada log aktivitas.';
+        // Auto scroll ke paling bawah
+        logViewer.scrollTop = logViewer.scrollHeight;
+      } catch (err) {
+        document.getElementById('mainAlert').textContent = 'Gagal memuat log aktivitas.';
+        document.getElementById('mainAlert').classList.add('show');
+        document.getElementById('logViewer').textContent = 'Error memuat log.';
+      }
+    }
+
+    document.getElementById('btnDownload').addEventListener('click', () => {
+      window.location.href = '/api/logs/download';
+    });
+  </script>
+</body>
+</html>

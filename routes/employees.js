@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../database');
 const { requireLogin, requireFinance } = require('../middleware/auth');
+const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -57,6 +58,9 @@ router.post('/', async (req, res) => {
       'SELECT id, username, full_name, role, created_at FROM users WHERE id = ?',
       [result.lastID]
     );
+    
+    logEvent(req, 'CREATE_USER', `Membuat akun ${userRole}: ${full_name.trim()} (${username.trim()})`);
+    
     res.status(201).json(inserted);
   } catch (err) {
     console.error(err);
@@ -99,6 +103,9 @@ router.put('/:id', async (req, res) => {
       'SELECT id, username, full_name, role, created_at FROM users WHERE id = ?',
       [req.params.id]
     );
+    
+    logEvent(req, 'UPDATE_USER', `Memperbarui profil akun: ${updated.full_name} (${updated.username})`);
+    
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -117,6 +124,9 @@ router.delete('/:id', async (req, res) => {
 
     await db.runAsync('DELETE FROM transactions WHERE user_id = ?', [req.params.id]);
     await db.runAsync('DELETE FROM users WHERE id = ?', [req.params.id]);
+    
+    logEvent(req, 'DELETE_USER', `Menghapus akun ${user.role}: ${user.full_name} (${user.username})`);
+    
     res.status(204).end();
   } catch (err) {
     console.error(err);

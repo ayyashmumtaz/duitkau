@@ -1,0 +1,5 @@
+[2026-03-16T19:41:16.548Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T19:41:26.466Z] [FINANCE:pakchris] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 13)
+[2026-03-16T19:41:41.374Z] [FINANCE:pakchris] (::1) | DELETE_PROJECT | Menghapus proyek "Proyek Meratus Line" (ID: 2)
+[2026-03-16T19:42:41.974Z] [SYSTEM:System] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T19:57:33.540Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login

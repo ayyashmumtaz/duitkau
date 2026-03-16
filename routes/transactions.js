@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../database');
 const upload = require('../middleware/upload');
 const { requireLogin } = require('../middleware/auth');
+const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -60,6 +61,9 @@ router.post('/', upload.single('proof_image'), async (req, res) => {
       [req.session.userId, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId]
     );
     const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
+    
+    logEvent(req, 'CREATE_TRANSACTION', `Menambahkan transaksi ${inserted.type}: "${inserted.name}" sejumlah ${inserted.amount}`);
+    
     res.status(201).json(inserted);
   } catch (err) {
     console.error(err);
@@ -110,6 +114,9 @@ router.post('/batch', upload.any(), async (req, res) => {
       insertedList.push(inserted);
     }
     await db.runAsync('COMMIT');
+    
+    logEvent(req, 'CREATE_BATCH_TRANSACTION', `Menambahkan ${items.length} transaksi sekaligus`);
+    
     res.status(201).json(insertedList);
   } catch (err) {
     await db.runAsync('ROLLBACK').catch(() => {});

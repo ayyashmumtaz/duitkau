@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../database');
 const { requireLogin } = require('../middleware/auth');
+const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 router.use(requireLogin);
@@ -86,6 +87,9 @@ router.post('/', async (req, res) => {
       [title.trim(), description || null, amount, project_id ? parseInt(project_id) || null : null, req.session.userId]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [result.lastID]);
+    
+    logEvent(req, 'CREATE_CA', `Karyawan mengajukan CA "${row.title}" sebesar ${row.initial_amount}`);
+    
     res.status(201).json(row);
   } catch (err) {
     console.error(err);
@@ -133,6 +137,9 @@ router.patch('/:id/approve', async (req, res) => {
       [req.session.userId, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    
+    logEvent(req, 'APPROVE_CA', `Finance menyetujui CA "${row.title}"`);
+    
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -230,6 +237,9 @@ router.patch('/:id/approve-close', async (req, res) => {
       [req.session.userId, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    
+    logEvent(req, 'CLOSE_CA', `Finance menutup CA "${row.title}"`);
+    
     res.json(row);
   } catch (err) {
     console.error(err);

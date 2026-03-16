@@ -98,6 +98,18 @@ db.serialize(() => {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS event_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT (datetime('now','localtime')),
+      username TEXT NOT NULL,
+      role TEXT NOT NULL,
+      ip TEXT NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT NOT NULL
+    )
+  `);
+
   // Migration: tambah kolom baru jika belum ada
   db.all("PRAGMA table_info(transactions)", (err, cols) => {
     if (err) return;

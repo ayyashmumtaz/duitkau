@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../database');
+const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -21,6 +22,8 @@ router.post('/login', async (req, res) => {
     req.session.fullName = user.full_name;
     req.session.role = user.role;
 
+    logEvent(req, 'LOGIN', `Pengguna ${user.role} berhasil login`);
+
     res.json({ role: user.role, fullName: user.full_name });
   } catch (err) {
     console.error(err);
@@ -29,6 +32,7 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
+  logEvent(req, 'LOGOUT', 'Pengguna melakukan logout');
   req.session.destroy(() => {
     res.json({ message: 'Logout berhasil' });
   });
@@ -43,6 +47,9 @@ router.put('/password', async (req, res) => {
   try {
     const hashed = bcrypt.hashSync(password, 10);
     await db.runAsync('UPDATE users SET password = ? WHERE id = ?', [hashed, req.session.userId]);
+    
+    logEvent(req, 'UPDATE_PASSWORD', 'Pengguna mengganti password');
+    
     res.json({ message: 'Password berhasil diubah' });
   } catch (err) {
     console.error(err);

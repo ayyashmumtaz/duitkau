@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../database');
 const upload = require('../middleware/upload');
 const { requireLogin, requireFinance } = require('../middleware/auth');
+const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -82,6 +83,9 @@ router.patch('/pengajuan/:id', async (req, res) => {
     );
 
     const updated = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
+    
+    logEvent(req, 'UPDATE_TX_STATUS', `Status pengajuan "${updated.name}" diubah menjadi ${newStatus}`);
+    
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -122,6 +126,9 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
     );
 
     const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
+    
+    logEvent(req, 'FINANCE_INPUT_TX', `Finance input transaksi "${inserted.name}" untuk karyawan ID ${userId} (${type})`);
+    
     res.status(201).json(inserted);
   } catch (err) {
     console.error(err);
@@ -226,6 +233,9 @@ router.delete('/delete-transaction/:id', async (req, res) => {
     }
     
     await db.runAsync('DELETE FROM transactions WHERE id = ?', [txId]);
+    
+    logEvent(req, 'DELETE_TX', `Finance menghapus transaksi (ID: ${txId})`);
+    
     res.json({ message: 'Transaksi berhasil dihapus' });
   } catch (err) {
     console.error(err);

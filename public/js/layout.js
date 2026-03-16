@@ -16,6 +16,7 @@
     { href: '/categories.html',      icon: '🏷️', label: 'Kategori',         page: 'categories'      },
     { href: '/reports.html',         icon: '📋', label: 'Laporan Detail',   page: 'reports'         },
     { href: '/ca.html',              icon: '💰', label: 'Cash Advance',     page: 'ca', notif: true },
+    { href: '/logs.html',            icon: '📜', label: 'Event Log',        page: 'logs'            },
   ];
 
   // Finance bottom-nav (limited slots)
