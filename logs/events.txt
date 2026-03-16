@@ -16,3 +16,5 @@
 [2026-03-16T20:11:04.412Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-16T20:11:11.850Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-16T20:11:21.765Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-16T20:14:53.536Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-16T20:14:59.124Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login

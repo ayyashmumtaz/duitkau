@@ -193,6 +193,7 @@ router.patch('/:id/reject', async (req, res) => {
       [req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REJECT_CA', `Finance menolak CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -220,6 +221,7 @@ router.patch('/:id/request-close', async (req, res) => {
       [req.session.userId, note, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REQUEST_CLOSE_CA', `Karyawan mengajukan penutupan CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -244,6 +246,7 @@ router.patch('/:id/reject-close', async (req, res) => {
       [req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REJECT_CLOSE_CA', `Finance menolak penutupan CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -295,6 +298,7 @@ router.patch('/:id/request-reimburse', async (req, res) => {
       [req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REQUEST_REIMBURSE_CA', `Karyawan mengajukan klaim reimburse untuk CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
