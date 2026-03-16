@@ -212,7 +212,7 @@
         <thead><tr>
           <th>Judul</th>
           ${window.currentUser.role === 'finance' ? '<th>Karyawan</th>' : ''}
-          <th>Nominal</th>
+          <th>Nominal Pengajuan</th>
           <th>Proyek</th>
           <th>Status</th>
           <th>Reimburse</th>
@@ -335,6 +335,7 @@
 
         let meta = '';
         if (ca.description) meta += `<div><strong>Deskripsi:</strong> ${ca.description}</div>`;
+        meta += `<div><strong>Nominal Diajukan:</strong> ${fmt.format(ca.initial_amount)}</div>`;
         meta += `<div><strong>Status:</strong> ${STATUS_LABEL[ca.status] || ca.status}</div>`;
         meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'} pada ${fmtDateTime(ca.request_at)}</div>`;
         if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} pada ${fmtDateTime(ca.open_at)}</div>`;
@@ -347,9 +348,9 @@
         const txs = ca.transactions || [];
         const totalKeluar = txs.filter(t => t.type === 'keluar').reduce((s, t) => s + t.amount, 0);
         const totalMasuk = txs.filter(t => t.type === 'masuk').reduce((s, t) => s + t.amount, 0);
-        const sisa = ca.initial_amount + totalMasuk - totalKeluar;
+        const sisa = totalMasuk - totalKeluar;
         document.getElementById('detailSummary').innerHTML = `
-          <div class="summary-card masuk"><div class="summary-label">Dana CA</div><div class="summary-value green">${fmt.format(ca.initial_amount)}</div></div>
+          <div class="summary-card masuk"><div class="summary-label">Dana Diterima CA</div><div class="summary-value green">${fmt.format(totalMasuk)}</div></div>
           <div class="summary-card keluar"><div class="summary-label">Total Pengeluaran</div><div class="summary-value red">${fmt.format(totalKeluar)}</div></div>
           <div class="summary-card ${sisa >= 0 ? 'net-positive' : 'net-negative'}">
             <div class="summary-label">${sisa >= 0 ? 'Sisa Dana' : 'Kekurangan'}</div>

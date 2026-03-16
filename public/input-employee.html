@@ -66,15 +66,15 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="projectId">Proyek (opsional)</label>
-              <select id="projectId">
-                <option value="">-- Tidak ada proyek --</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label for="caId">Cash Advance (opsional)</label>
               <select id="caId">
                 <option value="">-- Tidak terkait CA --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="projectId">Proyek (opsional)</label>  
+              <select id="projectId">
+                <option value="">-- Tidak ada proyek --</option>
               </select>
             </div>
 
@@ -236,8 +236,14 @@
     function filterCAs() {
       const selectedUser = document.getElementById('userId').value;
       const sel = document.getElementById('caId');
+      
+      if (!selectedUser) {
+        sel.innerHTML = '<option value="">-- Pilih Karyawan Dulu --</option>';
+        return;
+      }
+      
       sel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
-      if (!selectedUser) return;
+      let found = false;
       
       allCAs.forEach(ca => {
         if (ca.request_by == selectedUser) {
@@ -245,11 +251,41 @@
           opt.value = ca.id;
           opt.textContent = ca.title;
           sel.appendChild(opt);
+          found = true;
         }
       });
+      
+      if (!found) {
+        sel.innerHTML = '<option value="">-- Tidak ada CA Open --</option>';
+      }
+      
+      // Reset disabled state of project
+      const projInput = document.getElementById('projectId');
+      projInput.disabled = false;
+      projInput.value = "";
     }
 
     document.getElementById('userId').addEventListener('change', filterCAs);
+
+    document.getElementById('caId').addEventListener('change', function() {
+      const selectedCaId = this.value;
+      const projInput = document.getElementById('projectId');
+      
+      if (!selectedCaId) {
+        projInput.disabled = false;
+        projInput.value = "";
+        return;
+      }
+      
+      const ca = allCAs.find(c => c.id == selectedCaId);
+      // CA terpilih. Selalu disable manual project input.
+      projInput.disabled = true;
+      if (ca && ca.project_id) {
+        projInput.value = ca.project_id;
+      } else {
+        projInput.value = "";
+      }
+    });
 
     async function loadToday() {
       const today = new Date().toISOString().slice(0, 10);
@@ -320,7 +356,12 @@
       fd.append('date', parsedDate);
       fd.append('note', document.getElementById('note').value);
       fd.append('category_id', document.getElementById('categoryId').value || '');
-      fd.append('project_id', document.getElementById('projectId').value || '');
+      
+      // Jika select di-disable, nilainya tidak otomatis masuk ke FormData.
+      // Jadi kita sertakan secara manual membacanya dari element.
+      const projVal = document.getElementById('projectId').value;
+      fd.append('project_id', projVal || '');
+      
       fd.append('ca_id', document.getElementById('caId').value || '');
       const file = document.getElementById('proofImage').files[0];
       if (file) fd.append('proof_image', file);
@@ -335,6 +376,7 @@
         document.getElementById('txForm').reset();
         fpDate.setDate(new Date(), true);
         document.getElementById('previewWrap').classList.remove('show');
+        document.getElementById('projectId').disabled = false;
         await loadToday();
         setTimeout(() => hideAlert('formSuccess'), 4000);
       } catch { showAlert('formAlert', 'Gagal menyimpan transaksi'); }

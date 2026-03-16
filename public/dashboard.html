@@ -50,15 +50,15 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="projectId">Proyek (opsional)</label>
-              <select id="projectId">
-                <option value="">-- Tidak ada proyek --</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label for="caId">Cash Advance (opsional)</label>
               <select id="caId">
                 <option value="">-- Tidak terkait CA --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="projectId">Proyek (opsional)</label>
+              <select id="projectId">
+                <option value="">-- Tidak ada proyek --</option>
               </select>
             </div>
 
@@ -149,15 +149,15 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="editProjectId">Proyek (opsional)</label>
-          <select id="editProjectId">
-            <option value="">-- Tidak ada proyek --</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label for="editCaId">Cash Advance (opsional)</label>
           <select id="editCaId">
             <option value="">-- Tidak terkait CA --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editProjectId">Proyek (opsional)</label>  
+          <select id="editProjectId">
+            <option value="">-- Tidak ada proyek --</option>
           </select>
         </div>
         <div class="form-group">
@@ -233,6 +233,7 @@
     });
 
     let draftItems = [];
+    let allCAs = [];
 
     // DB status hook (disable submit when DB is down)
     window.onDbStatusChange = (ok) => {
@@ -259,8 +260,9 @@
     async function loadCAs() {
       try {
         const res = await fetch('/api/ca').then(r => r.json());
+        allCAs = res.filter(ca => ca.status === 'open');
         const sel = document.getElementById('caId');
-        res.filter(ca => ca.status === 'open').forEach(ca => {
+        allCAs.forEach(ca => {
           const o = document.createElement('option'); o.value = ca.id; o.textContent = ca.title; sel.appendChild(o);
         });
       } catch {}
@@ -270,6 +272,26 @@
       fpDate.setDate(new Date(), true);
       await Promise.all([loadCategories(), loadProjects(), loadCAs()]);
     };
+
+    document.getElementById('caId').addEventListener('change', function() {
+      const selectedCaId = this.value;
+      const projInput = document.getElementById('projectId');
+      if (!selectedCaId) { projInput.disabled = false; projInput.value = ""; return; }
+      const ca = allCAs.find(c => c.id == selectedCaId);
+      projInput.disabled = true;
+      if (ca && ca.project_id) { projInput.value = ca.project_id; }
+      else { projInput.value = ""; }
+    });
+
+    document.getElementById('editCaId').addEventListener('change', function() {
+      const selectedCaId = this.value;
+      const projInput = document.getElementById('editProjectId');
+      if (!selectedCaId) { projInput.disabled = false; projInput.value = ""; return; }
+      const ca = allCAs.find(c => c.id == selectedCaId);
+      projInput.disabled = true;
+      if (ca && ca.project_id) { projInput.value = ca.project_id; }
+      else { projInput.value = ""; }
+    });
 
     // ─── Preview foto ─────────────────────────
     document.getElementById('proofImage').addEventListener('change', function () {
@@ -297,8 +319,11 @@
       const file = document.getElementById('proofImage').files[0];
       const categoryId = document.getElementById('categoryId').value;
       const categoryName = document.getElementById('categoryId').options[document.getElementById('categoryId').selectedIndex].text;
-      const projectId = document.getElementById('projectId').value;
-      const projectName = document.getElementById('projectId').options[document.getElementById('projectId').selectedIndex].text;
+      
+      const projSel = document.getElementById('projectId');
+      const projectId = projSel.value;
+      const projectName = projectId ? projSel.options[projSel.selectedIndex].text : '';
+      
       const caEl = document.getElementById('caId');
       const caId = caEl.value;
       const caName = caEl.options[caEl.selectedIndex].text;
@@ -315,6 +340,7 @@
       fpDate.setDate(new Date(), true);
       document.getElementById('previewWrap').classList.remove('show');
       document.getElementById('previewImg').src = '';
+      document.getElementById('projectId').disabled = false;
     });
 
     function renderDraft() {
@@ -401,6 +427,16 @@
       caSel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
       document.getElementById('caId').querySelectorAll('option:not(:first-child)').forEach(o => caSel.appendChild(o.cloneNode(true)));
       caSel.value = item.caId || '';
+      
+      const ca = allCAs.find(c => c.id == item.caId);
+      if (item.caId) { 
+        projSel.disabled = true; 
+        if (ca && ca.project_id) projSel.value = ca.project_id;
+        else projSel.value = "";
+      } else { 
+        projSel.disabled = false; 
+      }
+      
       const curImg = document.getElementById('editCurrentImg');
       curImg.src = item.previewUrl; curImg.style.display = '';
       document.getElementById('editProofImage').value = '';
