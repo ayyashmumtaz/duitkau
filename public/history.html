@@ -50,13 +50,13 @@
 
       <!-- Summary -->
       <div class="summary-grid no-print" style="grid-template-columns:repeat(2,1fr); margin-bottom:1.25rem">
+        <div class="summary-card masuk">
+          <div class="summary-label">Total Pemasukan</div>
+          <div class="summary-value green" id="totalMasuk">Rp 0</div>
+        </div>
         <div class="summary-card keluar">
           <div class="summary-label">Total Pengeluaran</div>
           <div class="summary-value red" id="totalKeluar">Rp 0</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-label">Jumlah Transaksi</div>
-          <div class="summary-value blue" id="jumlahTx">0</div>
         </div>
       </div>
 
@@ -77,14 +77,16 @@
               <tr>
                 <th>Tanggal</th>
                 <th>Nama</th>
+                <th>Jenis</th>
                 <th>Kategori</th>
                 <th>Proyek</th>
                 <th class="text-right">Nominal</th>
+                <th>Diinput oleh</th>
                 <th>Bukti</th>
               </tr>
             </thead>
             <tbody id="txBody">
-              <tr><td colspan="6"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
+              <tr><td colspan="8"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -185,19 +187,21 @@
     function renderTable(txs) {
       const tbody = document.getElementById('txBody');
       if (txs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>Belum ada pengeluaran</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">📭</div>Belum ada transaksi</div></td></tr>`;
         return;
       }
       tbody.innerHTML = txs.map(tx => `
-        <tr class="keluar">
+        <tr class="${tx.type}">
           <td>${fmtDate(tx.date)}</td>
           <td>
             <div>${tx.name}</div>
             ${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}
           </td>
+          <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
           <td class="text-muted">${tx.category_name || '–'}</td>
           <td class="text-muted">${tx.project_name || '–'}</td>
-          <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
+          <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+          <td class="text-muted" style="font-size:.8rem">${tx.input_by_name || '–'}</td>
           <td>
             ${tx.proof_image
               ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" title="Lihat bukti" />`
@@ -208,9 +212,10 @@
     }
 
     function updateSummary(txs) {
-      const total = txs.reduce((s, t) => s + t.amount, 0);
-      document.getElementById('totalKeluar').textContent = fmt.format(total);
-      document.getElementById('jumlahTx').textContent = txs.length + ' transaksi';
+      const masuk = txs.filter(t => t.type === 'masuk').reduce((s, t) => s + t.amount, 0);
+      const keluar = txs.filter(t => t.type === 'keluar').reduce((s, t) => s + t.amount, 0);
+      document.getElementById('totalMasuk').textContent = fmt.format(masuk);
+      document.getElementById('totalKeluar').textContent = fmt.format(keluar);
     }
 
     // ─── Filter ───────────────────────────────

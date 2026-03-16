@@ -11,10 +11,12 @@ router.get('/', async (req, res) => {
   const { month } = req.query;
   try {
     let rows;
-    const baseSelect = `SELECT t.*, pr.name as project_name, c.name as category_name
+    const baseSelect = `SELECT t.*, pr.name as project_name, c.name as category_name,
+       ib.full_name as input_by_name
        FROM transactions t
        LEFT JOIN projects pr ON t.project_id = pr.id
-       LEFT JOIN categories c ON t.category_id = c.id`;
+       LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN users ib ON t.input_by = ib.id`;
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       rows = await db.allAsync(
         `${baseSelect} WHERE t.user_id = ? AND strftime('%Y-%m', t.date) = ?
