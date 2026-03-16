@@ -14,18 +14,20 @@ router.get('/summary', async (req, res) => {
     let rows;
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       rows = await db.allAsync(
-        `SELECT t.*, u.username, u.full_name, pr.name as project_name FROM transactions t
+        `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name FROM transactions t
          JOIN users u ON t.user_id = u.id
          LEFT JOIN projects pr ON t.project_id = pr.id
+         LEFT JOIN categories c ON t.category_id = c.id
          WHERE t.status = 'approved' AND strftime('%Y-%m', t.date) = ?
          ORDER BY u.full_name, t.date DESC`,
         [month]
       );
     } else {
       rows = await db.allAsync(
-        `SELECT t.*, u.username, u.full_name, pr.name as project_name FROM transactions t
+        `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name FROM transactions t
          JOIN users u ON t.user_id = u.id
          LEFT JOIN projects pr ON t.project_id = pr.id
+         LEFT JOIN categories c ON t.category_id = c.id
          WHERE t.status = 'approved'
          ORDER BY u.full_name, t.date DESC`
       );
@@ -89,7 +91,7 @@ router.patch('/pengajuan/:id', async (req, res) => {
 
 // ─── Finance input langsung untuk karyawan (approved) ────────
 router.post('/input-employee', upload.single('proof_image'), async (req, res) => {
-  const { userId, type, name, amount, date, note, project_id } = req.body;
+  const { userId, type, name, amount, date, note, project_id, category_id } = req.body;
 
   if (!userId) return res.status(400).json({ error: 'Karyawan wajib dipilih' });
   if (!['masuk', 'keluar'].includes(type))
@@ -101,6 +103,8 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
     return res.status(400).json({ error: 'Nominal harus berupa angka positif' });
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date))
     return res.status(400).json({ error: 'Format tanggal tidak valid' });
+  if (!category_id)
+    return res.status(400).json({ error: 'Kategori wajib dipilih' });
 
   try {
     const emp = await db.getAsync("SELECT id FROM users WHERE id = ? AND role = 'employee'", [userId]);
@@ -108,11 +112,12 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
 
     const proofImage = req.file ? `/uploads/${req.file.filename}` : null;
     const projectId = project_id ? parseInt(project_id) || null : null;
+    const categoryId = parseInt(category_id);
 
     const result = await db.runAsync(
-      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?)`,
-      [userId, type, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId]
+      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)`,
+      [userId, type, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId]
     );
 
     const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
@@ -125,7 +130,7 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
 
 // ─── Laporan detail dengan filter fleksibel (hanya approved) ─
 router.get('/report', async (req, res) => {
-  const { userId, periodType, periodValue, projectId } = req.query;
+  const { userId, periodType, periodValue, projectId, categoryId } = req.query;
   try {
     let whereClauses = ["t.status = 'approved'"];
     let params = [];
@@ -138,6 +143,10 @@ router.get('/report', async (req, res) => {
       whereClauses.push('t.project_id = ?');
       params.push(projectId);
     }
+    if (categoryId) {
+      whereClauses.push('t.category_id = ?');
+      params.push(categoryId);
+    }
     if (periodType === 'date' && periodValue && /^\d{4}-\d{2}-\d{2}$/.test(periodValue)) {
       whereClauses.push("t.date = ?"); params.push(periodValue);
     } else if (periodType === 'month' && periodValue && /^\d{4}-\d{2}$/.test(periodValue)) {
@@ -148,9 +157,10 @@ router.get('/report', async (req, res) => {
 
     const where = 'WHERE ' + whereClauses.join(' AND ');
     const rows = await db.allAsync(
-      `SELECT t.*, u.username, u.full_name, pr.name as project_name FROM transactions t
+      `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name FROM transactions t
        JOIN users u ON t.user_id = u.id
-       LEFT JOIN projects pr ON t.project_id = pr.id ${where}
+       LEFT JOIN projects pr ON t.project_id = pr.id
+       LEFT JOIN categories c ON t.category_id = c.id ${where}
        ORDER BY u.full_name, t.date DESC`,
       params
     );
@@ -197,7 +207,7 @@ function groupByEmployee(rows) {
     grouped[row.user_id].transactions.push({
       id: row.id, type: row.type, name: row.name, amount: row.amount,
       date: row.date, note: row.note, proof_image: row.proof_image, created_at: row.created_at,
-      project_name: row.project_name,
+      project_name: row.project_name, category_name: row.category_name,
     });
     if (row.type === 'masuk') grouped[row.user_id].totalMasuk += row.amount;
     else grouped[row.user_id].totalKeluar += row.amount;

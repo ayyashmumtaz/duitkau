@@ -43,7 +43,9 @@ router.put('/:id', requireLogin, requireFinance, async (req, res) => {
 
 router.delete('/:id', requireLogin, requireFinance, async (req, res) => {
   try {
-    await db.runAsync('UPDATE transactions SET category_id = NULL WHERE category_id = ?', [req.params.id]);
+    const usage = await db.getAsync('SELECT COUNT(*) as count FROM transactions WHERE category_id = ?', [req.params.id]);
+    if (usage.count > 0)
+      return res.status(400).json({ error: `Tidak bisa dihapus — masih digunakan oleh ${usage.count} transaksi` });
     await db.runAsync('DELETE FROM categories WHERE id = ?', [req.params.id]);
     res.status(204).end();
   } catch { res.status(500).json({ error: 'Gagal menghapus kategori' }); }

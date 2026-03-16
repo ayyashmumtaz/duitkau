@@ -37,6 +37,9 @@
       <a href="/projects.html" class="sidebar-item">
         <span class="icon">📁</span><span class="label">Proyek</span>
       </a>
+      <a href="/categories.html" class="sidebar-item">
+        <span class="icon">🏷️</span><span class="label">Kategori</span>
+      </a>
       <a href="/reports.html" class="sidebar-item">
         <span class="icon">📋</span><span class="label">Laporan Detail</span>
       </a>
@@ -224,7 +227,7 @@
               ${emp.transactions.length === 0
                 ? `<div class="empty" style="padding:1.5rem"><div class="empty-icon">📭</div>Tidak ada transaksi</div>`
                 : `<div class="table-wrapper"><table>
-                    <thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Proyek</th><th>Bukti</th><th>Catatan</th></tr></thead>
+                    <thead><tr><th>Tanggal</th><th>Nama</th><th>Jenis</th><th class="text-right">Nominal</th><th>Kategori</th><th>Proyek</th><th>Bukti</th><th>Catatan</th></tr></thead>
                     <tbody>
                       ${emp.transactions.map(tx => `
                         <tr class="${tx.type}">
@@ -232,6 +235,7 @@
                           <td>${tx.name}</td>
                           <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
                           <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                          <td class="text-muted">${tx.category_name || '–'}</td>
                           <td class="text-muted">${tx.project_name || '–'}</td>
                           <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
                           <td class="text-muted">${tx.note || '–'}</td>
@@ -245,7 +249,7 @@
                           <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
                           <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
                         </td>
-                        <td colspan="3" style="padding:.6rem .9rem">
+                        <td colspan="4" style="padding:.6rem .9rem">
                           <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
                           <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">${fmt.format(Math.abs(emp.net))}</span>
                         </td>

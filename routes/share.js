@@ -37,10 +37,11 @@ router.get('/:token', async (req, res) => {
 
     const where = 'WHERE ' + whereClauses.join(' AND ');
     const rows = await db.allAsync(
-      `SELECT t.*, u.username, u.full_name, pr.name as project_name
+      `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name
        FROM transactions t
        JOIN users u ON t.user_id = u.id
        LEFT JOIN projects pr ON t.project_id = pr.id
+       LEFT JOIN categories c ON t.category_id = c.id
        ${where} ORDER BY u.full_name, t.date DESC`,
       params
     );
@@ -48,7 +49,7 @@ router.get('/:token', async (req, res) => {
     const grouped = {};
     for (const r of rows) {
       if (!grouped[r.user_id]) grouped[r.user_id] = { userId: r.user_id, username: r.username, fullName: r.full_name, transactions: [], totalMasuk: 0, totalKeluar: 0 };
-      grouped[r.user_id].transactions.push({ id: r.id, type: r.type, name: r.name, amount: r.amount, date: r.date, note: r.note, proof_image: r.proof_image, project_name: r.project_name });
+      grouped[r.user_id].transactions.push({ id: r.id, type: r.type, name: r.name, amount: r.amount, date: r.date, note: r.note, proof_image: r.proof_image, project_name: r.project_name, category_name: r.category_name });
       if (r.type === 'masuk') grouped[r.user_id].totalMasuk += r.amount;
       else grouped[r.user_id].totalKeluar += r.amount;
     }

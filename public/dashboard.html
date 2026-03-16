@@ -29,31 +29,15 @@
     <aside class="sidebar">
       <div class="sidebar-section">Menu</div>
       <a href="/dashboard.html" class="sidebar-item active">
-        <span class="icon">📝</span><span class="label">Pengeluaran</span>
+        <span class="icon">📝</span><span class="label">Input Pengeluaran</span>
+      </a>
+      <a href="/history.html" class="sidebar-item">
+        <span class="icon">📋</span><span class="label">Riwayat</span>
       </a>
     </aside>
 
     <main class="main-content">
-      <!-- Print header (hidden on screen) -->
-      <div class="print-header">
-        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
-        <h2>Riwayat Pengeluaran</h2>
-        <p id="printMeta"></p>
-      </div>
-
       <h1 class="page-title">Input Pengeluaran</h1>
-
-      <!-- Summary -->
-      <div class="summary-grid" style="grid-template-columns:repeat(2,1fr); margin-bottom:1.25rem">
-        <div class="summary-card keluar">
-          <div class="summary-label">Total Pengeluaran (bulan ini)</div>
-          <div class="summary-value red" id="totalKeluar">Rp 0</div>
-        </div>
-        <div class="summary-card">
-          <div class="summary-label">Jumlah Transaksi (bulan ini)</div>
-          <div class="summary-value blue" id="jumlahTx">0</div>
-        </div>
-      </div>
 
       <div class="grid-2">
         <!-- FORM -->
@@ -77,6 +61,12 @@
             <div class="form-group">
               <label for="note">Catatan (opsional)</label>
               <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="categoryId">Kategori <span style="color:var(--red)">*</span></label>
+              <select id="categoryId" required>
+                <option value="">-- Pilih kategori --</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="projectId">Proyek (opsional)</label>
@@ -135,52 +125,18 @@
         </div>
       </div>
 
-      <!-- RIWAYAT -->
-      <div class="card" style="margin-top:1.25rem" id="historyCard">
-        <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
-          <div class="card-title" style="margin-bottom:0">Riwayat Pengeluaran</div>
-          <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap">
-            <div class="filter-bar" style="margin-bottom:0">
-              <input type="month" id="filterMonth" />
-              <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="btnPrint">Download PDF</button>
-          </div>
-        </div>
-
-        <div id="tableAlert" class="alert alert-error"></div>
-
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Tanggal</th>
-                <th>Nama</th>
-                <th class="text-right">Nominal</th>
-                <th>Bukti</th>
-              </tr>
-            </thead>
-            <tbody id="txBody">
-              <tr><td colspan="4"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </main>
   </div>
 
   <!-- Bottom Nav (mobile) -->
   <nav class="bottom-nav">
     <a href="/dashboard.html" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">📝</span>Pengeluaran
+      <span class="bottom-nav-icon">📝</span>Input
+    </a>
+    <a href="/history.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📋</span>Riwayat
     </a>
   </nav>
-
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox">
-    <div class="lightbox-close" id="lightboxClose">✕</div>
-    <img id="lightboxImg" src="" alt="Bukti transaksi" />
-  </div>
 
   <!-- Password Modal -->
   <div class="modal-overlay" id="pwdOverlay">
@@ -246,7 +202,7 @@
     });
 
     let dbOk = true;
-    let draftItems = []; // { name, amount, date, note, previewUrl, file, projectId, projectName }
+    let draftItems = []; // { name, amount, date, note, previewUrl, file, projectId, projectName, categoryId, categoryName }
 
     // ─── DB Status ────────────────────────────
     async function checkDb() {
@@ -267,6 +223,20 @@
       }
     }
     setInterval(checkDb, 15000);
+
+    // ─── Load categories ───────────────────────
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories').then(r => r.json());
+        const sel = document.getElementById('categoryId');
+        res.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
 
     // ─── Load projects ─────────────────────────
     async function loadProjects() {
@@ -293,50 +263,7 @@
       } catch { window.location.href = '/login.html'; return; }
 
       document.getElementById('date').value = new Date().toISOString().slice(0, 10);
-      const now = new Date();
-      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      document.getElementById('filterMonth').value = ym;
-      await Promise.all([loadProjects(), loadTransactions(ym)]);
-    }
-
-    // ─── Load history ─────────────────────────
-    async function loadTransactions(month) {
-      const url = month ? `/api/transactions?month=${month}` : '/api/transactions';
-      try {
-        const txs = await fetch(url).then(r => r.json());
-        renderTable(txs);
-        updateSummary(txs);
-      } catch { showAlert('tableAlert', 'Gagal memuat transaksi'); }
-    }
-
-    function renderTable(txs) {
-      const tbody = document.getElementById('txBody');
-      if (txs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>Belum ada pengeluaran</div></td></tr>`;
-        return;
-      }
-      tbody.innerHTML = txs.map(tx => `
-        <tr class="keluar">
-          <td>${fmtDate(tx.date)}</td>
-          <td>
-            <div>${tx.name}</div>
-            ${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}
-            ${tx.project_name ? `<div class="text-muted" style="font-size:.7rem">📁 ${tx.project_name}</div>` : ''}
-          </td>
-          <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
-          <td>
-            ${tx.proof_image
-              ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" title="Lihat bukti" />`
-              : `<span class="text-muted">–</span>`}
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    function updateSummary(txs) {
-      const total = txs.reduce((s, t) => s + t.amount, 0);
-      document.getElementById('totalKeluar').textContent = fmt.format(total);
-      document.getElementById('jumlahTx').textContent = txs.length + ' transaksi';
+      await Promise.all([loadCategories(), loadProjects()]);
     }
 
     // ─── Preview foto ─────────────────────────
@@ -365,6 +292,8 @@
       const note = document.getElementById('note').value.trim();
       const fileInput = document.getElementById('proofImage');
       const file = fileInput.files[0];
+      const categoryId = document.getElementById('categoryId').value;
+      const categoryName = document.getElementById('categoryId').options[document.getElementById('categoryId').selectedIndex].text;
       const projectId = document.getElementById('projectId').value;
       const projectName = document.getElementById('projectId').options[document.getElementById('projectId').selectedIndex].text;
 
@@ -375,10 +304,11 @@
       if (!name) { showAlert('formAlert', 'Nama pengeluaran wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('formAlert', 'Nominal harus berupa angka positif'); return; }
       if (!date) { showAlert('formAlert', 'Tanggal wajib diisi'); return; }
+      if (!categoryId) { showAlert('formAlert', 'Kategori wajib dipilih'); return; }
 
       const previewUrl = document.getElementById('previewImg').src;
 
-      draftItems.push({ name, amount, date, note, previewUrl, file, projectId, projectName });
+      draftItems.push({ name, amount, date, note, previewUrl, file, categoryId, categoryName, projectId, projectName });
       renderDraft();
 
       // Reset form
@@ -411,12 +341,12 @@
 
       itemsEl.innerHTML = draftItems.map((item, idx) => `
         <div style="display:flex; align-items:flex-start; gap:.6rem; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
-          <img src="${item.previewUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0; cursor:pointer"
-               onclick="openLightbox('${item.previewUrl}')" />
+          <img src="${item.previewUrl}" style="width:40px; height:40px; object-fit:cover; border-radius:6px; flex-shrink:0" />
           <div style="flex:1; min-width:0">
             <div style="font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">${item.name}</div>
             <div class="amount-keluar" style="font-size:.8rem">${fmt.format(item.amount)}</div>
             <div class="text-muted" style="font-size:.75rem">${fmtDate(item.date)}${item.note ? ' · ' + item.note : ''}</div>
+            ${item.categoryId ? '<div class="text-muted" style="font-size:.7rem">🏷️ ' + item.categoryName + '</div>' : ''}
             ${item.projectId ? '<div class="text-muted" style="font-size:.7rem">📁 ' + item.projectName + '</div>' : ''}
           </div>
           <button class="btn btn-ghost btn-sm" onclick="removeDraftItem(${idx})" title="Hapus dari antrian" style="flex-shrink:0">✕</button>
@@ -453,7 +383,7 @@
       btn.textContent = 'Menyimpan...';
 
       const fd = new FormData();
-      const itemsMeta = draftItems.map(({ name, amount, date, note, projectId }) => ({ name, amount, date, note, project_id: projectId || null }));
+      const itemsMeta = draftItems.map(({ name, amount, date, note, categoryId, projectId }) => ({ name, amount, date, note, category_id: categoryId || null, project_id: projectId || null }));
       fd.append('items', JSON.stringify(itemsMeta));
       draftItems.forEach((item, idx) => fd.append(`proof_${idx}`, item.file));
 
@@ -465,31 +395,12 @@
         showAlert('draftSuccess', `✅ ${draftItems.length} pengeluaran berhasil disimpan!`);
         draftItems = [];
         renderDraft();
-        const currentMonth = document.getElementById('filterMonth').value || null;
-        await loadTransactions(currentMonth);
         setTimeout(() => hideAlert('draftSuccess'), 4000);
       } catch { showAlert('draftAlert', 'Gagal menyimpan batch'); }
       finally {
         btn.disabled = false;
         renderDraft();
       }
-    });
-
-    // ─── Lightbox ─────────────────────────────
-    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
-    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
-    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
-
-    // ─── Filter ───────────────────────────────
-    document.getElementById('filterMonth').addEventListener('change', (e) => loadTransactions(e.target.value || null));
-    document.getElementById('clearFilter').addEventListener('click', () => { document.getElementById('filterMonth').value = ''; loadTransactions(null); });
-
-    // ─── Print / PDF ──────────────────────────
-    document.getElementById('btnPrint').addEventListener('click', () => {
-      const month = document.getElementById('filterMonth').value;
-      const label = month ? new Date(month + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Semua Waktu';
-      document.getElementById('printMeta').textContent = `Nama: ${document.getElementById('navName').textContent} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}`;
-      window.print();
     });
 
     // ─── Password Modal ───────────────────────

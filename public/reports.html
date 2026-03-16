@@ -36,6 +36,9 @@
       <a href="/projects.html" class="sidebar-item">
         <span class="icon">📁</span><span class="label">Proyek</span>
       </a>
+      <a href="/categories.html" class="sidebar-item">
+        <span class="icon">🏷️</span><span class="label">Kategori</span>
+      </a>
       <a href="/reports.html" class="sidebar-item active">
         <span class="icon">📋</span><span class="label">Laporan Detail</span>
       </a>
@@ -61,7 +64,7 @@
       <!-- Filter Panel -->
       <div class="card no-print" style="margin-bottom:1.25rem">
         <div class="card-title">🔍 Filter Laporan</div>
-        <div class="report-filter-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap:.85rem; align-items:end">
+        <div class="report-filter-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto; gap:.85rem; align-items:end">
 
           <div class="form-group" style="margin-bottom:0">
             <label>Karyawan</label>
@@ -89,6 +92,13 @@
             <label>Proyek</label>
             <select id="filterProject">
               <option value="">Semua Proyek</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label>Kategori</label>
+            <select id="filterCategory">
+              <option value="">Semua Kategori</option>
             </select>
           </div>
 
@@ -145,6 +155,12 @@
       <span class="bottom-nav-icon">📋</span>Laporan
     </a>
   </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
 
   <!-- Confirm Modal -->
   <div class="modal-overlay" id="confirmOverlay">
@@ -238,7 +254,7 @@
         document.getElementById('navName').textContent = me.fullName;
       } catch { window.location.href = '/login.html'; return; }
 
-      await Promise.all([loadEmployees(), loadProjects()]);
+      await Promise.all([loadEmployees(), loadProjects(), loadCategories()]);
       updatePeriodInput();
 
       // Set default period to current month
@@ -269,6 +285,19 @@
           const opt = document.createElement('option');
           opt.value = p.id;
           opt.textContent = p.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories').then(r => r.json());
+        const sel = document.getElementById('filterCategory');
+        res.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
           sel.appendChild(opt);
         });
       } catch {}
@@ -325,9 +354,11 @@
         return;
       }
 
+      const categoryId = document.getElementById('filterCategory').value;
       const params = new URLSearchParams({ userId: employeeId, periodType });
       if (periodType !== 'all') params.append('periodValue', periodValue);
       if (projectId) params.append('projectId', projectId);
+      if (categoryId) params.append('categoryId', categoryId);
 
       const btn = document.getElementById('btnSearch');
       btn.disabled = true;
@@ -417,7 +448,9 @@
                       <th>Nama Transaksi</th>
                       <th>Jenis</th>
                       <th class="text-right">Nominal</th>
+                      <th>Kategori</th>
                       <th>Proyek</th>
+                      <th>Bukti</th>
                       <th>Catatan</th>
                     </tr>
                   </thead>
@@ -428,7 +461,9 @@
                         <td>${tx.name}</td>
                         <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
                         <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                        <td class="text-muted">${tx.category_name || '–'}</td>
                         <td class="text-muted">${tx.project_name || '–'}</td>
+                        <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
                         <td class="text-muted">${tx.note || '–'}</td>
                       </tr>
                     `).join('')}
@@ -440,7 +475,7 @@
                         <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
                         <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
                       </td>
-                      <td colspan="2" style="padding:.6rem .9rem">
+                      <td colspan="4" style="padding:.6rem .9rem">
                         <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
                         <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">
                           ${fmt.format(Math.abs(emp.net))}
@@ -455,6 +490,11 @@
         </div>
       `).join('');
     }
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
 
     // ─── Print / PDF ──────────────────────────
     document.getElementById('btnPrint').addEventListener('click', () => window.print());

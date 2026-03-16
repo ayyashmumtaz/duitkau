@@ -38,6 +38,9 @@
       <a href="/projects.html" class="sidebar-item">
         <span class="icon">📁</span><span class="label">Proyek</span>
       </a>
+      <a href="/categories.html" class="sidebar-item">
+        <span class="icon">🏷️</span><span class="label">Kategori</span>
+      </a>
       <a href="/reports.html" class="sidebar-item">
         <span class="icon">📋</span><span class="label">Laporan Detail</span>
       </a>
@@ -84,6 +87,12 @@
             <div class="form-group">
               <label for="note">Catatan (opsional)</label>
               <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="categoryId">Kategori <span style="color:var(--red)">*</span></label>
+              <select id="categoryId" required>
+                <option value="">-- Pilih kategori --</option>
+              </select>
             </div>
             <div class="form-group">
               <label for="projectId">Proyek (opsional)</label>
@@ -263,7 +272,7 @@
 
       document.getElementById('date').value = new Date().toISOString().slice(0, 10);
 
-      await Promise.all([loadEmployees(), loadProjects(), loadToday()]);
+      await Promise.all([loadEmployees(), loadCategories(), loadProjects(), loadToday()]);
     }
 
     async function loadEmployees() {
@@ -275,6 +284,19 @@
         opt.textContent = emp.full_name + ' (@' + emp.username + ')';
         sel.appendChild(opt);
       });
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch('/api/categories').then(r => r.json());
+        const sel = document.getElementById('categoryId');
+        res.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
     }
 
     async function loadProjects() {
@@ -337,9 +359,11 @@
       const empName = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text.split(' (')[0];
       const typeTxt = document.getElementById('type').value === 'masuk' ? 'Pemasukan' : 'Pengeluaran';
       const amtTxt = fmt.format(parseAmount(document.getElementById('amount').value));
+      const catSel = document.getElementById('categoryId');
+      const catTxt = catSel.value ? catSel.options[catSel.selectedIndex].text : '–';
       const projSel = document.getElementById('projectId');
       const projTxt = projSel.value ? projSel.options[projSel.selectedIndex].text : '–';
-      const details = `Karyawan: <strong>${empName}</strong><br>Jenis: <strong>${typeTxt}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Proyek: <strong>${projTxt}</strong>`;
+      const details = `Karyawan: <strong>${empName}</strong><br>Jenis: <strong>${typeTxt}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong><br>Proyek: <strong>${projTxt}</strong>`;
       const ok = await showConfirm('Simpan Transaksi?', details);
       if (!ok) return;
 
@@ -353,6 +377,7 @@
       fd.append('amount', parseAmount(document.getElementById('amount').value));
       fd.append('date', document.getElementById('date').value);
       fd.append('note', document.getElementById('note').value);
+      fd.append('category_id', document.getElementById('categoryId').value || '');
       fd.append('project_id', document.getElementById('projectId').value || '');
       const file = document.getElementById('proofImage').files[0];
       if (file) fd.append('proof_image', file);

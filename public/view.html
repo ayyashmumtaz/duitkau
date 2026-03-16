@@ -26,6 +26,12 @@
   </style>
 </head>
 <body>
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center">
+    <div style="position:absolute;top:1rem;right:1.25rem;color:#fff;font-size:1.5rem;cursor:pointer;line-height:1" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" style="max-width:90vw;max-height:88vh;border-radius:8px;object-fit:contain" />
+  </div>
+
   <div class="view-container">
     <div id="loadingState" style="text-align:center; padding:4rem 1rem; color:var(--gray-400)">
       <div style="font-size:2rem; margin-bottom:.75rem">🔄</div>
@@ -84,6 +90,15 @@
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) {
+      const lb = document.getElementById('lightbox');
+      document.getElementById('lightboxImg').src = src;
+      lb.style.display = 'flex';
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => { document.getElementById('lightbox').style.display = 'none'; });
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').style.display = 'none'; });
 
     const token = new URLSearchParams(location.search).get('token');
 
@@ -175,7 +190,9 @@
                       <th>Nama Transaksi</th>
                       <th>Jenis</th>
                       <th class="text-right">Nominal</th>
+                      <th>Kategori</th>
                       <th>Proyek</th>
+                      <th>Bukti</th>
                       <th>Catatan</th>
                     </tr>
                   </thead>
@@ -186,7 +203,9 @@
                         <td>${tx.name}</td>
                         <td><span class="badge badge-${tx.type}">${tx.type === 'masuk' ? 'Masuk' : 'Keluar'}</span></td>
                         <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+                        <td class="text-muted">${tx.category_name || '–'}</td>
                         <td class="text-muted">${tx.project_name || '–'}</td>
+                        <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" style="cursor:pointer" />` : '–'}</td>
                         <td class="text-muted">${tx.note || '–'}</td>
                       </tr>
                     `).join('')}
@@ -198,7 +217,7 @@
                         <div class="amount-masuk" style="font-size:.8rem">+${fmt.format(emp.totalMasuk)}</div>
                         <div class="amount-keluar" style="font-size:.8rem">−${fmt.format(emp.totalKeluar)}</div>
                       </td>
-                      <td colspan="2" style="padding:.6rem .9rem">
+                      <td colspan="4" style="padding:.6rem .9rem">
                         <div style="font-size:.75rem;font-weight:600" class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}">${emp.net >= 0 ? 'Sisa Dana' : 'Klaim'}</div>
                         <span class="${emp.net >= 0 ? 'amount-masuk' : 'amount-keluar'}" style="font-weight:700">
                           ${fmt.format(Math.abs(emp.net))}

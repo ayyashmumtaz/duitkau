@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DuitKau - Kelola Karyawan</title>
+  <title>DuitKau - Kelola Kategori</title>
   <link rel="stylesheet" href="/css/style.css" />
   <script src="/js/utils.js"></script>
 </head>
@@ -30,13 +30,13 @@
       <a href="/input-employee.html" class="sidebar-item">
         <span class="icon">➕</span><span class="label">Input Karyawan</span>
       </a>
-      <a href="/employees.html" class="sidebar-item active">
+      <a href="/employees.html" class="sidebar-item">
         <span class="icon">👥</span><span class="label">Kelola Karyawan</span>
       </a>
       <a href="/projects.html" class="sidebar-item">
         <span class="icon">📁</span><span class="label">Proyek</span>
       </a>
-      <a href="/categories.html" class="sidebar-item">
+      <a href="/categories.html" class="sidebar-item active">
         <span class="icon">🏷️</span><span class="label">Kategori</span>
       </a>
       <a href="/reports.html" class="sidebar-item">
@@ -47,8 +47,8 @@
     <!-- Main -->
     <main class="main-content">
       <div class="flex items-center justify-between" style="margin-bottom:1.25rem">
-        <h1 class="page-title" style="margin-bottom:0">Kelola Pengguna</h1>
-        <button class="btn btn-primary" id="btnAdd">+ Tambah Pengguna</button>
+        <h1 class="page-title" style="margin-bottom:0">Kelola Kategori Transaksi</h1>
+        <button class="btn btn-primary" id="btnAdd">+ Tambah Kategori</button>
       </div>
 
       <div id="mainAlert" class="alert alert-error"></div>
@@ -60,16 +60,15 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>Nama Lengkap</th>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Bergabung</th>
+                <th>Nama Kategori</th>
+                <th>Jumlah Transaksi</th>
+                <th>Dibuat</th>
                 <th class="text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody id="empBody">
+            <tbody id="catBody">
               <tr>
-                <td colspan="6">
+                <td colspan="5">
                   <div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div>
                 </td>
               </tr>
@@ -84,32 +83,16 @@
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title" id="modalTitle">Tambah Karyawan</span>
+        <span class="modal-title" id="modalTitle">Tambah Kategori</span>
         <button class="modal-close" id="modalClose">✕</button>
       </div>
       <div class="modal-body">
         <div id="modalAlert" class="alert alert-error"></div>
-        <form id="empForm">
-          <input type="hidden" id="empId" />
+        <form id="catForm">
+          <input type="hidden" id="catId" />
           <div class="form-group">
-            <label for="fullName">Nama Lengkap</label>
-            <input type="text" id="fullName" placeholder="Contoh: Budi Santoso" required />
-          </div>
-          <div class="form-group">
-            <label for="username">Username</label>
-            <input type="text" id="username" placeholder="Contoh: budi" required />
-          </div>
-          <div class="form-group" id="roleGroup">
-            <label for="empRole">Role</label>
-            <select id="empRole">
-              <option value="employee">Karyawan</option>
-              <option value="finance">Finance</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="password" id="passwordLabel">Password</label>
-            <input type="password" id="password" placeholder="Minimal 6 karakter" />
-            <small class="text-muted" id="passwordHint" style="display:none;margin-top:.3rem">Kosongkan jika tidak ingin mengubah password</small>
+            <label for="catName">Nama Kategori</label>
+            <input type="text" id="catName" placeholder="Contoh: Transport, Makan, Beli Barang..." required />
           </div>
         </form>
       </div>
@@ -124,12 +107,12 @@
   <div class="modal-overlay" id="deleteOverlay">
     <div class="modal">
       <div class="modal-header">
-        <span class="modal-title">Hapus Karyawan</span>
+        <span class="modal-title">Hapus Kategori</span>
         <button class="modal-close" id="deleteClose">✕</button>
       </div>
       <div class="modal-body">
-        <p>Hapus pengguna <strong id="deleteName"></strong>?</p>
-        <p class="text-muted mt-1" style="font-size:.85rem">Semua transaksi milik karyawan ini juga akan dihapus permanen.</p>
+        <p>Hapus kategori <strong id="deleteName"></strong>?</p>
+        <p class="text-muted mt-1" style="font-size:.85rem">Tidak bisa dihapus jika masih ada transaksi yang menggunakan kategori ini.</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btnDeleteCancel">Batal</button>
@@ -137,25 +120,6 @@
       </div>
     </div>
   </div>
-
-  <!-- Bottom Nav (mobile) -->
-  <nav class="bottom-nav">
-    <a href="/finance.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">📊</span>Dashboard
-    </a>
-    <a href="/input-employee.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">➕</span>Input
-    </a>
-    <a href="/employees.html" class="bottom-nav-item active">
-      <span class="bottom-nav-icon">👥</span>Karyawan
-    </a>
-    <a href="/projects.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">📁</span>Proyek
-    </a>
-    <a href="/reports.html" class="bottom-nav-item">
-      <span class="bottom-nav-icon">📋</span>Laporan
-    </a>
-  </nav>
 
   <!-- Confirm Modal -->
   <div class="modal-overlay" id="confirmOverlay">
@@ -172,6 +136,25 @@
       </div>
     </div>
   </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/finance.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📊</span>Dashboard
+    </a>
+    <a href="/input-employee.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">➕</span>Input
+    </a>
+    <a href="/employees.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">👥</span>Karyawan
+    </a>
+    <a href="/categories.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">🏷️</span>Kategori
+    </a>
+    <a href="/reports.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📋</span>Laporan
+    </a>
+  </nav>
 
   <!-- Profile Modal -->
   <div class="modal-overlay" id="profileOverlay">
@@ -207,7 +190,6 @@
   <script>
     const fmtDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     let deleteTargetId = null;
-    let currentUserId = null;
 
     async function checkDb() {
       let ok = true;
@@ -226,38 +208,35 @@
         if (!me.userId) { window.location.href = '/login.html'; return; }
         if (me.role !== 'finance') { window.location.href = '/dashboard.html'; return; }
         document.getElementById('navName').textContent = me.fullName;
-        currentUserId = me.userId;
       } catch { window.location.href = '/login.html'; return; }
 
-      await loadEmployees();
+      await loadCategories();
     }
 
-    async function loadEmployees() {
+    async function loadCategories() {
       try {
-        const res = await fetch('/api/employees');
-        const data = await res.json();
+        const data = await fetch('/api/categories').then(r => r.json());
         renderTable(data);
       } catch {
-        showAlert('mainAlert', 'Gagal memuat data karyawan');
+        showAlert('mainAlert', 'Gagal memuat data kategori');
       }
     }
 
     function renderTable(data) {
-      const tbody = document.getElementById('empBody');
+      const tbody = document.getElementById('catBody');
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">👥</div>Belum ada karyawan</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🏷️</div>Belum ada kategori</div></td></tr>`;
         return;
       }
-      tbody.innerHTML = data.map((emp, i) => `
+      tbody.innerHTML = data.map((cat, i) => `
         <tr>
           <td class="text-muted">${i + 1}</td>
-          <td><strong>${emp.full_name}</strong></td>
-          <td class="text-muted">@${emp.username}</td>
-          <td><span class="badge ${emp.role === 'finance' ? 'badge-masuk' : 'badge-keluar'}">${emp.role === 'finance' ? 'Finance' : 'Karyawan'}</span></td>
-          <td class="text-muted">${fmtDate(emp.created_at)}</td>
+          <td><strong>${cat.name}</strong></td>
+          <td class="text-muted">${cat.tx_count} transaksi</td>
+          <td class="text-muted">${fmtDate(cat.created_at)}</td>
           <td class="text-right">
-            <button class="btn btn-ghost btn-sm" onclick="openEdit(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}', '${emp.username}')">Edit</button>
-            ${emp.id !== currentUserId ? `<button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}')">Hapus</button>` : '<span class="text-muted" style="font-size:.75rem;margin-left:.5rem">Anda</span>'}
+            <button class="btn btn-ghost btn-sm" onclick="openEdit(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
           </td>
         </tr>
       `).join('');
@@ -265,34 +244,21 @@
 
     // ─── Modal Tambah/Edit ────────────────────
     function openAdd() {
-      document.getElementById('modalTitle').textContent = 'Tambah Pengguna';
-      document.getElementById('empId').value = '';
-      document.getElementById('fullName').value = '';
-      document.getElementById('username').value = '';
-      document.getElementById('password').value = '';
-      document.getElementById('empRole').value = 'employee';
-      document.getElementById('password').required = true;
-      document.getElementById('passwordHint').style.display = 'none';
-      document.getElementById('passwordLabel').textContent = 'Password';
-      document.getElementById('roleGroup').style.display = '';
+      document.getElementById('modalTitle').textContent = 'Tambah Kategori';
+      document.getElementById('catId').value = '';
+      document.getElementById('catName').value = '';
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
-      document.getElementById('fullName').focus();
+      document.getElementById('catName').focus();
     }
 
-    function openEdit(id, fullName, username) {
-      document.getElementById('modalTitle').textContent = 'Edit Pengguna';
-      document.getElementById('empId').value = id;
-      document.getElementById('fullName').value = fullName;
-      document.getElementById('username').value = username;
-      document.getElementById('password').value = '';
-      document.getElementById('password').required = false;
-      document.getElementById('passwordHint').style.display = 'block';
-      document.getElementById('passwordLabel').textContent = 'Ubah Password';
-      document.getElementById('roleGroup').style.display = 'none';
+    function openEdit(id, name) {
+      document.getElementById('modalTitle').textContent = 'Edit Kategori';
+      document.getElementById('catId').value = id;
+      document.getElementById('catName').value = name;
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
-      document.getElementById('fullName').focus();
+      document.getElementById('catName').focus();
     }
 
     function closeModal() {
@@ -308,20 +274,11 @@
 
     document.getElementById('btnSave').addEventListener('click', async () => {
       hideAlert('modalAlert');
-      const id = document.getElementById('empId').value;
-      const body = {
-        full_name: document.getElementById('fullName').value.trim(),
-        username: document.getElementById('username').value.trim(),
-        password: document.getElementById('password').value,
-        role: document.getElementById('empRole').value,
-      };
+      const id = document.getElementById('catId').value;
+      const name = document.getElementById('catName').value.trim();
 
-      if (!body.full_name || !body.username) {
-        showAlert('modalAlert', 'Nama lengkap dan username wajib diisi');
-        return;
-      }
-      if (!id && !body.password) {
-        showAlert('modalAlert', 'Password wajib diisi untuk pengguna baru');
+      if (!name) {
+        showAlert('modalAlert', 'Nama kategori wajib diisi');
         return;
       }
 
@@ -331,18 +288,18 @@
 
       try {
         const method = id ? 'PUT' : 'POST';
-        const url = id ? `/api/employees/${id}` : '/api/employees';
+        const url = id ? `/api/categories/${id}` : '/api/categories';
         const res = await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ name }),
         });
         const data = await res.json();
         if (!res.ok) { showAlert('modalAlert', data.error); return; }
 
         closeModal();
-        showAlert('mainSuccess', id ? 'Pengguna berhasil diperbarui!' : 'Pengguna berhasil ditambahkan!');
-        await loadEmployees();
+        showAlert('mainSuccess', id ? 'Kategori berhasil diperbarui!' : 'Kategori berhasil ditambahkan!');
+        await loadCategories();
         setTimeout(() => hideAlert('mainSuccess'), 3000);
       } catch {
         showAlert('modalAlert', 'Terjadi kesalahan, coba lagi');
@@ -376,18 +333,20 @@
       btn.disabled = true;
       btn.textContent = 'Menghapus...';
       try {
-        const res = await fetch(`/api/employees/${deleteTargetId}`, { method: 'DELETE' });
+        const res = await fetch(`/api/categories/${deleteTargetId}`, { method: 'DELETE' });
         if (!res.ok && res.status !== 204) {
           const d = await res.json();
-          alert(d.error || 'Gagal menghapus');
+          showAlert('mainAlert', d.error || 'Gagal menghapus');
+          closeDelete();
           return;
         }
         closeDelete();
-        showAlert('mainSuccess', 'Karyawan berhasil dihapus');
-        await loadEmployees();
+        showAlert('mainSuccess', 'Kategori berhasil dihapus');
+        await loadCategories();
         setTimeout(() => hideAlert('mainSuccess'), 3000);
       } catch {
-        alert('Terjadi kesalahan');
+        showAlert('mainAlert', 'Terjadi kesalahan');
+        closeDelete();
       } finally {
         btn.disabled = false;
         btn.textContent = 'Hapus';
@@ -411,7 +370,6 @@
 
     // ─── Profile Modal ────────────────────────
     document.getElementById('profileBtn').addEventListener('click', () => {
-      const me = { fullName: document.getElementById('navName').textContent };
       fetch('/api/auth/me').then(r=>r.json()).then(d => {
         document.getElementById('profileName').value = d.fullName;
         document.getElementById('profileUsername').value = d.username;

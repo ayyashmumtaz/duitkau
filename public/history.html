@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Riwayat Pengeluaran</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div class="db-banner" id="dbBanner">
+    <span class="db-dot"></span>
+    Database tidak terhubung — semua operasi dinonaktifkan
+  </div>
+
+  <nav class="navbar">
+    <div class="navbar-brand"><img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" /><span>DuitKau</span></div>
+    <div class="navbar-user">
+      <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
+        <span class="dot"></span> DB
+      </span>
+      <span class="navbar-greeting">Halo, <strong id="navName">–</strong> <span class="chip">Karyawan</span></span>
+      <button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+    </div>
+  </nav>
+
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-section">Menu</div>
+      <a href="/dashboard.html" class="sidebar-item">
+        <span class="icon">📝</span><span class="label">Input Pengeluaran</span>
+      </a>
+      <a href="/history.html" class="sidebar-item active">
+        <span class="icon">📋</span><span class="label">Riwayat</span>
+      </a>
+    </aside>
+
+    <main class="main-content">
+      <!-- Print header (hidden on screen) -->
+      <div class="print-header">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <h2>Riwayat Pengeluaran</h2>
+        <p id="printMeta"></p>
+      </div>
+
+      <div class="flex items-center justify-between" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
+        <h1 class="page-title" style="margin-bottom:0">Riwayat Pengeluaran</h1>
+        <button class="btn btn-ghost btn-sm no-print" id="btnPrint">Download PDF</button>
+      </div>
+
+      <!-- Summary -->
+      <div class="summary-grid no-print" style="grid-template-columns:repeat(2,1fr); margin-bottom:1.25rem">
+        <div class="summary-card keluar">
+          <div class="summary-label">Total Pengeluaran</div>
+          <div class="summary-value red" id="totalKeluar">Rp 0</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Jumlah Transaksi</div>
+          <div class="summary-value blue" id="jumlahTx">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flex items-center justify-between no-print" style="margin-bottom:1rem; flex-wrap:wrap; gap:.5rem">
+          <div class="card-title" style="margin-bottom:0">Daftar Transaksi</div>
+          <div class="filter-bar" style="margin-bottom:0">
+            <input type="month" id="filterMonth" />
+            <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
+          </div>
+        </div>
+
+        <div id="tableAlert" class="alert alert-error"></div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Nama</th>
+                <th>Kategori</th>
+                <th>Proyek</th>
+                <th class="text-right">Nominal</th>
+                <th>Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="txBody">
+              <tr><td colspan="6"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="bottom-nav">
+    <a href="/dashboard.html" class="bottom-nav-item">
+      <span class="bottom-nav-icon">📝</span>Input
+    </a>
+    <a href="/history.html" class="bottom-nav-item active">
+      <span class="bottom-nav-icon">📋</span>Riwayat
+    </a>
+  </nav>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <!-- Password Modal -->
+  <div class="modal-overlay" id="pwdOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Ubah Password</span>
+        <button class="modal-close" id="pwdClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="pwdAlert" class="alert alert-error"></div>
+        <div id="pwdSuccess" class="alert alert-success"></div>
+        <div class="form-group">
+          <label for="pwdNew">Password Baru</label>
+          <input type="password" id="pwdNew" placeholder="Minimal 6 karakter" />
+        </div>
+        <div class="form-group">
+          <label for="pwdConfirm">Konfirmasi Password</label>
+          <input type="password" id="pwdConfirm" placeholder="Ulangi password baru" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="pwdCancel">Batal</button>
+        <button class="btn btn-primary" id="pwdSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+    let dbOk = true;
+    let navFullName = '';
+
+    // ─── DB Status ────────────────────────────
+    async function checkDb() {
+      try { const r = await fetch('/api/health'); dbOk = (await r.json()).db; } catch { dbOk = false; }
+      const banner = document.getElementById('dbBanner');
+      const ind = document.getElementById('dbIndicator');
+      if (!dbOk) {
+        banner.classList.add('show');
+        ind.className = 'db-status-indicator disconnected';
+        ind.innerHTML = '<span class="dot"></span> DB Mati';
+      } else {
+        banner.classList.remove('show');
+        ind.className = 'db-status-indicator connected';
+        ind.innerHTML = '<span class="dot"></span> DB';
+      }
+    }
+    setInterval(checkDb, 15000);
+
+    // ─── Init ─────────────────────────────────
+    async function init() {
+      await checkDb();
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (me.role === 'finance') { window.location.href = '/finance.html'; return; }
+        navFullName = me.fullName;
+        document.getElementById('navName').textContent = me.fullName;
+      } catch { window.location.href = '/login.html'; return; }
+
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('filterMonth').value = ym;
+      await loadTransactions(ym);
+    }
+
+    // ─── Load transactions ────────────────────
+    async function loadTransactions(month) {
+      const url = month ? `/api/transactions?month=${month}` : '/api/transactions';
+      try {
+        const txs = await fetch(url).then(r => r.json());
+        renderTable(txs);
+        updateSummary(txs);
+      } catch { showAlert('tableAlert', 'Gagal memuat transaksi'); }
+    }
+
+    function renderTable(txs) {
+      const tbody = document.getElementById('txBody');
+      if (txs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📭</div>Belum ada pengeluaran</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = txs.map(tx => `
+        <tr class="keluar">
+          <td>${fmtDate(tx.date)}</td>
+          <td>
+            <div>${tx.name}</div>
+            ${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}
+          </td>
+          <td class="text-muted">${tx.category_name || '–'}</td>
+          <td class="text-muted">${tx.project_name || '–'}</td>
+          <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
+          <td>
+            ${tx.proof_image
+              ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" title="Lihat bukti" />`
+              : `<span class="text-muted">–</span>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateSummary(txs) {
+      const total = txs.reduce((s, t) => s + t.amount, 0);
+      document.getElementById('totalKeluar').textContent = fmt.format(total);
+      document.getElementById('jumlahTx').textContent = txs.length + ' transaksi';
+    }
+
+    // ─── Filter ───────────────────────────────
+    document.getElementById('filterMonth').addEventListener('change', (e) => loadTransactions(e.target.value || null));
+    document.getElementById('clearFilter').addEventListener('click', () => {
+      document.getElementById('filterMonth').value = '';
+      loadTransactions(null);
+    });
+
+    // ─── Print / PDF ──────────────────────────
+    document.getElementById('btnPrint').addEventListener('click', () => {
+      const month = document.getElementById('filterMonth').value;
+      const label = month ? new Date(month + '-01').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }) : 'Semua Waktu';
+      document.getElementById('printMeta').textContent = `Nama: ${navFullName} | Periode: ${label} | Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+      window.print();
+    });
+
+    // ─── Lightbox ─────────────────────────────
+    function openLightbox(src) { document.getElementById('lightboxImg').src = src; document.getElementById('lightbox').classList.add('open'); }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open'); });
+
+    // ─── Password Modal ───────────────────────
+    function closePwd() { document.getElementById('pwdOverlay').classList.remove('open'); }
+    document.getElementById('pwdBtn').addEventListener('click', () => {
+      document.getElementById('pwdNew').value = '';
+      document.getElementById('pwdConfirm').value = '';
+      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
+      document.getElementById('pwdOverlay').classList.add('open');
+    });
+    document.getElementById('pwdClose').addEventListener('click', closePwd);
+    document.getElementById('pwdCancel').addEventListener('click', closePwd);
+    document.getElementById('pwdOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('pwdOverlay')) closePwd(); });
+    document.getElementById('pwdSave').addEventListener('click', async () => {
+      hideAlert('pwdAlert'); hideAlert('pwdSuccess');
+      const pwd = document.getElementById('pwdNew').value;
+      const conf = document.getElementById('pwdConfirm').value;
+      if (!pwd || pwd.length < 6) { showAlert('pwdAlert', 'Password minimal 6 karakter'); return; }
+      if (pwd !== conf) { showAlert('pwdAlert', 'Konfirmasi password tidak cocok'); return; }
+      const btn = document.getElementById('pwdSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch('/api/auth/password', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
+        const data = await res.json();
+        if (!res.ok) { showAlert('pwdAlert', data.error); return; }
+        showAlert('pwdSuccess', 'Password berhasil diubah');
+        setTimeout(closePwd, 1500);
+      } catch { showAlert('pwdAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    // ─── Logout ───────────────────────────────
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login.html';
+    });
+
+    function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+    function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+
+    init();
+  </script>
+</body>
+</html>
