@@ -91,7 +91,7 @@ router.patch('/pengajuan/:id', async (req, res) => {
 
 // ─── Finance input langsung untuk karyawan (approved) ────────
 router.post('/input-employee', upload.single('proof_image'), async (req, res) => {
-  const { userId, type, name, amount, date, note, project_id, category_id } = req.body;
+  const { userId, type, name, amount, date, note, project_id, category_id, ca_id } = req.body;
 
   if (!userId) return res.status(400).json({ error: 'Karyawan wajib dipilih' });
   if (!['masuk', 'keluar'].includes(type))
@@ -113,11 +113,12 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
     const proofImage = req.file ? `/uploads/${req.file.filename}` : null;
     const projectId = project_id ? parseInt(project_id) || null : null;
     const categoryId = parseInt(category_id);
+    const caId = ca_id ? parseInt(ca_id) || null : null;
 
     const result = await db.runAsync(
-      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)`,
-      [userId, type, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId]
+      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
+      [userId, type, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId, caId]
     );
 
     const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);

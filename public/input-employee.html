@@ -71,6 +71,12 @@
                 <option value="">-- Tidak ada proyek --</option>
               </select>
             </div>
+            <div class="form-group">
+              <label for="caId">Cash Advance (opsional)</label>
+              <select id="caId">
+                <option value="">-- Tidak terkait CA --</option>
+              </select>
+            </div>
 
             <!-- Bukti Foto -->
             <div class="form-group">
@@ -175,9 +181,11 @@
       this.setSelectionRange(pos + diff, pos + diff);
     });
 
+    let allCAs = [];
+
     window.onLayoutReady = async function(user) {
       fpDate.setDate(new Date(), true);
-      await Promise.all([loadEmployees(), loadCategories(), loadProjects(), loadToday()]);
+      await Promise.all([loadEmployees(), loadCategories(), loadProjects(), loadToday(), loadCAs()]);
     };
 
     async function loadEmployees() {
@@ -216,6 +224,32 @@
         });
       } catch {}
     }
+
+    async function loadCAs() {
+      try {
+        const res = await fetch('/api/ca').then(r => r.json());
+        allCAs = res.filter(ca => ca.status === 'open');
+        filterCAs();
+      } catch {}
+    }
+
+    function filterCAs() {
+      const selectedUser = document.getElementById('userId').value;
+      const sel = document.getElementById('caId');
+      sel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
+      if (!selectedUser) return;
+      
+      allCAs.forEach(ca => {
+        if (ca.request_by == selectedUser) {
+          const opt = document.createElement('option');
+          opt.value = ca.id;
+          opt.textContent = ca.title;
+          sel.appendChild(opt);
+        }
+      });
+    }
+
+    document.getElementById('userId').addEventListener('change', filterCAs);
 
     async function loadToday() {
       const today = new Date().toISOString().slice(0, 10);
@@ -287,6 +321,7 @@
       fd.append('note', document.getElementById('note').value);
       fd.append('category_id', document.getElementById('categoryId').value || '');
       fd.append('project_id', document.getElementById('projectId').value || '');
+      fd.append('ca_id', document.getElementById('caId').value || '');
       const file = document.getElementById('proofImage').files[0];
       if (file) fd.append('proof_image', file);
 
