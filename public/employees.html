@@ -307,7 +307,7 @@
         const res = await fetch(`/api/employees/${deleteTargetId}`, { method: 'DELETE' });
         if (!res.ok && res.status !== 204) {
           const d = await res.json();
-          alert(d.error || 'Gagal menghapus');
+          await modalAlert(d.error || 'Gagal menghapus');
           return;
         }
         closeDelete();
@@ -315,7 +315,7 @@
         await loadEmployees();
         setTimeout(() => hideAlert('mainSuccess'), 3000);
       } catch {
-        alert('Terjadi kesalahan');
+        await modalAlert('Terjadi kesalahan');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Hapus';

@@ -299,7 +299,7 @@
         const res = await fetch(`/api/projects/${deleteTargetId}`, { method: 'DELETE' });
         if (!res.ok && res.status !== 204) {
           const d = await res.json();
-          alert(d.error || 'Gagal menghapus');
+          await modalAlert(d.error || 'Gagal menghapus');
           return;
         }
         closeDelete();
@@ -307,7 +307,7 @@
         await loadProjects();
         setTimeout(() => hideAlert('mainSuccess'), 3000);
       } catch {
-        alert('Terjadi kesalahan');
+        await modalAlert('Terjadi kesalahan');
       } finally {
         btn.disabled = false;
         btn.textContent = 'Hapus';
@@ -366,7 +366,7 @@
     });
 
     async function removeApprover(projectId, userId) {
-      if (!confirm('Hapus approver ini dari proyek?')) return;
+      if (!await modalConfirm('Hapus Approver', 'Hapus approver ini dari proyek?', { okText: 'Hapus', okClass: 'btn-danger' })) return;
       await fetch(`/api/projects/${projectId}/approvers/${userId}`, { method: 'DELETE' });
       await refreshApproverList(projectId);
       await loadProjects();

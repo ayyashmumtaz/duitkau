@@ -168,3 +168,66 @@
 [2026-03-17T11:11:22.120Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-17T11:11:25.556Z] [FINANCE:kangfahmi] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-17T11:11:51.594Z] [FINANCE:kangfahmi] (::1) | REJECT_REIMBURSE_CA | kangfahmi menolak reimburse CA "CA Pasang Panel Meratus" — TOLONG UPLOAD FILE KEKURANGAN
+[2026-03-17T11:13:18.995Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:13:31.259Z] [EMPLOYEE:aziz] (::1) | REQUEST_REIMBURSE_CA | Mengajukan klaim reimburse untuk CA "CA Pasang Panel Meratus" (2 approver)
+[2026-03-17T11:14:20.946Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:14:25.835Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:16:07.889Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:16:11.375Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T11:16:30.107Z] [SUPER_ADMIN:admin] (::1) | CREATE_USER | Membuat akun employee: Alfian Hafiz (mujuy)
+[2026-03-17T11:16:32.687Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:16:40.087Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:16:46.928Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:16:50.753Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T11:17:07.523Z] [SUPER_ADMIN:admin] (::1) | CREATE_PROJECT | Membuat proyek "Proyek Kapal Meratus" (PO: PO-01-2026)
+[2026-03-17T11:17:12.261Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Immanuel Chrismas" ke proyek ID 4
+[2026-03-17T11:17:14.476Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Zul Fahmi" ke proyek ID 4
+[2026-03-17T11:17:17.498Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:17:25.285Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:17:43.467Z] [EMPLOYEE:mujuy] (::1) | CREATE_CA | Karyawan mengajukan CA "CA Pasang Panel" sebesar 500000 (2 approver)
+[2026-03-17T11:35:09.960Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:35:21.655Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:35:27.045Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T11:35:34.993Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "CA Pasang Panel" (id=7)
+[2026-03-17T11:35:39.984Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:35:50.009Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:37:06.020Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T11:37:10.587Z] [SUPER_ADMIN:admin] (::1) | DELETE_ALL_TRANSACTIONS | Menghapus semua transaksi (2 baris)
+[2026-03-17T11:37:19.240Z] [SUPER_ADMIN:admin] (::1) | DELETE_ALL_CA | Menghapus semua cash advance (1 baris)
+[2026-03-17T11:37:26.717Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:37:32.020Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:38:11.778Z] [EMPLOYEE:mujuy] (::1) | CREATE_CA | Karyawan mengajukan CA "CA Pasang Panel Meratus" sebesar 4500000 (2 approver)
+[2026-03-17T11:38:20.274Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:38:24.592Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:38:44.984Z] [FINANCE:pakchris] (::1) | APPROVE_CA | pakchris menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-17T11:44:42.575Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:44:45.833Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:10:25.976Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:10:30.226Z] [FINANCE:kangfahmi] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T12:10:44.942Z] [FINANCE:kangfahmi] (::1) | APPROVE_CA | kangfahmi menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-17T12:10:50.072Z] [FINANCE:kangfahmi] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:11:02.432Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:27:44.201Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:27:47.176Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T12:31:01.543Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:31:04.619Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T12:35:18.308Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:35:21.854Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:37:48.752Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:37:57.582Z] [EMPLOYEE:mujuy] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Pasang Panel Meratus": "bensin + tol" sebesar 150000
+[2026-03-17T12:38:08.182Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:38:11.239Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T12:38:41.307Z] [FINANCE:pakchris] (::1) | ADD_CA_TX | Input transaksi masuk CA "CA Pasang Panel Meratus": "DP Pasang Panel" sebesar 500000
+[2026-03-17T12:38:46.835Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:38:50.508Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:43:52.560Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:56:22.912Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T12:57:01.017Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:58:10.255Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T12:58:19.761Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T13:00:49.683Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T13:02:58.027Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T13:03:16.702Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T13:03:42.097Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T13:04:40.386Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T13:04:50.761Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login

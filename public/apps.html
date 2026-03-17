@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cakra ERP — Pilih Aplikasi</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      background: #0b1221;
+      color: #fff;
+      overflow-x: hidden;
+    }
+
+    /* ── Full-screen background ── */
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    .bg-layer img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+    }
+
+    .bg-layer::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(160deg,
+          rgba(11, 18, 33, .82) 0%,
+          rgba(11, 18, 33, .6) 40%,
+          rgba(11, 18, 33, .78) 100%);
+    }
+
+    /* ── Page shell ── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, .07);
+      border-bottom: 1px solid rgba(255, 255, 255, .1);
+    }
+
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+
+    .topbar-brand img {
+      height: 34px;
+      width: auto;
+      filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .4));
+    }
+
+    .topbar-brand-text {
+      line-height: 1.2;
+    }
+
+    .topbar-brand-text .erp-name {
+      font-size: .95rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .01em;
+    }
+
+    .topbar-brand-text .erp-name span {
+      color: #fb923c;
+    }
+
+    .topbar-brand-text .erp-sub {
+      font-size: .7rem;
+      color: rgba(255, 255, 255, .45);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .topbar-greeting {
+      text-align: right;
+    }
+
+    .topbar-greeting .greeting-hi {
+      font-size: .75rem;
+      color: rgba(255, 255, 255, .5);
+    }
+
+    .topbar-greeting .greeting-name {
+      font-size: .88rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .topbar-greeting .greeting-role {
+      display: inline-block;
+      font-size: .65rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .1rem .45rem;
+      border-radius: 99px;
+      background: rgba(249, 115, 22, .25);
+      color: #fb923c;
+      margin-top: .15rem;
+    }
+
+    .btn-logout {
+      padding: .45rem 1rem;
+      border-radius: 8px;
+      border: 1.5px solid rgba(255, 255, 255, .25);
+      background: rgba(255, 255, 255, .08);
+      color: rgba(255, 255, 255, .8);
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-logout:hover {
+      background: rgba(255, 255, 255, .16);
+      border-color: rgba(255, 255, 255, .4);
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 3.5rem 2rem 2rem;
+      text-align: center;
+    }
+
+    .hero-eyebrow {
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #fb923c;
+      margin-bottom: .65rem;
+    }
+
+    .hero-title {
+      font-size: clamp(1.5rem, 4vw, 2.25rem);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.2;
+      margin-bottom: .65rem;
+      letter-spacing: -.01em;
+    }
+
+    .hero-sub {
+      font-size: .9rem;
+      color: rgba(255, 255, 255, .5);
+    }
+
+    /* ── Grid ── */
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.1rem;
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 1rem 2rem 4rem;
+      width: 100%;
+    }
+
+    /* ── Card ── */
+    .app-card {
+      position: relative;
+      background: rgba(255, 255, 255, .08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1.5px solid rgba(255, 255, 255, .12);
+      border-radius: 18px;
+      padding: 1.6rem 1.1rem 1.35rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .7rem;
+      text-decoration: none;
+      color: #fff;
+      transition: transform .18s cubic-bezier(.34, 1.56, .64, 1),
+        box-shadow .18s, border-color .18s, background .18s;
+      cursor: pointer;
+    }
+
+    .app-card:not(.app-card--soon):hover {
+      transform: translateY(-6px) scale(1.02);
+      background: rgba(255, 255, 255, .14);
+      border-color: rgba(249, 115, 22, .6);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35), 0 0 0 1px rgba(249, 115, 22, .2);
+    }
+
+    .app-card--soon {
+      opacity: .45;
+      cursor: default;
+    }
+
+    /* active card gets a subtle orange glow */
+    .app-card--active {
+      border-color: rgba(249, 115, 22, .4);
+      background: rgba(249, 115, 22, .1);
+    }
+
+    .app-card--active:hover {
+      border-color: rgba(249, 115, 22, .75);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .35), 0 0 24px rgba(249, 115, 22, .25);
+    }
+
+    .app-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+    }
+
+    .icon-duitkau {
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+    }
+
+    .icon-hrd {
+      background: linear-gradient(135deg, #c084fc, #7c3aed);
+    }
+
+    .icon-procurement {
+      background: linear-gradient(135deg, #4ade80, #16a34a);
+    }
+
+    .icon-asset {
+      background: linear-gradient(135deg, #fcd34d, #d97706);
+    }
+
+    .icon-crm {
+      background: linear-gradient(135deg, #fb7185, #e11d48);
+    }
+
+    .icon-dokumen {
+      background: linear-gradient(135deg, #67e8f9, #0891b2);
+    }
+
+    .app-name {
+      font-size: .92rem;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+    }
+
+    .app-desc {
+      font-size: .73rem;
+      color: rgba(255, 255, 255, .5);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* badges */
+    .app-badge {
+      position: absolute;
+      top: .7rem;
+      right: .7rem;
+      font-size: .6rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      padding: .15rem .5rem;
+      border-radius: 99px;
+    }
+
+    .badge-active {
+      background: rgba(34, 197, 94, .2);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, .3);
+    }
+
+    .badge-soon {
+      background: rgba(255, 255, 255, .1);
+      color: rgba(255, 255, 255, .4);
+      border: 1px solid rgba(255, 255, 255, .12);
+    }
+
+    /* ── Footer ── */
+    .apps-footer {
+      text-align: center;
+      padding: 0 1rem 2rem;
+      font-size: .72rem;
+      color: rgba(255, 255, 255, .25);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .topbar {
+        padding: .75rem 1.1rem;
+      }
+
+      .topbar-greeting {
+        display: none;
+      }
+
+      .hero {
+        padding: 2.5rem 1.25rem 1.5rem;
+      }
+
+      .apps-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: .85rem;
+        padding: .75rem 1.1rem 3rem;
+      }
+
+      .app-icon {
+        width: 52px;
+        height: 52px;
+        font-size: 1.5rem;
+        border-radius: 14px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="bg-layer">
+    <img src="/assets/background/background-notext.png" alt="" />
+  </div>
+
+  <div class="page">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <img src="/assets/logo/logo-CSK.png" alt="Cakra" />
+        <div class="topbar-brand-text">
+          <div class="erp-name"><span>Cakra</span> ERP</div>
+          <div class="erp-sub">PT. Cakra Sinergi Kreatif</div>
+        </div>
+      </div>
+      <div class="topbar-user">
+        <div class="topbar-greeting">
+          <div class="greeting-hi">Selamat datang,</div>
+          <div class="greeting-name" id="userName">–</div>
+          <div class="greeting-role" id="userRole">–</div>
+        </div>
+        <button class="btn-logout" id="logoutBtn">Keluar</button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-eyebrow">Integrated Enterprise Platform</div>
+      <div class="hero-title">Pilih Aplikasi</div>
+      <div class="hero-sub">Semua modul bisnis dalam satu platform terintegrasi</div>
+    </div>
+
+    <!-- App grid -->
+    <div class="apps-grid">
+
+      <a class="app-card app-card--active" id="cardDuitkau" href="#">
+        <div class="app-badge badge-active">Aktif</div>
+        <div class="app-icon icon-duitkau">💰</div>
+        <div class="app-name">DuitKau</div>
+        <div class="app-desc">Keuangan, reimburse & cash advance</div>
+      </a>
+
+      <div class="app-card app-card--soon">
+        <div class="app-badge badge-soon">Segera</div>
+        <div class="app-icon icon-hrd">👥</div>
+        <div class="app-name">HRD</div>
+        <div class="app-desc">SDM, absensi & penggajian</div>
+      </div>
+
+      <div class="app-card app-card--soon">
+        <div class="app-badge badge-soon">Segera</div>
+        <div class="app-icon icon-procurement">🛒</div>
+        <div class="app-name">Procurement</div>
+        <div class="app-desc">Pengadaan barang & vendor</div>
+      </div>
+
+      <div class="app-card app-card--soon">
+        <div class="app-badge badge-soon">Segera</div>
+        <div class="app-icon icon-asset">🏗️</div>
+        <div class="app-name">Aset</div>
+        <div class="app-desc">Inventaris & manajemen aset</div>
+      </div>
+
+      <div class="app-card app-card--soon">
+        <div class="app-badge badge-soon">Segera</div>
+        <div class="app-icon icon-crm">📞</div>
+        <div class="app-name">CRM</div>
+        <div class="app-desc">Klien & pipeline penjualan</div>
+      </div>
+
+      <div class="app-card app-card--soon">
+        <div class="app-badge badge-soon">Segera</div>
+        <div class="app-icon icon-dokumen">📄</div>
+        <div class="app-name">Dokumen</div>
+        <div class="app-desc">Arsip digital & dokumen</div>
+      </div>
+
+    </div>
+
+    <div class="apps-footer">
+      &copy; 2025 PT. Cakra Sinergi Kreatif · Maritime Technology Unit
+    </div>
+
+  </div>
+
+  <script>
+    (async function () {
+      let user;
+      try {
+        const me = await fetch('/api/auth/me').then(r => r.json());
+        if (!me.userId) { window.location.href = '/login.html'; return; }
+        user = me;
+      } catch {
+        window.location.href = '/login.html';
+        return;
+      }
+
+      document.getElementById('userName').textContent = user.fullName;
+
+      const roleLabel = { super_admin: 'Super Admin', finance: 'Finance', employee: 'Karyawan' };
+      document.getElementById('userRole').textContent = roleLabel[user.role] || user.role;
+
+      const dest = (user.role === 'finance' || user.role === 'super_admin')
+        ? '/finance.html'
+        : '/dashboard.html';
+      document.getElementById('cardDuitkau').href = dest;
+
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login.html';
+      });
+    })();
+  </script>
+
+</body>
+
+</html>

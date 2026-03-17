@@ -107,9 +107,13 @@
         Database tidak terhubung — semua operasi dinonaktifkan
       </div>
       <nav class="navbar">
-        <div class="navbar-brand">
-          <img src="/assets/logo/logo-CSK.png" alt="Logo" class="navbar-logo" />
-          <span>DuitKau</span>
+        <div class="navbar-brand" style="gap:.75rem">
+          <a href="/apps.html" title="Kembali ke menu aplikasi" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;padding:.2rem .5rem;border-radius:6px;border:1px solid var(--gray-200);font-size:.72rem;font-weight:600;color:var(--gray-600);letter-spacing:.02em" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background=''">
+            <img src="/assets/logo/logo-CSK.png" alt="Logo" style="height:18px;width:auto" />
+            Cakra ERP
+          </a>
+          <span style="color:var(--gray-300);font-size:.9rem">/</span>
+          <span style="font-size:1rem;font-weight:700;color:var(--blue)">DuitKau</span>
         </div>
         <div class="navbar-user">
           <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">

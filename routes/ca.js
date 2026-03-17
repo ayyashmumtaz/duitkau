@@ -16,6 +16,8 @@ const caSelect = `
     cls.full_name  AS closed_by_name,
     crq.full_name  AS close_requested_by_name,
     rmb.full_name  AS reimbursement_by_name,
+    rfb.full_name  AS refund_requested_by_name,
+    rfc.full_name  AS refund_confirmed_by_name,
     pr.name        AS project_name,
     pr.po_number   AS project_po_number,
     COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='masuk'  AND t.status='approved'),0) AS total_masuk_ca,
@@ -30,6 +32,8 @@ const caSelect = `
   LEFT JOIN users cls ON ca.closed_by  = cls.id
   LEFT JOIN users crq ON ca.close_requested_by = crq.id
   LEFT JOIN users rmb ON ca.reimbursement_by   = rmb.id
+  LEFT JOIN users rfb ON ca.refund_requested_by = rfb.id
+  LEFT JOIN users rfc ON ca.refund_confirmed_by = rfc.id
   LEFT JOIN projects pr ON ca.project_id = pr.id
 `;
 
@@ -95,7 +99,8 @@ router.get('/notify', async (req, res) => {
                   SELECT 1 FROM ca_approvals WHERE ca_id=ca.id AND type='open'))
             OR ca.status = 'pending_close'
             OR (ca.reimbursement_status = 'pending' AND NOT EXISTS (
-                  SELECT 1 FROM ca_approvals WHERE ca_id=ca.id AND type='reimburse' AND status='pending'))`
+                  SELECT 1 FROM ca_approvals WHERE ca_id=ca.id AND type='reimburse' AND status='pending'))
+            OR ca.refund_status = 'pending'`
       );
       count = r.n;
     } else {
@@ -148,12 +153,17 @@ router.get('/', async (req, res) => {
 
 // ─── POST / — create CA ───────────────────────────────────────
 router.post('/', async (req, res) => {
-  const { title, description, initial_amount, project_id } = req.body;
+  const { title, description, allowance, transport, accommodation, other_expenses, start_date, end_date, project_id } = req.body;
   if (!title || !title.trim())
     return res.status(400).json({ error: 'Judul CA wajib diisi' });
-  const amount = parseFloat(initial_amount);
-  if (isNaN(amount) || amount <= 0)
-    return res.status(400).json({ error: 'Nominal CA harus berupa angka positif' });
+  const parseAmt = v => parseFloat(v) || 0;
+  const amt = { allowance: parseAmt(allowance), transport: parseAmt(transport), accommodation: parseAmt(accommodation), other_expenses: parseAmt(other_expenses) };
+  const amount = amt.allowance + amt.transport + amt.accommodation + amt.other_expenses;
+  if (amount <= 0)
+    return res.status(400).json({ error: 'Total CA harus lebih dari 0' });
+  if (!start_date) return res.status(400).json({ error: 'Tanggal mulai wajib diisi' });
+  if (!end_date)   return res.status(400).json({ error: 'Tanggal selesai wajib diisi' });
+  if (end_date < start_date) return res.status(400).json({ error: 'Tanggal selesai tidak boleh sebelum tanggal mulai' });
   if (!project_id)
     return res.status(400).json({ error: 'Proyek wajib dipilih' });
 
@@ -168,15 +178,15 @@ router.post('/', async (req, res) => {
     if (!hasApprovers && isFinance) {
       // Fallback: finance/super_admin self-approves
       result = await db.runAsync(
-        `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by, status, open_by, open_at)
-         VALUES (?, ?, ?, ?, ?, 'open', ?, datetime('now','localtime'))`,
-        [title.trim(), description || null, amount, projectId, req.session.userId, req.session.userId]
+        `INSERT INTO cash_advances (title, description, initial_amount, allowance, transport, accommodation, other_expenses, start_date, end_date, project_id, request_by, status, open_by, open_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, datetime('now','localtime'))`,
+        [title.trim(), description || null, amount, amt.allowance, amt.transport, amt.accommodation, amt.other_expenses, start_date, end_date, projectId, req.session.userId, req.session.userId]
       );
     } else {
       result = await db.runAsync(
-        `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by)
-         VALUES (?, ?, ?, ?, ?)`,
-        [title.trim(), description || null, amount, projectId, req.session.userId]
+        `INSERT INTO cash_advances (title, description, initial_amount, allowance, transport, accommodation, other_expenses, start_date, end_date, project_id, request_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [title.trim(), description || null, amount, amt.allowance, amt.transport, amt.accommodation, amt.other_expenses, start_date, end_date, projectId, req.session.userId]
       );
       if (hasApprovers) {
         await createApprovalRecords(result.lastID, 'open', approverIds);
@@ -238,22 +248,25 @@ router.put('/:id', async (req, res) => {
   if (!isFinanceRole(req.session.role))
     return res.status(403).json({ error: 'Hanya finance yang bisa mengedit CA' });
 
-  const { title, description, initial_amount, project_id } = req.body;
+  const { title, description, allowance, transport, accommodation, other_expenses, start_date, end_date, project_id } = req.body;
   if (!title || !title.trim())
     return res.status(400).json({ error: 'Judul CA wajib diisi' });
-  const amount = parseFloat(initial_amount);
-  if (isNaN(amount) || amount <= 0)
-    return res.status(400).json({ error: 'Nominal CA harus berupa angka positif' });
-  if (!project_id)
-    return res.status(400).json({ error: 'Proyek wajib dipilih' });
+  const parseAmt = v => parseFloat(v) || 0;
+  const amt = { allowance: parseAmt(allowance), transport: parseAmt(transport), accommodation: parseAmt(accommodation), other_expenses: parseAmt(other_expenses) };
+  const amount = amt.allowance + amt.transport + amt.accommodation + amt.other_expenses;
+  if (amount <= 0) return res.status(400).json({ error: 'Total CA harus lebih dari 0' });
+  if (!start_date) return res.status(400).json({ error: 'Tanggal mulai wajib diisi' });
+  if (!end_date)   return res.status(400).json({ error: 'Tanggal selesai wajib diisi' });
+  if (end_date < start_date) return res.status(400).json({ error: 'Tanggal selesai tidak boleh sebelum tanggal mulai' });
+  if (!project_id) return res.status(400).json({ error: 'Proyek wajib dipilih' });
 
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
 
     await db.runAsync(
-      `UPDATE cash_advances SET title=?, description=?, initial_amount=?, project_id=? WHERE id=?`,
-      [title.trim(), description || null, amount, project_id ? parseInt(project_id) || null : null, req.params.id]
+      `UPDATE cash_advances SET title=?, description=?, initial_amount=?, allowance=?, transport=?, accommodation=?, other_expenses=?, start_date=?, end_date=?, project_id=? WHERE id=?`,
+      [title.trim(), description || null, amount, amt.allowance, amt.transport, amt.accommodation, amt.other_expenses, start_date, end_date, project_id ? parseInt(project_id) || null : null, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
     logEvent(req, 'UPDATE_CA', `Finance mengubah data CA (ID: ${req.params.id}) menjadi "${row.title}" sebesar ${row.initial_amount}`);
@@ -461,7 +474,7 @@ router.post('/:id/transactions', upload.single('proof_image'), async (req, res) 
     if (ca.status !== 'open')
       return res.status(400).json({ error: 'Transaksi hanya bisa diinput saat CA berstatus Open' });
 
-    const { type, name, amount, date, note, category_id } = req.body;
+    const { type, name, amount, date, note } = req.body;
     if (!['masuk', 'keluar'].includes(type))
       return res.status(400).json({ error: 'Jenis transaksi tidak valid' });
     if (!isFinanceRole(req.session.role) && type === 'masuk')
@@ -473,15 +486,13 @@ router.post('/:id/transactions', upload.single('proof_image'), async (req, res) 
       return res.status(400).json({ error: 'Nominal harus berupa angka positif' });
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date))
       return res.status(400).json({ error: 'Format tanggal tidak valid' });
-    if (!category_id)
-      return res.status(400).json({ error: 'Kategori wajib dipilih' });
 
     const proofImage = req.file ? `/uploads/${req.file.filename}` : null;
     const result = await db.runAsync(
-      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
+      `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, ca_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)`,
       [ca.request_by, type, name.trim(), parsedAmount, date, note || null, proofImage,
-       req.session.userId, ca.project_id, parseInt(category_id), ca.id]
+       req.session.userId, ca.project_id, ca.id]
     );
     const tx = await db.getAsync(
       `SELECT t.*, c.name AS category_name, ib.full_name AS input_by_name
@@ -663,6 +674,102 @@ router.patch('/:id/reject-reimburse', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal menolak reimburse' });
+  }
+});
+
+// ─── PATCH /:id/request-refund — employee returns surplus ─────
+router.patch('/:id/request-refund', upload.single('proof'), async (req, res) => {
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.request_by !== req.session.userId && !isFinanceRole(req.session.role))
+      return res.status(403).json({ error: 'Akses ditolak' });
+    if (ca.status !== 'open')
+      return res.status(400).json({ error: 'CA tidak dalam status open' });
+    if (ca.refund_status === 'pending')
+      return res.status(400).json({ error: 'Sudah ada pengajuan pengembalian yang menunggu konfirmasi' });
+
+    const amount = parseFloat(req.body.amount);
+    if (isNaN(amount) || amount <= 0)
+      return res.status(400).json({ error: 'Nominal pengembalian harus berupa angka positif' });
+    const proof = req.file ? `/uploads/${req.file.filename}` : null;
+    if (!proof) return res.status(400).json({ error: 'Bukti pengembalian wajib dilampirkan' });
+
+    await db.runAsync(
+      `UPDATE cash_advances SET
+        refund_status='pending', refund_amount=?, refund_proof=?,
+        refund_note=?, refund_requested_by=?, refund_requested_at=datetime('now','localtime'),
+        refund_confirmed_at=NULL, refund_confirmed_by=NULL, refund_reject_reason=NULL
+       WHERE id=?`,
+      [amount, proof, req.body.note || null, req.session.userId, req.params.id]
+    );
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REQUEST_REFUND_CA', `Pengajuan pengembalian CA "${ca.title}" sebesar ${amount}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengajukan pengembalian' });
+  }
+});
+
+// ─── PATCH /:id/confirm-refund — finance confirms refund ──────
+router.patch('/:id/confirm-refund', async (req, res) => {
+  if (!isFinanceRole(req.session.role))
+    return res.status(403).json({ error: 'Hanya finance yang bisa mengkonfirmasi pengembalian' });
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.refund_status !== 'pending')
+      return res.status(400).json({ error: 'Tidak ada pengajuan pengembalian yang menunggu' });
+
+    // Create a masuk transaction to record the returned cash
+    await db.runAsync(
+      `INSERT INTO transactions (user_id, type, name, amount, date, note, status, input_by, project_id, ca_id)
+       VALUES (?, 'masuk', 'Pengembalian Dana CA', ?, date('now','localtime'), ?, 'approved', ?, ?, ?)`,
+      [ca.request_by, ca.refund_amount, ca.refund_note || null,
+       req.session.userId, ca.project_id, ca.id]
+    );
+    await db.runAsync(
+      `UPDATE cash_advances SET
+        refund_status='confirmed', refund_confirmed_by=?, refund_confirmed_at=datetime('now','localtime')
+       WHERE id=?`,
+      [req.session.userId, req.params.id]
+    );
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'CONFIRM_REFUND_CA', `Finance mengkonfirmasi pengembalian CA "${ca.title}" sebesar ${ca.refund_amount}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengkonfirmasi pengembalian' });
+  }
+});
+
+// ─── PATCH /:id/reject-refund — finance rejects refund ────────
+router.patch('/:id/reject-refund', async (req, res) => {
+  if (!isFinanceRole(req.session.role))
+    return res.status(403).json({ error: 'Hanya finance yang bisa menolak pengembalian' });
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.refund_status !== 'pending')
+      return res.status(400).json({ error: 'Tidak ada pengajuan pengembalian yang menunggu' });
+
+    const reason = (req.body.reason || '').trim();
+    if (!reason) return res.status(400).json({ error: 'Alasan penolakan wajib diisi' });
+
+    await db.runAsync(
+      `UPDATE cash_advances SET
+        refund_status='rejected', refund_reject_reason=?,
+        refund_confirmed_by=?, refund_confirmed_at=datetime('now','localtime')
+       WHERE id=?`,
+      [reason, req.session.userId, req.params.id]
+    );
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REJECT_REFUND_CA', `Finance menolak pengembalian CA "${ca.title}" — Alasan: ${reason}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal menolak pengembalian' });
   }
 });
 

@@ -23,7 +23,7 @@
       <div class="grid-2">
         <!-- FORM -->
         <div class="card no-print">
-          <div class="card-title">❤️ Tambah Pengeluaran</div>
+          <div class="card-title">Tambah Pengeluaran</div>
           <div id="formAlert" class="alert alert-error"></div>
 
           <form id="addItemForm" autocomplete="off">
@@ -298,8 +298,8 @@
 
     function removeDraftItem(idx) { draftItems.splice(idx, 1); renderDraft(); }
 
-    document.getElementById('clearDraftBtn').addEventListener('click', () => {
-      if (!confirm('Hapus semua item dari antrian?')) return;
+    document.getElementById('clearDraftBtn').addEventListener('click', async () => {
+      if (!await modalConfirm('Hapus Antrian', 'Hapus semua item dari antrian?', { okText: 'Hapus', okClass: 'btn-danger' })) return;
       draftItems = []; renderDraft();
     });
 

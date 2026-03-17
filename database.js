@@ -135,6 +135,36 @@ db.serialize(() => {
       db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_at TEXT");
     if (!names.includes('reimbursement_by'))
       db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_by INTEGER");
+    if (!names.includes('allowance'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN allowance REAL NOT NULL DEFAULT 0");
+    if (!names.includes('transport'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN transport REAL NOT NULL DEFAULT 0");
+    if (!names.includes('accommodation'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN accommodation REAL NOT NULL DEFAULT 0");
+    if (!names.includes('other_expenses'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN other_expenses REAL NOT NULL DEFAULT 0");
+    if (!names.includes('start_date'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN start_date TEXT");
+    if (!names.includes('end_date'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN end_date TEXT");
+    if (!names.includes('refund_status'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_status TEXT");
+    if (!names.includes('refund_amount'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_amount REAL");
+    if (!names.includes('refund_proof'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_proof TEXT");
+    if (!names.includes('refund_note'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_note TEXT");
+    if (!names.includes('refund_requested_at'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_requested_at TEXT");
+    if (!names.includes('refund_requested_by'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_requested_by INTEGER");
+    if (!names.includes('refund_confirmed_at'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_confirmed_at TEXT");
+    if (!names.includes('refund_confirmed_by'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_confirmed_by INTEGER");
+    if (!names.includes('refund_reject_reason'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN refund_reject_reason TEXT");
   });
 
   // Migration: update users CHECK constraint to include super_admin
