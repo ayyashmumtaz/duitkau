@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DuitKau - Input Transaksi</title>
+  <title>DuitKau - Input Reimburse</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="/js/layout.js"></script>
@@ -18,7 +18,7 @@
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
-      <h1 class="page-title">Input Transaksi</h1>
+      <h1 class="page-title">Input Reimburse</h1>
       <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">Transaksi yang diinput oleh finance langsung berstatus <strong>Disetujui</strong>.</p>
 
       <div class="grid-2">
@@ -65,19 +65,6 @@
                 <option value="">-- Pilih kategori --</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="caId">Cash Advance (opsional)</label>
-              <select id="caId">
-                <option value="">-- Tidak terkait CA --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="projectId">Proyek (opsional)</label>  
-              <select id="projectId">
-                <option value="">-- Tidak ada proyek --</option>
-              </select>
-            </div>
-
             <!-- Bukti Foto -->
             <div class="form-group">
               <label>Bukti Transaksi (Foto)</label>
@@ -181,11 +168,9 @@
       this.setSelectionRange(pos + diff, pos + diff);
     });
 
-    let allCAs = [];
-
     window.onLayoutReady = async function(user) {
       fpDate.setDate(new Date(), true);
-      await Promise.all([loadEmployees(), loadCategories(), loadProjects(), loadToday(), loadCAs()]);
+      await Promise.all([loadEmployees(), loadCategories(), loadToday()]);
     };
 
     async function loadEmployees() {
@@ -230,81 +215,6 @@
         });
       } catch {}
     }
-
-    async function loadProjects() {
-      try {
-        const res = await fetch('/api/projects').then(r => r.json());
-        const sel = document.getElementById('projectId');
-        res.forEach(p => {
-          const opt = document.createElement('option');
-          opt.value = p.id;
-          opt.textContent = p.name;
-          sel.appendChild(opt);
-        });
-      } catch {}
-    }
-
-    async function loadCAs() {
-      try {
-        const res = await fetch('/api/ca').then(r => r.json());
-        allCAs = res.filter(ca => ca.status === 'open');
-        filterCAs();
-      } catch {}
-    }
-
-    function filterCAs() {
-      const selectedUser = document.getElementById('userId').value;
-      const sel = document.getElementById('caId');
-      
-      if (!selectedUser) {
-        sel.innerHTML = '<option value="">-- Pilih Karyawan Dulu --</option>';
-        return;
-      }
-      
-      sel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
-      let found = false;
-      
-      allCAs.forEach(ca => {
-        if (ca.request_by == selectedUser) {
-          const opt = document.createElement('option');
-          opt.value = ca.id;
-          opt.textContent = ca.title;
-          sel.appendChild(opt);
-          found = true;
-        }
-      });
-      
-      if (!found) {
-        sel.innerHTML = '<option value="">-- Tidak ada CA Open --</option>';
-      }
-      
-      // Reset disabled state of project
-      const projInput = document.getElementById('projectId');
-      projInput.disabled = false;
-      projInput.value = "";
-    }
-
-    document.getElementById('userId').addEventListener('change', filterCAs);
-
-    document.getElementById('caId').addEventListener('change', function() {
-      const selectedCaId = this.value;
-      const projInput = document.getElementById('projectId');
-      
-      if (!selectedCaId) {
-        projInput.disabled = false;
-        projInput.value = "";
-        return;
-      }
-      
-      const ca = allCAs.find(c => c.id == selectedCaId);
-      // CA terpilih. Selalu disable manual project input.
-      projInput.disabled = true;
-      if (ca && ca.project_id) {
-        projInput.value = ca.project_id;
-      } else {
-        projInput.value = "";
-      }
-    });
 
     async function loadToday() {
       const today = new Date().toISOString().slice(0, 10);
@@ -355,9 +265,8 @@
       const amtTxt = fmt.format(parseAmount(document.getElementById('amount').value));
       const catSel = document.getElementById('categoryId');
       const catTxt = catSel.value ? catSel.options[catSel.selectedIndex].text : '–';
-      const projSel = document.getElementById('projectId');
-      const projTxt = projSel.value ? projSel.options[projSel.selectedIndex].text : '–';
-      const details = `Karyawan: <strong>${empName}</strong><br>Jenis: <strong>${typeTxt}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong><br>Proyek: <strong>${projTxt}</strong>`;
+      const details = `Karyawan: <strong>${empName}</strong><br>Jenis: <strong>${typeTxt}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong>`;
+
       const ok = await showConfirm('Simpan Transaksi?', details);
       if (!ok) return;
 
@@ -375,13 +284,6 @@
       fd.append('date', parsedDate);
       fd.append('note', document.getElementById('note').value);
       fd.append('category_id', document.getElementById('categoryId').value || '');
-      
-      // Jika select di-disable, nilainya tidak otomatis masuk ke FormData.
-      // Jadi kita sertakan secara manual membacanya dari element.
-      const projVal = document.getElementById('projectId').value;
-      fd.append('project_id', projVal || '');
-      
-      fd.append('ca_id', document.getElementById('caId').value || '');
       const file = document.getElementById('proofImage').files[0];
       if (file) fd.append('proof_image', file);
 
@@ -395,7 +297,6 @@
         document.getElementById('txForm').reset();
         fpDate.setDate(new Date(), true);
         document.getElementById('previewWrap').classList.remove('show');
-        document.getElementById('projectId').disabled = false;
         await loadToday();
         setTimeout(() => hideAlert('formSuccess'), 4000);
       } catch { showAlert('formAlert', 'Gagal menyimpan transaksi'); }

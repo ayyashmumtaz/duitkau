@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const db = require('../database');
-const { requireLogin, requireFinance } = require('../middleware/auth');
+const { requireLogin } = require('../middleware/auth');
 const router = express.Router();
 
 const caSelect = `
@@ -22,7 +22,7 @@ router.post('/ca/:id', requireLogin, async (req, res) => {
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
-    if (req.session.role !== 'finance' && ca.request_by !== req.session.userId)
+    if (req.session.role !== 'finance' && req.session.role !== 'super_admin' && ca.request_by !== req.session.userId)
       return res.status(403).json({ error: 'Akses ditolak' });
 
     const paramsStr = JSON.stringify({ type: 'ca', caId: ca.id });

@@ -18,7 +18,7 @@
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
-      <h1 class="page-title">Input Transaksi</h1>
+      <h1 class="page-title">Input Reimburse</h1>
 
       <div class="grid-2">
         <!-- FORM -->
@@ -49,19 +49,6 @@
                 <option value="">-- Pilih kategori --</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="caId">Cash Advance (opsional)</label>
-              <select id="caId">
-                <option value="">-- Tidak terkait CA --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="projectId">Proyek (opsional)</label>
-              <select id="projectId">
-                <option value="">-- Tidak ada proyek --</option>
-              </select>
-            </div>
-
             <!-- Bukti Foto (wajib) -->
             <div class="form-group">
               <label>Bukti Transaksi (Foto) <span style="color:var(--red)">*</span></label>
@@ -149,18 +136,6 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="editCaId">Cash Advance (opsional)</label>
-          <select id="editCaId">
-            <option value="">-- Tidak terkait CA --</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="editProjectId">Proyek (opsional)</label>  
-          <select id="editProjectId">
-            <option value="">-- Tidak ada proyek --</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>Foto Bukti</label>
           <div id="editCurrentPreview" style="margin-bottom:.5rem">
             <img id="editCurrentImg" src="" style="width:60px;height:60px;object-fit:cover;border-radius:6px;display:none" />
@@ -233,7 +208,6 @@
     });
 
     let draftItems = [];
-    let allCAs = [];
 
     // DB status hook (disable submit when DB is down)
     window.onDbStatusChange = (ok) => {
@@ -249,49 +223,10 @@
       } catch {}
     }
 
-    async function loadProjects() {
-      try {
-        const res = await fetch('/api/projects').then(r => r.json());
-        const sel = document.getElementById('projectId');
-        res.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.name; sel.appendChild(o); });
-      } catch {}
-    }
-
-    async function loadCAs() {
-      try {
-        const res = await fetch('/api/ca').then(r => r.json());
-        allCAs = res.filter(ca => ca.status === 'open');
-        const sel = document.getElementById('caId');
-        allCAs.forEach(ca => {
-          const o = document.createElement('option'); o.value = ca.id; o.textContent = ca.title; sel.appendChild(o);
-        });
-      } catch {}
-    }
-
     window.onLayoutReady = async function () {
       fpDate.setDate(new Date(), true);
-      await Promise.all([loadCategories(), loadProjects(), loadCAs()]);
+      await loadCategories();
     };
-
-    document.getElementById('caId').addEventListener('change', function() {
-      const selectedCaId = this.value;
-      const projInput = document.getElementById('projectId');
-      if (!selectedCaId) { projInput.disabled = false; projInput.value = ""; return; }
-      const ca = allCAs.find(c => c.id == selectedCaId);
-      projInput.disabled = true;
-      if (ca && ca.project_id) { projInput.value = ca.project_id; }
-      else { projInput.value = ""; }
-    });
-
-    document.getElementById('editCaId').addEventListener('change', function() {
-      const selectedCaId = this.value;
-      const projInput = document.getElementById('editProjectId');
-      if (!selectedCaId) { projInput.disabled = false; projInput.value = ""; return; }
-      const ca = allCAs.find(c => c.id == selectedCaId);
-      projInput.disabled = true;
-      if (ca && ca.project_id) { projInput.value = ca.project_id; }
-      else { projInput.value = ""; }
-    });
 
     // ─── Preview foto ─────────────────────────
     document.getElementById('proofImage').addEventListener('change', function () {
@@ -319,14 +254,6 @@
       const file = document.getElementById('proofImage').files[0];
       const categoryId = document.getElementById('categoryId').value;
       const categoryName = document.getElementById('categoryId').options[document.getElementById('categoryId').selectedIndex].text;
-      
-      const projSel = document.getElementById('projectId');
-      const projectId = projSel.value;
-      const projectName = projectId ? projSel.options[projSel.selectedIndex].text : '';
-      
-      const caEl = document.getElementById('caId');
-      const caId = caEl.value;
-      const caName = caEl.options[caEl.selectedIndex].text;
 
       if (!file) { showAlert('formAlert', 'Bukti foto wajib disertakan'); return; }
       if (!name) { showAlert('formAlert', 'Nama pengeluaran wajib diisi'); return; }
@@ -334,13 +261,12 @@
       if (!date) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
       if (!categoryId) { showAlert('formAlert', 'Kategori wajib dipilih'); return; }
 
-      draftItems.push({ name, amount, date, note, previewUrl: document.getElementById('previewImg').src, file, categoryId, categoryName, projectId, projectName, caId, caName });
+      draftItems.push({ name, amount, date, note, previewUrl: document.getElementById('previewImg').src, file, categoryId, categoryName });
       renderDraft();
       document.getElementById('addItemForm').reset();
       fpDate.setDate(new Date(), true);
       document.getElementById('previewWrap').classList.remove('show');
       document.getElementById('previewImg').src = '';
-      document.getElementById('projectId').disabled = false;
     });
 
     function renderDraft() {
@@ -362,8 +288,6 @@
             <div class="amount-keluar" style="font-size:.8rem">${fmt.format(item.amount)}</div>
             <div class="text-muted" style="font-size:.75rem">${fmtDate(item.date)}${item.note ? ' · ' + item.note : ''}</div>
             ${item.categoryId ? '<div class="text-muted" style="font-size:.7rem">🏷️ ' + item.categoryName + '</div>' : ''}
-            ${item.projectId ? '<div class="text-muted" style="font-size:.7rem">📁 ' + item.projectName + '</div>' : ''}
-            ${item.caId ? '<div class="text-muted" style="font-size:.7rem">💰 ' + item.caName + '</div>' : ''}
           </div>
           <div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0">
             <button class="btn btn-ghost btn-sm" onclick="openEditDraft(${idx})" title="Edit item">✏️</button>
@@ -392,8 +316,8 @@
       const btn = document.getElementById('submitAllBtn');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
       const fd = new FormData();
-      const itemsMeta = draftItems.map(({ name, amount, date, note, categoryId, projectId, caId }) =>
-        ({ name, amount, date, note, category_id: categoryId || null, project_id: projectId || null, ca_id: caId || null }));
+      const itemsMeta = draftItems.map(({ name, amount, date, note, categoryId }) =>
+        ({ name, amount, date, note, category_id: categoryId || null }));
       fd.append('items', JSON.stringify(itemsMeta));
       draftItems.forEach((item, idx) => fd.append(`proof_${idx}`, item.file));
       try {
@@ -419,24 +343,6 @@
       catSel.innerHTML = '<option value="">-- Pilih kategori --</option>';
       document.getElementById('categoryId').querySelectorAll('option:not(:first-child)').forEach(o => catSel.appendChild(o.cloneNode(true)));
       catSel.value = item.categoryId || '';
-      const projSel = document.getElementById('editProjectId');
-      projSel.innerHTML = '<option value="">-- Tidak ada proyek --</option>';
-      document.getElementById('projectId').querySelectorAll('option:not(:first-child)').forEach(o => projSel.appendChild(o.cloneNode(true)));
-      projSel.value = item.projectId || '';
-      const caSel = document.getElementById('editCaId');
-      caSel.innerHTML = '<option value="">-- Tidak terkait CA --</option>';
-      document.getElementById('caId').querySelectorAll('option:not(:first-child)').forEach(o => caSel.appendChild(o.cloneNode(true)));
-      caSel.value = item.caId || '';
-      
-      const ca = allCAs.find(c => c.id == item.caId);
-      if (item.caId) { 
-        projSel.disabled = true; 
-        if (ca && ca.project_id) projSel.value = ca.project_id;
-        else projSel.value = "";
-      } else { 
-        projSel.disabled = false; 
-      }
-      
       const curImg = document.getElementById('editCurrentImg');
       curImg.src = item.previewUrl; curImg.style.display = '';
       document.getElementById('editProofImage').value = '';
@@ -471,21 +377,15 @@
       const date = parseDateDMY(document.getElementById('editDate').value);
       const note = document.getElementById('editNote').value.trim();
       const catSel = document.getElementById('editCategoryId');
-      const projSel = document.getElementById('editProjectId');
-      const editCaSel = document.getElementById('editCaId');
       const categoryId = catSel.value;
       const categoryName = catSel.options[catSel.selectedIndex]?.text || '';
-      const projectId = projSel.value;
-      const projectName = projSel.options[projSel.selectedIndex]?.text || '';
-      const caId = editCaSel.value;
-      const caName = editCaSel.options[editCaSel.selectedIndex]?.text || '';
       const newFile = document.getElementById('editProofImage').files[0];
       if (!name) { showAlert('editDraftAlert', 'Nama pengeluaran wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('editDraftAlert', 'Nominal harus angka positif'); return; }
       if (!date) { showAlert('editDraftAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); return; }
       if (!categoryId) { showAlert('editDraftAlert', 'Kategori wajib dipilih'); return; }
       const item = draftItems[idx];
-      Object.assign(item, { name, amount, date, note, categoryId, categoryName, projectId, projectName, caId, caName });
+      Object.assign(item, { name, amount, date, note, categoryId, categoryName });
       if (newFile) { item.file = newFile; item.previewUrl = document.getElementById('editPreviewImg').src; }
       closeEditDraft(); renderDraft();
     });

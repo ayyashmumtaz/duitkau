@@ -1,11 +1,11 @@
 const express = require('express');
-const { requireLogin, requireFinance } = require('../middleware/auth');
+const { requireLogin, requireFinanceOrSuperAdmin } = require('../middleware/auth');
 const { getLogContent, getLogPath } = require('../utils/logger');
 const fs = require('fs');
 
 const router = express.Router();
 
-router.use(requireLogin, requireFinance); // Hanya bisa diakses admin/finance
+router.use(requireLogin, requireFinanceOrSuperAdmin);
 
 // Mengambil isi text log
 router.get('/', (req, res) => {

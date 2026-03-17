@@ -31,7 +31,7 @@ db.serialize(() => {
       username TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
       full_name TEXT NOT NULL,
-      role TEXT NOT NULL CHECK(role IN ('employee', 'finance')),
+      role TEXT NOT NULL CHECK(role IN ('employee', 'finance', 'super_admin')),
       created_at TEXT DEFAULT (datetime('now', 'localtime'))
     )
   `);
@@ -53,6 +53,7 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE,
+      po_number TEXT NOT NULL,
       description TEXT,
       created_at TEXT DEFAULT (datetime('now', 'localtime'))
     )
@@ -136,6 +137,37 @@ db.serialize(() => {
       db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_by INTEGER");
   });
 
+  // Migration: update users CHECK constraint to include super_admin
+  db.get("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'", (err, row) => {
+    if (err || !row) return;
+    if (!row.sql.includes('super_admin')) {
+      db.serialize(() => {
+        db.run('PRAGMA foreign_keys = OFF');
+        db.run(`CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+          full_name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('employee', 'finance', 'super_admin')),
+          created_at TEXT DEFAULT (datetime('now', 'localtime'))
+        )`);
+        db.run('INSERT INTO users_new SELECT * FROM users');
+        db.run('DROP TABLE users');
+        db.run('ALTER TABLE users_new RENAME TO users');
+        db.run('PRAGMA foreign_keys = ON');
+        console.log('Migration: users table updated with super_admin role');
+      });
+    }
+  });
+
+  // Migration: tambah po_number ke projects
+  db.all("PRAGMA table_info(projects)", (err, cols) => {
+    if (err) return;
+    const names = cols.map(c => c.name);
+    if (!names.includes('po_number'))
+      db.run("ALTER TABLE projects ADD COLUMN po_number TEXT NOT NULL DEFAULT ''");
+  });
+
   // Migration: tambah kolom baru jika belum ada
   db.all("PRAGMA table_info(transactions)", (err, cols) => {
     if (err) return;
@@ -156,12 +188,22 @@ db.serialize(() => {
       db.run("ALTER TABLE transactions ADD COLUMN ca_id INTEGER REFERENCES cash_advances(id)");
   });
 
+  // Migration: ensure a super_admin user exists
+  db.get("SELECT id FROM users WHERE role = 'super_admin' LIMIT 1", (err, row) => {
+    if (err || row) return;
+    const hashed = bcrypt.hashSync('admin123', 10);
+    db.run("INSERT INTO users (username, password, full_name, role) VALUES ('admin', ?, 'Super Admin', 'super_admin')", [hashed], (e) => {
+      if (!e) console.log('Migration: super_admin user created (admin / admin123)');
+    });
+  });
+
   // Seed default users if empty
   db.get('SELECT COUNT(*) as count FROM users', (err, row) => {
     if (err || row.count > 0) return;
 
     const hash = (p) => bcrypt.hashSync(p, 10);
     const stmt = db.prepare('INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)');
+    stmt.run('admin', hash('admin123'), 'Super Admin', 'super_admin');
     stmt.run('finance', hash('finance123'), 'Tim Finance', 'finance');
     stmt.run('alice', hash('alice123'), 'Alice Putri', 'employee');
     stmt.run('bob', hash('bob123'), 'Bob Santoso', 'employee');

@@ -1,12 +1,12 @@
 const express = require('express');
 const db = require('../database');
 const upload = require('../middleware/upload');
-const { requireLogin, requireFinance } = require('../middleware/auth');
+const { requireLogin, requireFinanceOrSuperAdmin } = require('../middleware/auth');
 const { logEvent } = require('../utils/logger');
 
 const router = express.Router();
 
-router.use(requireLogin, requireFinance);
+router.use(requireLogin, requireFinanceOrSuperAdmin);
 
 // ─── Laporan semua karyawan (hanya approved) ─────────────────
 router.get('/summary', async (req, res) => {

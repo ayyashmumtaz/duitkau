@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../database');
-const { requireLogin, requireFinance } = require('../middleware/auth');
+const { requireLogin, requireSuperAdmin } = require('../middleware/auth');
 const { logEvent } = require('../utils/logger');
 const router = express.Router();
 
@@ -15,7 +15,7 @@ router.get('/', requireLogin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Gagal mengambil data kategori' }); }
 });
 
-router.post('/', requireLogin, requireFinance, async (req, res) => {
+router.post('/', requireLogin, requireSuperAdmin, async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
   try {
@@ -31,7 +31,7 @@ router.post('/', requireLogin, requireFinance, async (req, res) => {
   }
 });
 
-router.put('/:id', requireLogin, requireFinance, async (req, res) => {
+router.put('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
   const { name } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
   try {
@@ -48,7 +48,7 @@ router.put('/:id', requireLogin, requireFinance, async (req, res) => {
   }
 });
 
-router.delete('/:id', requireLogin, requireFinance, async (req, res) => {
+router.delete('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
   try {
     const usage = await db.getAsync('SELECT COUNT(*) as count FROM transactions WHERE category_id = ?', [req.params.id]);
     if (usage.count > 0)

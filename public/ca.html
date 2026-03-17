@@ -77,7 +77,7 @@
           <input type="text" id="caAmount" inputmode="numeric" placeholder="Contoh: 500.000" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="caProject">Proyek (opsional)</label>
+          <label for="caProject">Proyek <span style="color:var(--red)">*</span></label>
           <select id="caProject">
             <option value="">-- Tidak ada proyek --</option>
           </select>
@@ -112,7 +112,7 @@
           <input type="text" id="editCaAmount" inputmode="numeric" placeholder="Contoh: 500.000" autocomplete="off" />
         </div>
         <div class="form-group">
-          <label for="editCaProject">Proyek (opsional)</label>
+          <label for="editCaProject">Proyek <span style="color:var(--red)">*</span></label>
           <select id="editCaProject">
             <option value="">-- Tidak ada proyek --</option>
           </select>
@@ -193,6 +193,57 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" id="rejectReimburseCancel">Batal</button>
         <button class="btn btn-primary" id="rejectReimburseSubmit" style="background:var(--red,#ef4444)">Tolak Reimburse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add CA Transaction Modal -->
+  <div class="modal-overlay" id="addCaTxOverlay" style="z-index: 210;">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <span class="modal-title">Tambah Transaksi CA</span>
+        <button class="modal-close" id="addCaTxClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="addCaTxAlert" class="alert alert-error"></div>
+        <p style="margin-bottom:.75rem; font-size:.875rem; color:var(--gray-600)" id="addCaTxDesc"></p>
+        <div class="form-group" id="addCaTxTypeGroup">
+          <label for="caTxType">Jenis Transaksi <span style="color:var(--red)">*</span></label>
+          <select id="caTxType">
+            <option value="keluar">❤️ Pengeluaran (Keluar)</option>
+            <option value="masuk">💚 Dana Diterima (Masuk)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="caTxName">Nama Transaksi <span style="color:var(--red)">*</span></label>
+          <input type="text" id="caTxName" placeholder="Contoh: Beli material, Dana CA..." />
+        </div>
+        <div class="form-group">
+          <label for="caTxAmount">Nominal (Rp) <span style="color:var(--red)">*</span></label>
+          <input type="text" id="caTxAmount" inputmode="numeric" placeholder="Contoh: 150.000" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="caTxDate">Tanggal <span style="color:var(--red)">*</span></label>
+          <input type="date" id="caTxDate" />
+        </div>
+        <div class="form-group">
+          <label for="caTxCategory">Kategori <span style="color:var(--red)">*</span></label>
+          <select id="caTxCategory">
+            <option value="">-- Pilih kategori --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="caTxNote">Catatan (opsional)</label>
+          <textarea id="caTxNote" placeholder="Keterangan tambahan..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="caTxProof">Bukti (Foto/Struk)</label>
+          <input type="file" id="caTxProof" accept="image/*" capture="environment" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="addCaTxCancel">Batal</button>
+        <button class="btn btn-primary" id="addCaTxSubmit">Simpan Transaksi</button>
       </div>
     </div>
   </div>
@@ -554,7 +605,8 @@
         document.getElementById('closeRequestForm').style.display = 'none';
 
         const isOwner = ca.request_by === window.currentUser.userId;
-        const isFinance = window.currentUser.role === 'finance';
+        const isFinance = window.currentUser.role === 'finance' || window.currentUser.role === 'super_admin';
+        const isSuperAdmin = window.currentUser.role === 'super_admin';
 
         if (isFinance) {
           let html = `<button class="btn btn-ghost btn-sm" onclick="openEditCa()">Edit CA</button>`;
@@ -576,42 +628,85 @@
               <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
           }
           actionsEl.innerHTML = html;
-          // Owner actions for finance's own CA
-          if (isOwner && ca.status === 'open') {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-primary btn-sm'; btn.id = 'btnRequestClose'; btn.textContent = 'Tutup CA';
-            actionsEl.appendChild(btn);
-            btn.addEventListener('click', () => { document.getElementById('closeRequestForm').style.display = ''; btn.style.display = 'none'; });
-          } else if (isOwner && ca.status === 'closed' && !ca.reimbursement_requested) {
-            const label = sisa > 0 ? 'Request Reimburse (Ada Sisa Dana)' : 'Request Reimburse (Kurang)';
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-primary btn-sm'; btn.id = 'btnReimburse'; btn.textContent = label;
-            actionsEl.appendChild(btn);
-            btn.addEventListener('click', async () => {
-              if (!confirm('Ajukan request reimburse?')) return;
-              const res = await fetch(`/api/ca/${id}/request-reimburse`, { method: 'PATCH' });
-              if (res.ok) { showAlert('detailSuccess', 'Request reimburse berhasil diajukan'); await refreshDetail(id); await loadCAs(); }
-              else { const d = await res.json(); showAlert('detailAlert', d.error); }
-            });
-          }
+          if (isOwner && ca.status === 'open') appendOwnerCloseActions();
         } else {
-          // Employee owner actions
-          if (ca.status === 'open') {
-            actionsEl.innerHTML = `<button class="btn btn-primary btn-sm" id="btnRequestClose">Request Close</button>`;
-            document.getElementById('btnRequestClose').addEventListener('click', () => {
-              document.getElementById('closeRequestForm').style.display = '';
-              document.getElementById('btnRequestClose').style.display = 'none';
-            });
-          } else if (ca.status === 'closed' && !ca.reimbursement_requested) {
-            const label = sisa > 0 ? 'Request Reimburse (Ada Sisa Dana)' : 'Request Reimburse (Kurang)';
-            actionsEl.innerHTML = `<button class="btn btn-primary btn-sm" id="btnReimburse">${label}</button>`;
-            document.getElementById('btnReimburse').addEventListener('click', async () => {
-              if (!confirm('Ajukan request reimburse?')) return;
-              const res = await fetch(`/api/ca/${id}/request-reimburse`, { method: 'PATCH' });
-              if (res.ok) { showAlert('detailSuccess', 'Request reimburse berhasil diajukan'); await refreshDetail(id); await loadCAs(); }
-              else { const d = await res.json(); showAlert('detailAlert', d.error); }
-            });
+          if (ca.status === 'open') appendOwnerCloseActions();
+        }
+
+        function appendOwnerCloseActions() {
+          const balanced = Math.abs(sisa) < 0.01;
+          const kekurangan = Math.max(0, -sisa);
+          const lebihan = Math.max(0, sisa);
+
+          if (!balanced) {
+            const warn = document.createElement('div');
+            warn.style.cssText = 'font-size:.8rem; color:var(--red,#ef4444); width:100%; margin-top:.25rem';
+            if (lebihan > 0) {
+              warn.innerHTML = `⚠️ Ada lebihan <strong>${fmt.format(lebihan)}</strong> — tambah transaksi pengembalian dahulu`;
+            } else {
+              warn.innerHTML = `⚠️ Ada kekurangan <strong>${fmt.format(kekurangan)}</strong> — ajukan reimburse dahulu`;
+            }
+            actionsEl.appendChild(warn);
+
+            if (kekurangan > 0) {
+              if (!['pending', 'approved'].includes(ca.reimbursement_status)) {
+                const btnR = document.createElement('button');
+                btnR.className = 'btn btn-primary btn-sm'; btnR.textContent = '💸 Ajukan Reimburse';
+                btnR.addEventListener('click', async () => {
+                  if (!confirm('Ajukan request reimburse?')) return;
+                  const res = await fetch(`/api/ca/${id}/request-reimburse`, { method: 'PATCH' });
+                  if (res.ok) { showAlert('detailSuccess', 'Request reimburse berhasil diajukan'); await refreshDetail(id); await loadCAs(); }
+                  else { const d = await res.json(); showAlert('detailAlert', d.error); }
+                });
+                actionsEl.appendChild(btnR);
+              } else if (ca.reimbursement_status === 'pending') {
+                const info = document.createElement('span');
+                info.style.cssText = 'font-size:.8rem; color:var(--gray-500)';
+                info.textContent = '⏳ Menunggu persetujuan reimburse oleh finance';
+                actionsEl.appendChild(info);
+              }
+            }
           }
+
+          const closeBtn = document.createElement('button');
+          closeBtn.id = 'btnRequestClose';
+          closeBtn.textContent = (isFinance && isOwner) ? 'Tutup CA' : 'Request Close';
+          if (balanced) {
+            closeBtn.className = 'btn btn-primary btn-sm';
+            closeBtn.addEventListener('click', () => { document.getElementById('closeRequestForm').style.display = ''; closeBtn.style.display = 'none'; });
+          } else {
+            closeBtn.className = 'btn btn-ghost btn-sm';
+            closeBtn.disabled = true;
+          }
+          actionsEl.appendChild(closeBtn);
+        }
+
+        // Hapus CA button (super_admin only)
+        if (isSuperAdmin) {
+          const btnDel = document.createElement('button');
+          btnDel.className = 'btn btn-danger btn-sm';
+          btnDel.textContent = '🗑️ Hapus CA';
+          btnDel.addEventListener('click', async () => {
+            if (!confirm(`Hapus CA "${ca.title}" beserta semua transaksinya? Tindakan ini tidak bisa dibatalkan.`)) return;
+            const res = await fetch(`/api/ca/${id}`, { method: 'DELETE' });
+            if (res.ok || res.status === 204) {
+              closeDetail();
+              await loadCAs();
+            } else {
+              const d = await res.json();
+              showAlert('detailAlert', d.error);
+            }
+          });
+          actionsEl.appendChild(btnDel);
+        }
+
+        // Tambah Transaksi button (when CA is open)
+        if (ca.status === 'open' && (isOwner || isFinance)) {
+          const btnTx = document.createElement('button');
+          btnTx.className = 'btn btn-primary btn-sm';
+          btnTx.textContent = '➕ Tambah Transaksi';
+          btnTx.addEventListener('click', () => openAddCaTx(id, ca.title, isFinance, ca.project_name, ca.project_po_number));
+          actionsEl.appendChild(btnTx);
         }
 
         // Transaction table
@@ -701,6 +796,7 @@
 
       if (!title) { showAlert('newCaAlert', 'Judul CA wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('newCaAlert', 'Nominal harus berupa angka positif'); return; }
+      if (!projectId) { showAlert('newCaAlert', 'Proyek wajib dipilih'); return; }
 
       const btn = document.getElementById('newCaSave');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
@@ -751,6 +847,7 @@
 
       if (!title) { showAlert('editCaAlert', 'Judul CA wajib diisi'); return; }
       if (isNaN(amount) || amount <= 0) { showAlert('editCaAlert', 'Nominal harus berupa angka positif'); return; }
+      if (!projectId) { showAlert('editCaAlert', 'Proyek wajib dipilih'); return; }
 
       const btn = document.getElementById('editCaSave');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
@@ -865,6 +962,97 @@
         if (openDetailId === reimburseTargetId) await refreshDetail(reimburseTargetId);
       } catch { alert('Gagal menolak reimburse'); }
       finally { btn.disabled = false; btn.textContent = 'Tolak Reimburse'; }
+    });
+
+    // ─── Add CA Transaction Modal ─────────────
+    let caTxCategories = [];
+    let addCaTxTargetId = null;
+
+    async function loadCaTxCategories() {
+      if (caTxCategories.length > 0) return;
+      try {
+        caTxCategories = await fetch('/api/categories').then(r => r.json());
+        const sel = document.getElementById('caTxCategory');
+        caTxCategories.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id; opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
+      } catch {}
+    }
+
+    function openAddCaTx(id, title, isFinance, projectName, poNumber) {
+      addCaTxTargetId = id;
+      let desc = `CA: ${title}`;
+      if (projectName) desc += `\nProyek: ${projectName}${poNumber ? ` · PO: ${poNumber}` : ''}`;
+      document.getElementById('addCaTxDesc').style.whiteSpace = 'pre-line';
+      document.getElementById('addCaTxDesc').textContent = desc;
+      document.getElementById('caTxName').value = '';
+      document.getElementById('caTxAmount').value = '';
+      document.getElementById('caTxDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('caTxCategory').value = '';
+      document.getElementById('caTxNote').value = '';
+      document.getElementById('caTxProof').value = '';
+      hideAlert('addCaTxAlert');
+      // Finance sees both masuk/keluar, employee sees keluar only
+      const typeGroup = document.getElementById('addCaTxTypeGroup');
+      typeGroup.style.display = isFinance ? '' : 'none';
+      document.getElementById('caTxType').value = 'keluar';
+      loadCaTxCategories();
+      document.getElementById('addCaTxOverlay').classList.add('open');
+    }
+
+    document.getElementById('caTxAmount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    function closeAddCaTxModal() { document.getElementById('addCaTxOverlay').classList.remove('open'); }
+    document.getElementById('addCaTxClose').addEventListener('click', closeAddCaTxModal);
+    document.getElementById('addCaTxCancel').addEventListener('click', closeAddCaTxModal);
+    document.getElementById('addCaTxOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('addCaTxOverlay')) closeAddCaTxModal(); });
+
+    document.getElementById('addCaTxSubmit').addEventListener('click', async () => {
+      hideAlert('addCaTxAlert');
+      const type = document.getElementById('caTxType').value;
+      const name = document.getElementById('caTxName').value.trim();
+      const amountRaw = document.getElementById('caTxAmount').value.replace(/\./g, '').replace(',', '.');
+      const amount = parseFloat(amountRaw);
+      const date = document.getElementById('caTxDate').value;
+      const category_id = document.getElementById('caTxCategory').value;
+      const note = document.getElementById('caTxNote').value.trim();
+      const proofFile = document.getElementById('caTxProof').files[0];
+
+      if (!name) { showAlert('addCaTxAlert', 'Nama transaksi wajib diisi'); return; }
+      if (isNaN(amount) || amount <= 0) { showAlert('addCaTxAlert', 'Nominal harus berupa angka positif'); return; }
+      if (!date) { showAlert('addCaTxAlert', 'Tanggal wajib diisi'); return; }
+      if (!category_id) { showAlert('addCaTxAlert', 'Kategori wajib dipilih'); return; }
+
+      const btn = document.getElementById('addCaTxSubmit');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const fd = new FormData();
+        fd.append('type', type);
+        fd.append('name', name);
+        fd.append('amount', amount);
+        fd.append('date', date);
+        fd.append('category_id', category_id);
+        if (note) fd.append('note', note);
+        if (proofFile) fd.append('proof_image', proofFile);
+
+        const res = await fetch(`/api/ca/${addCaTxTargetId}/transactions`, { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { showAlert('addCaTxAlert', data.error); return; }
+        closeAddCaTxModal();
+        showAlert('detailSuccess', 'Transaksi berhasil ditambahkan');
+        await refreshDetail(addCaTxTargetId);
+        await loadCAs();
+        setTimeout(() => hideAlert('detailSuccess'), 3000);
+      } catch { showAlert('addCaTxAlert', 'Gagal menyimpan transaksi'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan Transaksi'; }
     });
 
     // ─── Share Link Publik CA ─────────────────

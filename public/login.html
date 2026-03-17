@@ -76,7 +76,7 @@
           return;
         }
 
-        if (data.role === 'finance') {
+        if (data.role === 'finance' || data.role === 'super_admin') {
           window.location.href = '/finance.html';
         } else {
           window.location.href = '/dashboard.html';

@@ -115,7 +115,10 @@
     const fmtDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     let deleteTargetId = null;
 
+    let _isSuperAdmin = false;
     window.onLayoutReady = async function(user) {
+      _isSuperAdmin = user.role === 'super_admin';
+      if (!_isSuperAdmin) document.getElementById('btnAdd').style.display = 'none';
       await loadCategories();
     };
 
@@ -141,8 +144,10 @@
           <td class="text-muted">${cat.tx_count} transaksi</td>
           <td class="text-muted">${fmtDate(cat.created_at)}</td>
           <td class="text-right">
+            ${_isSuperAdmin ? `
             <button class="btn btn-ghost btn-sm" onclick="openEdit(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">✏️ Edit</button>
             <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${cat.id}, '${cat.name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+            ` : '–'}
           </td>
         </tr>
       `).join('');

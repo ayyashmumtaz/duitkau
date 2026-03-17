@@ -69,3 +69,64 @@
 [2026-03-17T08:55:29.555Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-17T09:11:00.169Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-17T09:12:17.192Z] [FINANCE:pakchris] (::1) | APPROVE_REIMBURSE_CA | Finance menyetujui reimburse CA "CA Pasang Panel Meratus" sebesar 50000
+[2026-03-17T09:32:46.481Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:35:46.844Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:38:12.059Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:39:41.574Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:40:28.276Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:41:29.506Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:41:53.038Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:41:56.242Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:42:09.359Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:42:14.861Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:42:51.379Z] [FINANCE:pakchris] (::1) | CREATE_PROJECT | Membuat proyek "Proyek Kapal Gibran" (PO: PO-202020-01)
+[2026-03-17T09:42:55.000Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:42:57.548Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:43:29.599Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:44:58.983Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:47:09.486Z] [EMPLOYEE:aziz] (::1) | CREATE_CA | Karyawan mengajukan CA "CA Pengadaan Panel" sebesar 5000000
+[2026-03-17T09:47:19.540Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:47:22.917Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:47:31.293Z] [FINANCE:pakchris] (::1) | APPROVE_CA | Finance menyetujui CA "CA Pengadaan Panel"
+[2026-03-17T09:47:46.755Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:48:45.399Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:49:50.444Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:52:20.247Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:52:23.307Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:52:59.983Z] [FINANCE:pakchris] (::1) | ADD_CA_TX | Input transaksi masuk CA "CA Pengadaan Panel": "Uang CA Cair" sebesar 500000
+[2026-03-17T09:53:35.154Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:53:39.607Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T09:53:56.080Z] [EMPLOYEE:aziz] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Pengadaan Panel": "BELI PANEL KONTOL" sebesar 600000
+[2026-03-17T09:54:05.463Z] [EMPLOYEE:aziz] (::1) | REQUEST_CLOSE_CA | Karyawan mengajukan penutupan CA "CA Pengadaan Panel"
+[2026-03-17T09:54:08.631Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:54:14.483Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:54:42.929Z] [FINANCE:pakchris] (::1) | CLOSE_CA | Finance menutup CA "CA Pengadaan Panel"
+[2026-03-17T09:54:51.150Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T09:54:54.895Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T10:11:50.684Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:14:07.206Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:14:19.637Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:17:45.113Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:17:56.893Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:18:02.476Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 19)
+[2026-03-17T10:18:04.642Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 20)
+[2026-03-17T10:18:06.691Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 21)
+[2026-03-17T10:18:09.010Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 22)
+[2026-03-17T10:18:59.827Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:19:10.095Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:19:16.261Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:20:34.449Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:21:59.032Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:22:02.634Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:22:20.626Z] [SUPER_ADMIN:admin] (::1) | DELETE_ALL_TRANSACTIONS | Menghapus semua transaksi (0 baris)
+[2026-03-17T10:22:22.736Z] [SUPER_ADMIN:admin] (::1) | DELETE_ALL_CA | Menghapus semua cash advance (2 baris)
+[2026-03-17T10:23:39.261Z] [SUPER_ADMIN:admin] (::1) | UPDATE_USER | Memperbarui profil akun: Azizryan (aziz)
+[2026-03-17T10:24:01.484Z] [SUPER_ADMIN:admin] (::1) | UPDATE_PROJECT | Memperbarui proyek (ID: 3) menjadi "Proyek Kapal Gibran" (PO: PO-2026-01)
+[2026-03-17T10:24:15.110Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:24:17.423Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:24:20.509Z] [SUPER_ADMIN:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:24:36.406Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:24:44.145Z] [SUPER_ADMIN:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:24:48.049Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T10:26:52.111Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:26:53.680Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login

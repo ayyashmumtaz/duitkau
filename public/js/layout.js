@@ -3,7 +3,7 @@
 
   // ─── Navigation items ─────────────────────
   const EMPLOYEE_NAV = [
-    { href: '/dashboard.html', icon: '📝', label: 'Input Transaksi',   page: 'dashboard' },
+    { href: '/dashboard.html', icon: '📝', label: 'Input Reimburse',   page: 'dashboard' },
     { href: '/history.html',   icon: '📋', label: 'Riwayat',           page: 'history'   },
     { href: '/ca.html',        icon: '💰', label: 'Cash Advance',      page: 'ca', notif: true },
   ];
@@ -14,7 +14,7 @@
     {
       type: 'group', label: 'Transaksi', icon: '💳',
       items: [
-        { href: '/input-employee.html', icon: '➕', label: 'Input Transaksi', page: 'input-employee' },
+        { href: '/input-employee.html', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
         { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
       ]
     },
@@ -38,7 +38,7 @@
   // Finance bottom-nav (mobile)
   const FINANCE_BOTTOM = [
     { href: '/finance.html',        icon: '📊', label: 'Dashboard',       page: 'finance'        },
-    { href: '/input-employee.html', icon: '➕', label: 'Input Transaksi', page: 'input-employee' },
+    { href: '/input-employee.html', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
     { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
     { href: '/reports.html',        icon: '📊', label: 'Laporan',         page: 'reports'        },
   ];
@@ -99,7 +99,8 @@
   function injectNavbar(user) {
     const ph = document.getElementById('navbar-placeholder');
     if (!ph) return;
-    const isFinance = user.role === 'finance';
+    const isFinanceOrAdmin = user.role === 'finance' || user.role === 'super_admin';
+    const roleChip = user.role === 'super_admin' ? 'Super Admin' : (user.role === 'finance' ? 'Finance' : 'Karyawan');
     ph.outerHTML = `
       <div class="db-banner" id="dbBanner">
         <span class="db-dot"></span>
@@ -116,7 +117,7 @@
           </span>
           <span class="navbar-greeting">
             Halo, <strong id="navName">${user.fullName}</strong>
-            <span class="chip">${isFinance ? 'Finance' : 'Karyawan'}</span>
+            <span class="chip">${roleChip}</span>
           </span>
           <div style="position:relative">
             <button class="notif-btn" id="notifBell" title="Notifikasi CA">
@@ -124,7 +125,7 @@
             </button>
             <div class="notif-popup" id="notifPopup" style="display:none"></div>
           </div>
-          ${isFinance
+          ${isFinanceOrAdmin
             ? '<button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>'
             : '<button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>'}
           <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
@@ -136,7 +137,7 @@
   function injectSidebar(user) {
     const ph = document.getElementById('sidebar-placeholder');
     if (!ph) return;
-    const nav = user.role === 'finance' ? FINANCE_NAV_GROUPS : EMPLOYEE_NAV;
+    const nav = (user.role === 'finance' || user.role === 'super_admin') ? FINANCE_NAV_GROUPS : EMPLOYEE_NAV;
     ph.outerHTML = `<aside class="sidebar">${renderSidebarItems(nav)}</aside>`;
 
     // Wire group toggle buttons
@@ -152,7 +153,7 @@
   function injectBottomNav(user) {
     const ph = document.getElementById('bottom-nav-placeholder');
     if (!ph) return;
-    const items = user.role === 'finance' ? FINANCE_BOTTOM : EMPLOYEE_NAV;
+    const items = (user.role === 'finance' || user.role === 'super_admin') ? FINANCE_BOTTOM : EMPLOYEE_NAV;
     ph.outerHTML = `<nav class="bottom-nav">${renderBottomNavItems(items)}</nav>`;
   }
 
@@ -258,7 +259,7 @@
       const cas = await fetch('/api/ca').then(r => r.json());
       const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
       let items = [];
-      if (user.role === 'finance') {
+      if (user.role === 'finance' || user.role === 'super_admin') {
         items = cas.filter(ca =>
           ca.status === 'pending' || ca.status === 'pending_close' || ca.reimbursement_status === 'pending'
         );
@@ -296,7 +297,7 @@
           <div class="notif-popup-item" onclick="window.location.href='/ca.html?id=${ca.id}'">
             <div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ca.title}</div>
             <div style="font-size:.75rem;color:var(--gray-500)">${desc}</div>
-            <div style="font-size:.75rem;color:var(--gray-400)">${fmt.format(ca.initial_amount)}${user.role === 'finance' && ca.request_by_name ? ' · ' + ca.request_by_name : ''}</div>
+            <div style="font-size:.75rem;color:var(--gray-400)">${fmt.format(ca.initial_amount)}${(user.role === 'finance' || user.role === 'super_admin') && ca.request_by_name ? ' · ' + ca.request_by_name : ''}</div>
           </div>`;
         }).join('');
       }
@@ -422,7 +423,7 @@
 
     // Role guard
     const page = getActivePage();
-    if (user.role === 'finance' && (page === 'dashboard' || page === 'history')) {
+    if ((user.role === 'finance' || user.role === 'super_admin') && (page === 'dashboard' || page === 'history')) {
       window.location.href = '/finance.html'; return;
     }
     if (user.role === 'employee' && ['finance','input-employee','employees','projects','categories','reports'].includes(page)) {

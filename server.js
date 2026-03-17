@@ -47,6 +47,7 @@ app.use('/api/share', require('./routes/share'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/ca', require('./routes/ca'));
 app.use('/api/logs', require('./routes/logs'));
+app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {
   res.redirect('/login.html');
@@ -55,10 +56,11 @@ app.get('/', (req, res) => {
 const server = app.listen(PORT, () => {
   console.log(`DuitKau berjalan di http://localhost:${PORT}`);
   console.log('Akun default:');
-  console.log('  Finance : finance / finance123');
-  console.log('  Karyawan: alice / alice123');
-  console.log('  Karyawan: bob / bob123');
-  console.log('  Karyawan: charlie / charlie123');
+  console.log('  Super Admin: admin / admin123');
+  console.log('  Finance    : finance / finance123');
+  console.log('  Karyawan   : alice / alice123');
+  console.log('  Karyawan   : bob / bob123');
+  console.log('  Karyawan   : charlie / charlie123');
 });
 
 server.on('error', (err) => {

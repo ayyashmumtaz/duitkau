@@ -47,6 +47,15 @@
           </table>
         </div>
       </div>
+      <!-- Danger Zone (super_admin only) -->
+      <div class="card" id="dangerZone" style="display:none;border:1.5px solid var(--red);margin-top:1.5rem">
+        <div class="card-title" style="color:var(--red)">⚠️ Zona Bahaya</div>
+        <p class="text-muted" style="font-size:.875rem;margin-bottom:1rem">Tindakan berikut bersifat permanen dan tidak dapat dibatalkan.</p>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+          <button class="btn btn-danger" id="btnDeleteAllTx">🗑️ Hapus Semua Transaksi</button>
+          <button class="btn btn-danger" id="btnDeleteAllCA">🗑️ Hapus Semua Cash Advance</button>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -74,6 +83,7 @@
             <select id="empRole">
               <option value="employee">Karyawan</option>
               <option value="finance">Finance</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
           <div class="form-group">
@@ -132,7 +142,11 @@
     const fmtDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     let deleteTargetId = null;
 
+    let _isSuperAdmin = false;
     window.onLayoutReady = async function(user) {
+      _isSuperAdmin = user.role === 'super_admin';
+      if (!_isSuperAdmin) document.getElementById('btnAdd').style.display = 'none';
+      if (_isSuperAdmin) document.getElementById('dangerZone').style.display = '';
       await loadEmployees();
     };
 
@@ -152,16 +166,20 @@
         tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">👥</div>Belum ada karyawan</div></td></tr>`;
         return;
       }
+      const roleLabel = r => r === 'super_admin' ? 'Super Admin' : (r === 'finance' ? 'Finance' : 'Karyawan');
+      const roleBadge = r => r === 'super_admin' ? 'badge-warning' : (r === 'finance' ? 'badge-masuk' : 'badge-keluar');
       tbody.innerHTML = data.map((emp, i) => `
         <tr>
           <td class="text-muted">${i + 1}</td>
           <td><strong>${emp.full_name}</strong></td>
           <td class="text-muted">@${emp.username}</td>
-          <td><span class="badge ${emp.role === 'finance' ? 'badge-masuk' : 'badge-keluar'}">${emp.role === 'finance' ? 'Finance' : 'Karyawan'}</span></td>
+          <td><span class="badge ${roleBadge(emp.role)}">${roleLabel(emp.role)}</span></td>
           <td class="text-muted">${fmtDate(emp.created_at)}</td>
           <td class="text-right">
-            <button class="btn btn-ghost btn-sm" onclick="openEdit(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}', '${emp.username}')">Edit</button>
-            ${emp.id !== window.currentUser.userId ? `<button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}')">Hapus</button>` : '<span class="text-muted" style="font-size:.75rem;margin-left:.5rem">Anda</span>'}
+            ${_isSuperAdmin ? `
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}', '${emp.username}', '${emp.role}')">Edit</button>
+              ${emp.id !== window.currentUser.userId ? `<button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${emp.id}, '${emp.full_name.replace(/'/g, "\\'")}')">Hapus</button>` : '<span class="text-muted" style="font-size:.75rem;margin-left:.5rem">Anda</span>'}
+            ` : (emp.id === window.currentUser.userId ? '<span class="text-muted" style="font-size:.75rem">Anda</span>' : '–')}
           </td>
         </tr>
       `).join('');
@@ -179,21 +197,27 @@
       document.getElementById('passwordHint').style.display = 'none';
       document.getElementById('passwordLabel').textContent = 'Password';
       document.getElementById('roleGroup').style.display = '';
+      // Hide super_admin option for non-super_admin users
+      const isSuperAdmin = window.currentUser && window.currentUser.role === 'super_admin';
+      document.querySelector('#empRole option[value="super_admin"]').style.display = isSuperAdmin ? '' : 'none';
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
       document.getElementById('fullName').focus();
     }
 
-    function openEdit(id, fullName, username) {
+    function openEdit(id, fullName, username, role) {
       document.getElementById('modalTitle').textContent = 'Edit Pengguna';
       document.getElementById('empId').value = id;
       document.getElementById('fullName').value = fullName;
       document.getElementById('username').value = username;
+      document.getElementById('empRole').value = role || 'employee';
       document.getElementById('password').value = '';
       document.getElementById('password').required = false;
       document.getElementById('passwordHint').style.display = 'block';
       document.getElementById('passwordLabel').textContent = 'Ubah Password';
-      document.getElementById('roleGroup').style.display = 'none';
+      // Show role group only for super_admin
+      const isSuperAdmin = window.currentUser && window.currentUser.role === 'super_admin';
+      document.getElementById('roleGroup').style.display = isSuperAdmin ? '' : 'none';
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
       document.getElementById('fullName').focus();
@@ -296,6 +320,33 @@
         btn.disabled = false;
         btn.textContent = 'Hapus';
       }
+    });
+
+    // ─── Danger Zone ──────────────────────────
+    document.getElementById('btnDeleteAllTx').addEventListener('click', async () => {
+      const ok = await showConfirm('Hapus Semua Transaksi?',
+        'Semua data transaksi seluruh karyawan akan dihapus permanen.<br><strong>Tindakan ini tidak dapat dibatalkan.</strong>');
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/admin/transactions', { method: 'DELETE' });
+        const d = await res.json();
+        if (!res.ok) { showAlert('mainAlert', d.error); return; }
+        showAlert('mainSuccess', `✅ ${d.deleted} transaksi berhasil dihapus`);
+        setTimeout(() => hideAlert('mainSuccess'), 4000);
+      } catch { showAlert('mainAlert', 'Gagal menghapus transaksi'); }
+    });
+
+    document.getElementById('btnDeleteAllCA').addEventListener('click', async () => {
+      const ok = await showConfirm('Hapus Semua Cash Advance?',
+        'Semua data cash advance beserta transaksi CA akan dihapus permanen.<br><strong>Tindakan ini tidak dapat dibatalkan.</strong>');
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/admin/ca', { method: 'DELETE' });
+        const d = await res.json();
+        if (!res.ok) { showAlert('mainAlert', d.error); return; }
+        showAlert('mainSuccess', `✅ ${d.deleted} cash advance berhasil dihapus`);
+        setTimeout(() => hideAlert('mainSuccess'), 4000);
+      } catch { showAlert('mainAlert', 'Gagal menghapus cash advance'); }
     });
 
     function showAlert(id, msg) {

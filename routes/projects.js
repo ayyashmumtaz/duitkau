@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../database');
-const { requireLogin, requireFinance } = require('../middleware/auth');
+const { requireLogin, requireSuperAdmin } = require('../middleware/auth');
 const { logEvent } = require('../utils/logger');
 const router = express.Router();
 
@@ -15,15 +15,16 @@ router.get('/', requireLogin, async (req, res) => {
   } catch { res.status(500).json({ error: 'Gagal mengambil data proyek' }); }
 });
 
-router.post('/', requireLogin, requireFinance, async (req, res) => {
-  const { name, description } = req.body;
+router.post('/', requireLogin, requireSuperAdmin, async (req, res) => {
+  const { name, po_number, description } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama proyek wajib diisi' });
+  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor PO wajib diisi' });
   try {
-    const result = await db.runAsync('INSERT INTO projects (name, description) VALUES (?, ?)', [name.trim(), description || null]);
+    const result = await db.runAsync('INSERT INTO projects (name, po_number, description) VALUES (?, ?, ?)', [name.trim(), po_number.trim(), description || null]);
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [result.lastID]);
-    
-    logEvent(req, 'CREATE_PROJECT', `Membuat proyek "${project.name}"`);
-    
+
+    logEvent(req, 'CREATE_PROJECT', `Membuat proyek "${project.name}" (PO: ${project.po_number})`);
+
     res.status(201).json(project);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Nama proyek sudah ada' });
@@ -31,16 +32,17 @@ router.post('/', requireLogin, requireFinance, async (req, res) => {
   }
 });
 
-router.put('/:id', requireLogin, requireFinance, async (req, res) => {
-  const { name, description } = req.body;
+router.put('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
+  const { name, po_number, description } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama proyek wajib diisi' });
+  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor PO wajib diisi' });
   try {
-    await db.runAsync('UPDATE projects SET name = ?, description = ? WHERE id = ?', [name.trim(), description || null, req.params.id]);
+    await db.runAsync('UPDATE projects SET name = ?, po_number = ?, description = ? WHERE id = ?', [name.trim(), po_number.trim(), description || null, req.params.id]);
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [req.params.id]);
     if (!project) return res.status(404).json({ error: 'Proyek tidak ditemukan' });
-    
-    logEvent(req, 'UPDATE_PROJECT', `Memperbarui proyek (ID: ${req.params.id}) menjadi "${project.name}"`);
-    
+
+    logEvent(req, 'UPDATE_PROJECT', `Memperbarui proyek (ID: ${req.params.id}) menjadi "${project.name}" (PO: ${project.po_number})`);
+
     res.json(project);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Nama proyek sudah ada' });
@@ -48,7 +50,7 @@ router.put('/:id', requireLogin, requireFinance, async (req, res) => {
   }
 });
 
-router.delete('/:id', requireLogin, requireFinance, async (req, res) => {
+router.delete('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
   try {
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [req.params.id]);
     await db.runAsync('UPDATE transactions SET project_id = NULL WHERE project_id = ?', [req.params.id]);

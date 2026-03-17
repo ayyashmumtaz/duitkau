@@ -574,6 +574,7 @@ tbody tr.keluar td:first-child { border-left: 3px solid var(--red); }
 
 .badge-masuk { background: var(--green-light); color: var(--green); }
 .badge-keluar { background: var(--red-light); color: var(--red); }
+.badge-warning { background: #fef3c7; color: #92400e; }
 
 /* ─── AMOUNT ──────────────────────────────── */
 .amount-masuk { color: var(--green); font-weight: 600; }

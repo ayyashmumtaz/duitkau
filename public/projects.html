@@ -31,6 +31,7 @@
               <tr>
                 <th>#</th>
                 <th>Nama Proyek</th>
+                <th>Nomor PO</th>
                 <th>Deskripsi</th>
                 <th>Jumlah Transaksi</th>
                 <th>Dibuat</th>
@@ -39,10 +40,11 @@
             </thead>
             <tbody id="projBody">
               <tr>
-                <td colspan="6">
+                <td colspan="7">
                   <div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div>
                 </td>
               </tr>
+
             </tbody>
           </table>
         </div>
@@ -62,8 +64,12 @@
         <form id="projForm">
           <input type="hidden" id="projId" />
           <div class="form-group">
-            <label for="projName">Nama Proyek</label>
+            <label for="projName">Nama Proyek <span style="color:var(--red)">*</span></label>
             <input type="text" id="projName" placeholder="Contoh: Proyek Alfa" required />
+          </div>
+          <div class="form-group">
+            <label for="projPO">Nomor PO <span style="color:var(--red)">*</span></label>
+            <input type="text" id="projPO" placeholder="Contoh: PO-2024-001" required />
           </div>
           <div class="form-group">
             <label for="projDesc">Deskripsi (opsional)</label>
@@ -120,7 +126,10 @@
     const fmtDate = (d) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     let deleteTargetId = null;
 
+    let _isSuperAdmin = false;
     window.onLayoutReady = async function(user) {
+      _isSuperAdmin = user.role === 'super_admin';
+      if (!_isSuperAdmin) document.getElementById('btnAdd').style.display = 'none';
       await loadProjects();
     };
 
@@ -137,19 +146,22 @@
     function renderTable(data) {
       const tbody = document.getElementById('projBody');
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">📁</div>Belum ada proyek</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><div class="empty-icon">📁</div>Belum ada proyek</div></td></tr>`;
         return;
       }
       tbody.innerHTML = data.map((proj, i) => `
         <tr>
           <td class="text-muted">${i + 1}</td>
           <td><strong>${proj.name}</strong></td>
+          <td class="text-muted">${proj.po_number || '–'}</td>
           <td class="text-muted">${proj.description || '–'}</td>
           <td class="text-muted">${proj.tx_count} transaksi</td>
           <td class="text-muted">${fmtDate(proj.created_at)}</td>
           <td class="text-right">
-            <button class="btn btn-ghost btn-sm" onclick="openEdit(${proj.id}, '${proj.name.replace(/'/g, "\\'")}', '${(proj.description || '').replace(/'/g, "\\'")}')">✏️ Edit</button>
+            ${_isSuperAdmin ? `
+            <button class="btn btn-ghost btn-sm" onclick="openEdit(${proj.id}, '${proj.name.replace(/'/g, "\\'")}', '${(proj.po_number || '').replace(/'/g, "\\'")}', '${(proj.description || '').replace(/'/g, "\\'")}')">✏️ Edit</button>
             <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${proj.id}, '${proj.name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+            ` : '–'}
           </td>
         </tr>
       `).join('');
@@ -160,16 +172,18 @@
       document.getElementById('modalTitle').textContent = 'Tambah Proyek';
       document.getElementById('projId').value = '';
       document.getElementById('projName').value = '';
+      document.getElementById('projPO').value = '';
       document.getElementById('projDesc').value = '';
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
       document.getElementById('projName').focus();
     }
 
-    function openEdit(id, name, description) {
+    function openEdit(id, name, po_number, description) {
       document.getElementById('modalTitle').textContent = 'Edit Proyek';
       document.getElementById('projId').value = id;
       document.getElementById('projName').value = name;
+      document.getElementById('projPO').value = po_number;
       document.getElementById('projDesc').value = description;
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
@@ -192,13 +206,12 @@
       const id = document.getElementById('projId').value;
       const body = {
         name: document.getElementById('projName').value.trim(),
+        po_number: document.getElementById('projPO').value.trim(),
         description: document.getElementById('projDesc').value.trim(),
       };
 
-      if (!body.name) {
-        showAlert('modalAlert', 'Nama proyek wajib diisi');
-        return;
-      }
+      if (!body.name) { showAlert('modalAlert', 'Nama proyek wajib diisi'); return; }
+      if (!body.po_number) { showAlert('modalAlert', 'Nomor PO wajib diisi'); return; }
 
       const btn = document.getElementById('btnSave');
       btn.disabled = true;
