@@ -3,24 +3,45 @@
 
   // ─── Navigation items ─────────────────────
   const EMPLOYEE_NAV = [
-    { href: '/dashboard.html', icon: '📝', label: 'Input Pengeluaran', page: 'dashboard' },
+    { href: '/dashboard.html', icon: '📝', label: 'Input Transaksi',   page: 'dashboard' },
     { href: '/history.html',   icon: '📋', label: 'Riwayat',           page: 'history'   },
-    { href: '/ca.html',        icon: '💰', label: 'Request CA',        page: 'ca', notif: true },
+    { href: '/ca.html',        icon: '💰', label: 'Cash Advance',      page: 'ca', notif: true },
   ];
 
-  const FINANCE_NAV = [
-    { href: '/finance.html',         icon: '📊', label: 'Dashboard',        page: 'finance'         },
-    { href: '/input-employee.html',  icon: '➕', label: 'Input Karyawan',   page: 'input-employee'  },
-    { href: '/employees.html',       icon: '👥', label: 'Kelola Karyawan',  page: 'employees'       },
-    { href: '/projects.html',        icon: '📁', label: 'Proyek',           page: 'projects'        },
-    { href: '/categories.html',      icon: '🏷️', label: 'Kategori',         page: 'categories'      },
-    { href: '/reports.html',         icon: '📋', label: 'Laporan Detail',   page: 'reports'         },
-    { href: '/ca.html',              icon: '💰', label: 'Cash Advance',     page: 'ca', notif: true },
-    { href: '/logs.html',            icon: '📜', label: 'Event Log',        page: 'logs'            },
+  // Finance nav with collapsible groups
+  const FINANCE_NAV_GROUPS = [
+    { type: 'item', href: '/finance.html', icon: '📊', label: 'Dashboard', page: 'finance' },
+    {
+      type: 'group', label: 'Transaksi', icon: '💳',
+      items: [
+        { href: '/input-employee.html', icon: '➕', label: 'Input Transaksi', page: 'input-employee' },
+        { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
+      ]
+    },
+    {
+      type: 'group', label: 'Laporan', icon: '📋',
+      items: [
+        { href: '/reports.html', icon: '📊', label: 'Laporan Transaksi', page: 'reports' },
+      ]
+    },
+    {
+      type: 'group', label: 'Data Master', icon: '⚙️',
+      items: [
+        { href: '/employees.html',  icon: '👥', label: 'Karyawan', page: 'employees'  },
+        { href: '/projects.html',   icon: '📁', label: 'Proyek',   page: 'projects'   },
+        { href: '/categories.html', icon: '🏷️', label: 'Kategori', page: 'categories' },
+      ]
+    },
+    { type: 'item', href: '/logs.html', icon: '📜', label: 'Event Log', page: 'logs' },
   ];
 
-  // Finance bottom-nav (limited slots)
-  const FINANCE_BOTTOM = [0, 1, 2, 5, 6].map(i => FINANCE_NAV[i]);
+  // Finance bottom-nav (mobile)
+  const FINANCE_BOTTOM = [
+    { href: '/finance.html',        icon: '📊', label: 'Dashboard',       page: 'finance'        },
+    { href: '/input-employee.html', icon: '➕', label: 'Input Transaksi', page: 'input-employee' },
+    { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
+    { href: '/reports.html',        icon: '📊', label: 'Laporan',         page: 'reports'        },
+  ];
 
   let _dbOk = true;
   let _notifOpen = false;
@@ -31,14 +52,35 @@
   // ─── Helpers ──────────────────────────────
   function getActivePage() { return document.body.dataset.page || ''; }
 
-  function renderSidebarItems(items) {
-    const active = getActivePage();
-    return items.map(item => `
-      <a href="${item.href}" class="sidebar-item${item.page === active ? ' active' : ''}">
+  function renderNavItem(item, activeClass = '') {
+    return `
+      <a href="${item.href}" class="sidebar-item${activeClass}">
         <span class="icon">${item.icon}</span>
         <span class="label">${item.label}</span>
         ${item.notif ? '<span class="sidebar-notif ca-notif-sidebar" style="display:none">0</span>' : ''}
-      </a>`).join('');
+      </a>`;
+  }
+
+  function renderSidebarItems(navOrGroups) {
+    const active = getActivePage();
+    return navOrGroups.map(entry => {
+      if (entry.type === 'group') {
+        const hasActive = entry.items.some(i => i.page === active);
+        const children = entry.items.map(item =>
+          renderNavItem(item, ' sidebar-child' + (item.page === active ? ' active' : ''))
+        ).join('');
+        return `
+          <div class="sidebar-group" data-group="open">
+            <button class="sidebar-group-header${hasActive ? ' has-active' : ''}" type="button">
+              <span class="icon">${entry.icon}</span>
+              <span class="label">${entry.label}</span>
+              <span class="chevron">▾</span>
+            </button>
+            <div class="sidebar-group-body">${children}</div>
+          </div>`;
+      }
+      return renderNavItem(entry, entry.page === active ? ' active' : '');
+    }).join('');
   }
 
   function renderBottomNavItems(items) {
@@ -94,12 +136,16 @@
   function injectSidebar(user) {
     const ph = document.getElementById('sidebar-placeholder');
     if (!ph) return;
-    const nav = user.role === 'finance' ? FINANCE_NAV : EMPLOYEE_NAV;
-    ph.outerHTML = `
-      <aside class="sidebar">
-        <div class="sidebar-section">Menu</div>
-        ${renderSidebarItems(nav)}
-      </aside>`;
+    const nav = user.role === 'finance' ? FINANCE_NAV_GROUPS : EMPLOYEE_NAV;
+    ph.outerHTML = `<aside class="sidebar">${renderSidebarItems(nav)}</aside>`;
+
+    // Wire group toggle buttons
+    document.querySelectorAll('.sidebar-group-header').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const group = btn.closest('.sidebar-group');
+        group.dataset.group = group.dataset.group === 'open' ? 'closed' : 'open';
+      });
+    });
   }
 
   // ─── Inject bottom nav ────────────────────
@@ -234,12 +280,18 @@
       if (items.length === 0) {
         html += '<div class="notif-popup-empty">✅ Tidak ada notifikasi</div>';
       } else {
-        html += items.map(ca => `
-          <div class="notif-popup-item" onclick="window.location.href='/ca.html'">
+        html += items.map(ca => {
+          let desc = STATUS_DESC[ca.status] || ca.status;
+          if (ca.status === 'open' && ca.close_reject_reason) {
+            desc = `⚠️ Close ditolak: "${ca.close_reject_reason}"`;
+          }
+          return `
+          <div class="notif-popup-item" onclick="window.location.href='/ca.html?id=${ca.id}'">
             <div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ca.title}</div>
-            <div style="font-size:.75rem;color:var(--gray-500)">${STATUS_DESC[ca.status] || ca.status}</div>
+            <div style="font-size:.75rem;color:var(--gray-500)">${desc}</div>
             <div style="font-size:.75rem;color:var(--gray-400)">${fmt.format(ca.initial_amount)}${user.role === 'finance' && ca.request_by_name ? ' · ' + ca.request_by_name : ''}</div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
       }
       html += '<a href="/ca.html" class="notif-popup-footer">Lihat semua CA →</a>';
       popup.innerHTML = html;

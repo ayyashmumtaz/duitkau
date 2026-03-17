@@ -4,6 +4,69 @@ const db = require('../database');
 const { requireLogin, requireFinance } = require('../middleware/auth');
 const router = express.Router();
 
+const caSelect = `
+  SELECT ca.*,
+    req.full_name AS request_by_name,
+    opn.full_name AS open_by_name,
+    cls.full_name AS closed_by_name,
+    pr.name AS project_name
+  FROM cash_advances ca
+  LEFT JOIN users req ON ca.request_by = req.id
+  LEFT JOIN users opn ON ca.open_by = opn.id
+  LEFT JOIN users cls ON ca.closed_by = cls.id
+  LEFT JOIN projects pr ON ca.project_id = pr.id
+`;
+
+// ─── POST /ca/:id — generate public CA share link ────────────
+router.post('/ca/:id', requireLogin, async (req, res) => {
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (req.session.role !== 'finance' && ca.request_by !== req.session.userId)
+      return res.status(403).json({ error: 'Akses ditolak' });
+
+    const paramsStr = JSON.stringify({ type: 'ca', caId: ca.id });
+    const existing = await db.getAsync('SELECT token FROM share_tokens WHERE params = ?', [paramsStr]);
+    if (existing) {
+      return res.json({ token: existing.token, url: `/ca-view.html?token=${existing.token}` });
+    }
+
+    const token = crypto.randomBytes(20).toString('hex');
+    await db.runAsync('INSERT INTO share_tokens (token, params, label) VALUES (?, ?, ?)', [token, paramsStr, ca.title]);
+    res.json({ token, url: `/ca-view.html?token=${token}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal membuat link' });
+  }
+});
+
+// ─── GET /ca/:token — public CA view (no auth) ───────────────
+router.get('/ca/:token', async (req, res) => {
+  try {
+    const row = await db.getAsync('SELECT * FROM share_tokens WHERE token = ?', [req.params.token]);
+    if (!row) return res.status(404).json({ error: 'Link tidak valid' });
+    const p = JSON.parse(row.params);
+    if (p.type !== 'ca' || !p.caId) return res.status(400).json({ error: 'Link tidak valid' });
+
+    const ca = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [p.caId]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+
+    const txs = await db.allAsync(
+      `SELECT t.*, c.name AS category_name, pr2.name AS project_name
+       FROM transactions t
+       LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN projects pr2 ON t.project_id = pr2.id
+       WHERE t.ca_id = ? AND t.status = 'approved'
+       ORDER BY t.date DESC, t.created_at DESC`,
+      [p.caId]
+    );
+    res.json({ ...ca, transactions: txs, label: row.label });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengambil data CA' });
+  }
+});
+
 // User generates a share token (finance can share any, employee only their own)
 router.post('/', requireLogin, async (req, res) => {
   let { userId, periodType, periodValue, projectId, categoryId, caId, label } = req.body;

@@ -110,6 +110,14 @@ db.serialize(() => {
     )
   `);
 
+  // Migration: tambah close_reject_reason ke cash_advances
+  db.all("PRAGMA table_info(cash_advances)", (err, cols) => {
+    if (err) return;
+    const names = cols.map(c => c.name);
+    if (!names.includes('close_reject_reason'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN close_reject_reason TEXT");
+  });
+
   // Migration: tambah kolom baru jika belum ada
   db.all("PRAGMA table_info(transactions)", (err, cols) => {
     if (err) return;

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Detail Cash Advance</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    body { background: var(--gray-100); }
+    .view-container { max-width: 800px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    .view-header { display: flex; align-items: center; gap: .85rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .view-header img { height: 36px; }
+    .view-header-info { flex: 1; }
+    .view-header-info h1 { font-size: 1.1rem; font-weight: 700; color: var(--gray-800); }
+    .view-header-info p { font-size: .8rem; color: var(--gray-400); margin-top: .15rem; }
+    .error-state { text-align: center; padding: 4rem 1rem; }
+    .error-state .error-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .error-state h2 { font-size: 1.2rem; font-weight: 700; color: var(--gray-800); margin-bottom: .5rem; }
+    .error-state p { color: var(--gray-400); font-size: .9rem; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: .4rem .75rem; font-size: .85rem; color: var(--gray-600); margin-bottom: 1rem; }
+    .meta-grid strong { color: var(--gray-800); }
+    @media print {
+      .no-print { display: none !important; }
+      .view-container { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;align-items:center;justify-content:center">
+    <div style="position:absolute;top:1rem;right:1.25rem;color:#fff;font-size:1.5rem;cursor:pointer;line-height:1" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti" style="max-width:90vw;max-height:88vh;border-radius:8px;object-fit:contain" />
+  </div>
+
+  <div class="view-container">
+    <div id="loadingState" style="text-align:center;padding:4rem 1rem;color:var(--gray-400)">
+      <div style="font-size:2rem;margin-bottom:.75rem">🔄</div>Memuat data...
+    </div>
+
+    <div id="errorState" class="error-state" style="display:none">
+      <div class="error-icon">🔒</div>
+      <h2>Link Tidak Valid</h2>
+      <p>Link Cash Advance ini tidak ditemukan atau sudah tidak berlaku.</p>
+    </div>
+
+    <div id="caContent" style="display:none">
+      <div class="view-header no-print">
+        <img src="/assets/logo/logo-CSK.png" alt="Logo" />
+        <div class="view-header-info">
+          <h1 id="caTitle">Cash Advance</h1>
+          <p id="caMeta"></p>
+        </div>
+        <button class="btn btn-ghost btn-sm no-print" onclick="window.print()">Download PDF</button>
+      </div>
+
+      <div class="card" style="margin-bottom:1rem">
+        <div class="meta-grid" id="caDetailMeta"></div>
+      </div>
+
+      <div class="summary-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem" id="caSummary"></div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.5rem">Transaksi Terkait</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Nama</th>
+                <th>Kategori</th>
+                <th class="text-right">Nominal</th>
+                <th>Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="caTxBody">
+              <tr><td colspan="5"><div class="empty">Belum ada transaksi</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = (d) => {
+      if (!d) return '–';
+      return new Date((d.includes('T') ? d : d + 'T00:00:00')).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+    const fmtDateTime = (d) => {
+      if (!d) return '–';
+      return new Date(d.replace(' ', 'T')).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
+    const STATUS_LABEL = {
+      pending: 'Menunggu Persetujuan',
+      open: 'Open (Aktif)',
+      pending_close: 'Menunggu Penutupan',
+      closed: 'Ditutup',
+      rejected: 'Ditolak',
+    };
+
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').style.display = 'flex';
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => { document.getElementById('lightbox').style.display = 'none'; });
+    document.getElementById('lightbox').addEventListener('click', (e) => { if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').style.display = 'none'; });
+
+    const token = new URLSearchParams(location.search).get('token');
+
+    if (!token) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = '';
+    } else {
+      fetch('/api/share/ca/' + token)
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = '';
+            return;
+          }
+          renderCA(data);
+        })
+        .catch(() => {
+          document.getElementById('loadingState').style.display = 'none';
+          document.getElementById('errorState').style.display = '';
+        });
+    }
+
+    function renderCA(ca) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('caContent').style.display = '';
+
+      document.title = 'DuitKau - ' + ca.title;
+      document.getElementById('caTitle').textContent = ca.title;
+      document.getElementById('caMeta').textContent = 'Cash Advance · ' + (STATUS_LABEL[ca.status] || ca.status);
+
+      let meta = '';
+      if (ca.description) meta += `<div><strong>Deskripsi:</strong> ${ca.description}</div>`;
+      meta += `<div><strong>Status:</strong> ${STATUS_LABEL[ca.status] || ca.status}</div>`;
+      meta += `<div><strong>Nominal Diajukan:</strong> ${fmt.format(ca.initial_amount)}</div>`;
+      meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'}</div>`;
+      meta += `<div><strong>Tanggal Pengajuan:</strong> ${fmtDateTime(ca.request_at)}</div>`;
+      if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} · ${fmtDateTime(ca.open_at)}</div>`;
+      if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} · ${fmtDateTime(ca.closed_at)}</div>`;
+      if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
+      document.getElementById('caDetailMeta').innerHTML = meta;
+
+      const txs = ca.transactions || [];
+      const totalMasuk = txs.filter(t => t.type === 'masuk').reduce((s, t) => s + t.amount, 0);
+      const totalKeluar = txs.filter(t => t.type === 'keluar').reduce((s, t) => s + t.amount, 0);
+      const sisa = totalMasuk - totalKeluar;
+      document.getElementById('caSummary').innerHTML = `
+        <div class="summary-card masuk"><div class="summary-label">Dana Diterima CA</div><div class="summary-value green">${fmt.format(totalMasuk)}</div></div>
+        <div class="summary-card keluar"><div class="summary-label">Total Pengeluaran</div><div class="summary-value red">${fmt.format(totalKeluar)}</div></div>
+        <div class="summary-card ${sisa >= 0 ? 'net-positive' : 'net-negative'}">
+          <div class="summary-label">${sisa >= 0 ? 'Sisa Dana' : 'Kekurangan'}</div>
+          <div class="summary-value ${sisa >= 0 ? 'blue' : 'red'}">${fmt.format(Math.abs(sisa))}</div>
+        </div>
+      `;
+
+      if (txs.length === 0) {
+        document.getElementById('caTxBody').innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>Belum ada transaksi terkait</div></td></tr>`;
+      } else {
+        document.getElementById('caTxBody').innerHTML = txs.map(tx => `
+          <tr class="${tx.type}">
+            <td>${fmtDate(tx.date)}</td>
+            <td>${tx.name}${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}</td>
+            <td class="text-muted">${tx.category_name || '–'}</td>
+            <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
+            <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" style="cursor:pointer" />` : '–'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+  </script>
+</body>
+</html>

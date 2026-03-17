@@ -119,6 +119,27 @@
     </div>
   </div>
 
+  <!-- Reject Close Reason Modal (finance) -->
+  <div class="modal-overlay" id="rejectCloseOverlay" style="z-index: 210;">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title">Tolak Request Penutupan</span>
+        <button class="modal-close" id="rejectCloseModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:.75rem;color:var(--gray-600)">Status CA akan kembali ke <strong>Open</strong>. Karyawan akan diberitahu alasan penolakannya.</p>
+        <div class="form-group">
+          <label for="rejectCloseReason">Alasan Penolakan <span style="color:var(--red)">*</span></label>
+          <textarea id="rejectCloseReason" placeholder="Misal: Masih ada pengeluaran yang belum diinput..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="rejectCloseCancel">Batal</button>
+        <button class="btn btn-primary" id="rejectCloseSubmit" style="background:var(--red,#ef4444)">Tolak Penutupan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CA Detail Modal -->
   <div class="modal-overlay" id="detailOverlay">
     <div class="modal" style="max-width:700px">
@@ -129,6 +150,7 @@
       <div class="modal-body">
         <div id="detailAlert" class="alert alert-error"></div>
         <div id="detailSuccess" class="alert alert-success"></div>
+        <div id="detailCloseRejectWarning" class="alert alert-error" style="display:none"></div>
 
         <div id="detailMeta" style="margin-bottom:1rem; font-size:.875rem; color:var(--gray-600); line-height:1.8"></div>
 
@@ -167,6 +189,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-ghost btn-sm" id="btnCopyLink">Salin Link</button>
         <button class="btn btn-ghost" id="detailCloseBtn">Tutup</button>
       </div>
     </div>
@@ -210,6 +233,10 @@
       }
 
       await Promise.all([loadProjects(), loadCAs()]);
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const caIdFromUrl = urlParams.get('id');
+      if (caIdFromUrl) openDetail(parseInt(caIdFromUrl));
     };
 
     // ─── Load projects for new CA modal ───────
@@ -267,7 +294,7 @@
               ${window.currentUser.role === 'finance' ? `<td class="text-muted">${ca.request_by_name || '–'}</td>` : ''}
               <td>${fmt.format(ca.initial_amount)}</td>
               <td class="text-muted">${ca.project_name || '–'}</td>
-              <td>${STATUS_LABEL[ca.status] || ca.status}</td>
+              <td>${STATUS_LABEL[ca.status] || ca.status}${ca.close_reject_reason && ca.status === 'open' ? '<br><span style="color:var(--red,#ef4444);font-size:.72rem">⚠️ Close ditolak</span>' : ''}</td>
               <td>${ca.reimbursement_requested ? '<span class="badge badge-masuk">Diminta</span>' : '<span class="text-muted">–</span>'}</td>
               <td class="text-muted" style="font-size:.8rem">${fmtDate(ca.request_at)}</td>
               <td><button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button></td>
@@ -348,14 +375,12 @@
       } catch { alert('Gagal menutup CA'); }
     }
 
-    async function rejectClose(id) {
-      if (!confirm('Tolak request penutupan? Status CA kembali menjadi Open.')) return;
-      try {
-        const res = await fetch(`/api/ca/${id}/reject-close`, { method: 'PATCH' });
-        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
-        await loadCAs();
-        if (openDetailId === id) await refreshDetail(id);
-      } catch { alert('Gagal menolak request close'); }
+    let rejectCloseTargetId = null;
+
+    function rejectClose(id) {
+      rejectCloseTargetId = id;
+      document.getElementById('rejectCloseReason').value = '';
+      document.getElementById('rejectCloseOverlay').classList.add('open');
     }
 
     // ─── Detail Modal ─────────────────────────
@@ -364,8 +389,10 @@
     async function openDetail(id) {
       openDetailId = id;
       hideAlert('detailAlert'); hideAlert('detailSuccess');
+      document.getElementById('detailCloseRejectWarning').style.display = 'none';
       document.getElementById('detailTxBody').innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>`;
       document.getElementById('detailOverlay').classList.add('open');
+      history.replaceState({}, '', `/ca.html?id=${id}`);
       await refreshDetail(id);
     }
 
@@ -376,6 +403,17 @@
 
         document.getElementById('detailTitle').textContent = ca.title;
 
+        // Show close rejection warning banner
+        const warnEl = document.getElementById('detailCloseRejectWarning');
+        if (ca.close_reject_reason && ca.status === 'open') {
+          warnEl.textContent = `⚠️ Request penutupan sebelumnya ditolak: "${ca.close_reject_reason}"`;
+          warnEl.style.display = '';
+          warnEl.classList.add('show');
+        } else {
+          warnEl.style.display = 'none';
+          warnEl.classList.remove('show');
+        }
+
         let meta = '';
         if (ca.description) meta += `<div><strong>Deskripsi:</strong> ${ca.description}</div>`;
         meta += `<div><strong>Nominal Diajukan:</strong> ${fmt.format(ca.initial_amount)}</div>`;
@@ -383,6 +421,7 @@
         meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'} pada ${fmtDateTime(ca.request_at)}</div>`;
         if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} pada ${fmtDateTime(ca.open_at)}</div>`;
         if (ca.close_requested_by_name) meta += `<div><strong>Request close oleh:</strong> ${ca.close_requested_by_name} pada ${fmtDateTime(ca.close_requested_at)}${ca.close_request_note ? ` — "${ca.close_request_note}"` : ''}</div>`;
+        if (ca.close_reject_reason && ca.status === 'open') meta += `<div><strong>Alasan tolak penutupan:</strong> <span style="color:var(--red,#ef4444)">${ca.close_reject_reason}</span></div>`;
         if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} pada ${fmtDateTime(ca.closed_at)}</div>`;
         if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
         if (ca.reimbursement_requested) meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">Diminta</span></div>`;
@@ -484,6 +523,7 @@
     function closeDetail() {
       document.getElementById('detailOverlay').classList.remove('open');
       openDetailId = null;
+      history.replaceState({}, '', '/ca.html');
     }
     document.getElementById('detailClose').addEventListener('click', closeDetail);
     document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);
@@ -602,6 +642,49 @@
 
     function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
     function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+
+    // ─── Reject Close Modal ───────────────────
+    function closeRejectCloseModal() { document.getElementById('rejectCloseOverlay').classList.remove('open'); }
+    document.getElementById('rejectCloseModalClose').addEventListener('click', closeRejectCloseModal);
+    document.getElementById('rejectCloseCancel').addEventListener('click', closeRejectCloseModal);
+    document.getElementById('rejectCloseOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('rejectCloseOverlay')) closeRejectCloseModal(); });
+
+    document.getElementById('rejectCloseSubmit').addEventListener('click', async () => {
+      const reason = document.getElementById('rejectCloseReason').value.trim();
+      if (!reason) { showAlert('detailAlert', 'Alasan penolakan wajib diisi'); document.getElementById('detailOverlay').classList.add('open'); return; }
+      const id = rejectCloseTargetId;
+      const btn = document.getElementById('rejectCloseSubmit');
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      try {
+        const res = await fetch(`/api/ca/${id}/reject-close`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        closeRejectCloseModal();
+        await loadCAs();
+        if (openDetailId === id) await refreshDetail(id);
+      } catch { alert('Gagal menolak request close'); }
+      finally { btn.disabled = false; btn.textContent = 'Tolak Penutupan'; }
+    });
+
+    // ─── Share Link Publik CA ─────────────────
+    document.getElementById('btnCopyLink').addEventListener('click', async () => {
+      const btn = document.getElementById('btnCopyLink');
+      btn.disabled = true; btn.textContent = 'Membuat link...';
+      try {
+        const res = await fetch(`/api/share/ca/${openDetailId}`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { showAlert('detailAlert', data.error || 'Gagal membuat link'); return; }
+        const fullUrl = window.location.origin + data.url;
+        navigator.clipboard.writeText(fullUrl).then(() => {
+          showAlert('detailSuccess', 'Link publik CA berhasil disalin! Bisa dibuka tanpa login.');
+          setTimeout(() => hideAlert('detailSuccess'), 4000);
+        }).catch(() => { prompt('Salin link publik CA:', fullUrl); });
+      } catch { showAlert('detailAlert', 'Gagal membuat link'); }
+      finally { btn.disabled = false; btn.textContent = 'Salin Link'; }
+    });
   </script>
 </body>
 </html>

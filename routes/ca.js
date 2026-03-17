@@ -216,7 +216,8 @@ router.patch('/:id/request-close', async (req, res) => {
     const note = req.body.note || null;
     await db.runAsync(
       `UPDATE cash_advances SET status='pending_close',
-        close_requested_by=?, close_requested_at=datetime('now','localtime'), close_request_note=?
+        close_requested_by=?, close_requested_at=datetime('now','localtime'), close_request_note=?,
+        close_reject_reason=NULL
        WHERE id=?`,
       [req.session.userId, note, req.params.id]
     );
@@ -239,14 +240,16 @@ router.patch('/:id/reject-close', async (req, res) => {
     if (ca.status !== 'pending_close')
       return res.status(400).json({ error: 'CA tidak dalam status pending_close' });
 
+    const reason = (req.body && req.body.reason) ? req.body.reason.trim() : null;
     await db.runAsync(
       `UPDATE cash_advances SET status='open',
-        close_requested_by=NULL, close_requested_at=NULL, close_request_note=NULL
+        close_requested_by=NULL, close_requested_at=NULL, close_request_note=NULL,
+        close_reject_reason=?
        WHERE id=?`,
-      [req.params.id]
+      [reason, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    logEvent(req, 'REJECT_CLOSE_CA', `Finance menolak penutupan CA "${row.title}"`);
+    logEvent(req, 'REJECT_CLOSE_CA', `Finance menolak penutupan CA "${row.title}"${reason ? ` — Alasan: ${reason}` : ''}`);
     res.json(row);
   } catch (err) {
     console.error(err);
