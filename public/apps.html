@@ -443,10 +443,10 @@
       let user;
       try {
         const me = await fetch('/api/auth/me').then(r => r.json());
-        if (!me.userId) { window.location.href = '/login.html'; return; }
+        if (!me.userId) { window.location.href = '/login'; return; }
         user = me;
       } catch {
-        window.location.href = '/login.html';
+        window.location.href = '/login';
         return;
       }
 
@@ -456,13 +456,13 @@
       document.getElementById('userRole').textContent = roleLabel[user.role] || user.role;
 
       const dest = (user.role === 'finance' || user.role === 'super_admin')
-        ? '/finance.html'
-        : '/dashboard.html';
+        ? '/finance'
+        : '/dashboard';
       document.getElementById('cardDuitkau').href = dest;
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
-        window.location.href = '/login.html';
+        window.location.href = '/login';
       });
     })();
   </script>

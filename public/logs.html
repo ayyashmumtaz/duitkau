@@ -54,7 +54,7 @@
   <script>
     window.onLayoutReady = async function(user) {
       if (user.role !== 'finance' && user.role !== 'super_admin') {
-        window.location.href = '/dashboard.html';
+        window.location.href = '/dashboard';
         return;
       }
       await fetchLogs();

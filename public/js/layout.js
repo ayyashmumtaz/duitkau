@@ -3,49 +3,49 @@
 
   // ─── Navigation items ─────────────────────
   const EMPLOYEE_NAV = [
-    { href: '/dashboard.html', icon: '📝', label: 'Input Reimburse',   page: 'dashboard' },
-    { href: '/history.html',   icon: '📋', label: 'Riwayat',           page: 'history'   },
-    { href: '/ca.html',        icon: '💰', label: 'Cash Advance',      page: 'ca', notif: true },
+    { href: '/dashboard', icon: '📝', label: 'Input Reimburse',   page: 'dashboard' },
+    { href: '/history',   icon: '📋', label: 'Riwayat',           page: 'history'   },
+    { href: '/ca',        icon: '💰', label: 'Cash Advance',      page: 'ca', notif: true },
   ];
 
   // Finance nav with collapsible groups
   const FINANCE_NAV_GROUPS = [
-    { type: 'item', href: '/finance.html', icon: '📊', label: 'Dashboard', page: 'finance' },
+    { type: 'item', href: '/finance', icon: '📊', label: 'Dashboard', page: 'finance' },
     {
       type: 'group', label: 'Transaksi', icon: '💳',
       items: [
-        { href: '/input-employee.html', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
-        { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
+        { href: '/input-employee', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
+        { href: '/ca',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
       ]
     },
     {
       type: 'group', label: 'Laporan', icon: '📋',
       items: [
-        { href: '/reports.html', icon: '📊', label: 'Laporan Transaksi', page: 'reports' },
+        { href: '/reports', icon: '📊', label: 'Laporan Transaksi', page: 'reports' },
       ]
     },
     {
       type: 'group', label: 'Data Master', icon: '⚙️',
       items: [
-        { href: '/employees.html',  icon: '👥', label: 'Karyawan', page: 'employees'  },
-        { href: '/projects.html',   icon: '📁', label: 'Proyek',   page: 'projects'   },
-        { href: '/categories.html', icon: '🏷️', label: 'Kategori', page: 'categories' },
+        { href: '/employees',  icon: '👥', label: 'Karyawan', page: 'employees'  },
+        { href: '/projects',   icon: '📁', label: 'Proyek',   page: 'projects'   },
+        { href: '/categories', icon: '🏷️', label: 'Kategori', page: 'categories' },
       ]
     },
-    { type: 'item', href: '/logs.html', icon: '📜', label: 'Event Log', page: 'logs' },
+    { type: 'item', href: '/logs', icon: '📜', label: 'Event Log', page: 'logs' },
   ];
 
   const SUPER_ADMIN_NAV_GROUPS = [
     ...FINANCE_NAV_GROUPS,
-    { type: 'item', href: '/settings.html', icon: '⚙️', label: 'Pengaturan', page: 'settings' },
+    { type: 'item', href: '/settings', icon: '⚙️', label: 'Pengaturan', page: 'settings' },
   ];
 
   // Finance bottom-nav (mobile)
   const FINANCE_BOTTOM = [
-    { href: '/finance.html',        icon: '📊', label: 'Dashboard',       page: 'finance'        },
-    { href: '/input-employee.html', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
-    { href: '/ca.html',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
-    { href: '/reports.html',        icon: '📊', label: 'Laporan',         page: 'reports'        },
+    { href: '/finance',        icon: '📊', label: 'Dashboard',       page: 'finance'        },
+    { href: '/input-employee', icon: '➕', label: 'Input Reimburse', page: 'input-employee' },
+    { href: '/ca',             icon: '💰', label: 'Cash Advance',    page: 'ca', notif: true },
+    { href: '/reports',        icon: '📊', label: 'Laporan',         page: 'reports'        },
   ];
 
   let _dbOk = true;
@@ -374,7 +374,7 @@
   function wireLogout() {
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     });
   }
 
@@ -459,18 +459,18 @@
     let user;
     try {
       const me = await fetch('/api/auth/me').then(r => r.json());
-      if (!me.userId) { window.location.href = '/login.html'; return; }
+      if (!me.userId) { window.location.href = '/login'; return; }
       user = me;
       window.currentUser = me;
-    } catch { window.location.href = '/login.html'; return; }
+    } catch { window.location.href = '/login'; return; }
 
     // Role guard
     const page = getActivePage();
     if ((user.role === 'finance' || user.role === 'super_admin') && (page === 'dashboard' || page === 'history')) {
-      window.location.href = '/finance.html'; return;
+      window.location.href = '/finance'; return;
     }
     if (user.role === 'employee' && ['finance','input-employee','employees','projects','categories','reports'].includes(page)) {
-      window.location.href = '/dashboard.html'; return;
+      window.location.href = '/dashboard'; return;
     }
 
     // Inject layout pieces

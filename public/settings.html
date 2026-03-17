@@ -335,7 +335,7 @@
         // DB connected — check auth
         const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
         if (!me.userId) {
-          window.location.href = '/login.html';
+          window.location.href = '/login';
           return;
         }
         if (me.role !== 'super_admin') {
@@ -463,7 +463,7 @@
           document.getElementById('setupBanner').classList.remove('show');
           if (!isAuthenticated) {
             // Redirect to login after successful first-time setup
-            setTimeout(() => { window.location.href = '/login.html'; }, 1800);
+            setTimeout(() => { window.location.href = '/login'; }, 1800);
           }
         } else {
           showAlert('settingsAlert', data.error || 'Gagal menyimpan konfigurasi.');
@@ -480,7 +480,7 @@
     // ── Logout ─────────────────────────────────────
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-      window.location.href = '/login.html';
+      window.location.href = '/login';
     });
 
   })();

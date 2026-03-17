@@ -21,7 +21,17 @@ app.use(
   })
 );
 
-app.use(express.static(path.join(__dirname, 'public')));
+// ─── Redirect /page.html → /page ─────────────────────────────
+app.use((req, res, next) => {
+  if (req.path.endsWith('.html')) {
+    const clean = req.path.slice(0, -5);
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return res.redirect(301, clean + qs);
+  }
+  next();
+});
+
+app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ─── Health check (tidak diblokir oleh DB guard) ─────────────
 app.get('/api/health', async (req, res) => {
@@ -40,7 +50,7 @@ app.use('/api/settings', require('./routes/settings'));
 // ─── DB Guard — blokir semua API lain jika DB tidak terhubung ─
 app.use('/api', (req, res, next) => {
   if (!db.isConnected()) {
-    return res.status(503).json({ error: 'Database tidak terhubung. Konfigurasi di /settings.html' });
+    return res.status(503).json({ error: 'Database tidak terhubung. Konfigurasi di /settings' });
   }
   next();
 });
@@ -58,7 +68,7 @@ app.use('/api/logs', require('./routes/logs'));
 app.use('/api/admin', require('./routes/admin'));
 
 app.get('/', (req, res) => {
-  res.redirect('/login.html');
+  res.redirect('/login');
 });
 
 const server = app.listen(PORT, () => {
