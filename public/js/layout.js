@@ -107,14 +107,15 @@
         Database tidak terhubung — semua operasi dinonaktifkan
       </div>
       <nav class="navbar">
-        <div class="navbar-brand" style="gap:.75rem">
-          <a href="/apps.html" title="Kembali ke menu aplikasi" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;padding:.2rem .5rem;border-radius:6px;border:1px solid var(--gray-200);font-size:.72rem;font-weight:600;color:var(--gray-600);letter-spacing:.02em" onmouseover="this.style.background='var(--gray-100)'" onmouseout="this.style.background=''">
-            <img src="/assets/logo/logo-CSK.png" alt="Logo" style="height:18px;width:auto" />
-            Cakra ERP
-          </a>
-          <span style="color:var(--gray-300);font-size:.9rem">/</span>
-          <span style="font-size:1rem;font-weight:700;color:var(--blue)">DuitKau</span>
-        </div>
+        <a href="/apps.html" class="navbar-brand" title="Kembali ke Cakra ERP">
+          <img src="/assets/logo/logo-CSK.png" alt="Cakra" class="navbar-brand-logo" />
+          <div class="navbar-brand-text">
+            <div class="brand-name"><span>Cakra</span> ERP</div>
+            <div class="brand-sub">DuitKau</div>
+          </div>
+        </a>
+        <div class="navbar-body">
+        <div class="navbar-page-title" id="navPageTitle"></div>
         <div class="navbar-user">
           <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
             <span class="dot"></span> DB
@@ -132,7 +133,11 @@
           ${isFinanceOrAdmin
             ? '<button class="btn btn-ghost btn-sm" id="profileBtn">Edit Profil</button>'
             : '<button class="btn btn-ghost btn-sm" id="pwdBtn">Ubah Password</button>'}
+          <a href="/apps.html" class="btn btn-ghost btn-sm" title="Kembali ke menu aplikasi" style="display:inline-flex;align-items:center;gap:.3rem">
+            <span style="font-size:.85rem">⊞</span> Apps
+          </a>
           <button class="btn btn-ghost btn-sm" id="logoutBtn">Keluar</button>
+        </div>
         </div>
       </nav>`;
   }
@@ -143,6 +148,16 @@
     if (!ph) return;
     const nav = (user.role === 'finance' || user.role === 'super_admin') ? FINANCE_NAV_GROUPS : EMPLOYEE_NAV;
     ph.outerHTML = `<aside class="sidebar">${renderSidebarItems(nav)}</aside>`;
+
+    // Set navbar page title from active nav item
+    const active = getActivePage();
+    const allItems = [];
+    nav.forEach(e => e.type === 'group' ? allItems.push(...e.items) : allItems.push(e));
+    const activeItem = allItems.find(i => i.page === active);
+    if (activeItem) {
+      const el = document.getElementById('navPageTitle');
+      if (el) el.textContent = activeItem.label;
+    }
 
     // Wire group toggle buttons
     document.querySelectorAll('.sidebar-group-header').forEach(btn => {

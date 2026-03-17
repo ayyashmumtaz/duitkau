@@ -252,8 +252,8 @@
         <div id="requestRefundAlert" class="alert alert-error"></div>
         <p style="margin-bottom:.75rem;font-size:.875rem;color:var(--gray-600)" id="requestRefundDesc"></p>
         <div class="form-group">
-          <label for="refundAmount">Nominal Dikembalikan (Rp) <span style="color:var(--red)">*</span></label>
-          <input type="text" id="refundAmount" inputmode="numeric" placeholder="Contoh: 350.000" autocomplete="off" />
+          <label for="refundAmount">Nominal Dikembalikan (Rp)</label>
+          <input type="text" id="refundAmount" readonly style="background:var(--gray-100);color:var(--gray-600);cursor:default" />
         </div>
         <div class="form-group">
           <label for="refundNote">Catatan (opsional)</label>
@@ -1367,10 +1367,12 @@
     // ─── Request Refund Modal (employee) ──────
     let refundTargetId = null;
 
+    let _refundLebihan = 0;
     function openRequestRefund(id, title, lebihan) {
       refundTargetId = id;
+      _refundLebihan = lebihan;
       document.getElementById('requestRefundDesc').textContent = `CA: ${title} · Lebihan: ${fmt.format(lebihan)}`;
-      document.getElementById('refundAmount').value = lebihan.toFixed(0);
+      document.getElementById('refundAmount').value = fmt.format(lebihan);
       document.getElementById('refundNote').value = '';
       document.getElementById('refundProof').value = '';
       hideAlert('requestRefundAlert');
@@ -1384,20 +1386,11 @@
       if (e.target === document.getElementById('requestRefundOverlay')) closeRequestRefundModal();
     });
 
-    document.getElementById('refundAmount').addEventListener('input', function () {
-      const pos = this.selectionStart;
-      let raw = this.value.replace(/\D/g, '');
-      const formatted = raw ? parseInt(raw).toLocaleString('id-ID') : '';
-      this.value = formatted;
-      this.setSelectionRange(pos, pos);
-    });
-
     document.getElementById('requestRefundSubmit').addEventListener('click', async () => {
       hideAlert('requestRefundAlert');
-      const amountRaw = document.getElementById('refundAmount').value.replace(/\./g, '').replace(',', '.');
-      const amount = parseFloat(amountRaw);
+      const amount = _refundLebihan;
       const proofFile = document.getElementById('refundProof').files[0];
-      if (isNaN(amount) || amount <= 0) { showAlert('requestRefundAlert', 'Nominal harus berupa angka positif'); return; }
+      if (!amount || amount <= 0) { showAlert('requestRefundAlert', 'Tidak ada lebihan untuk dikembalikan'); return; }
       if (!proofFile) { showAlert('requestRefundAlert', 'Bukti pengembalian wajib dilampirkan'); return; }
 
       const btn = document.getElementById('requestRefundSubmit');

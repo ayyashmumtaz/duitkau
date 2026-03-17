@@ -231,3 +231,5 @@
 [2026-03-17T13:03:42.097Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
 [2026-03-17T13:04:40.386Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-17T13:04:50.761Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T13:21:44.048Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T13:21:51.018Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
