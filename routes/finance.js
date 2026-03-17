@@ -111,8 +111,8 @@ router.post('/input-employee', upload.single('proof_image'), async (req, res) =>
     return res.status(400).json({ error: 'Kategori wajib dipilih' });
 
   try {
-    const emp = await db.getAsync("SELECT id FROM users WHERE id = ? AND role = 'employee'", [userId]);
-    if (!emp) return res.status(404).json({ error: 'Karyawan tidak ditemukan' });
+    const emp = await db.getAsync("SELECT id FROM users WHERE id = ?", [userId]);
+    if (!emp) return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
 
     const proofImage = req.file ? `/uploads/${req.file.filename}` : null;
     const projectId = project_id ? parseInt(project_id) || null : null;
@@ -184,11 +184,11 @@ router.get('/report', async (req, res) => {
   }
 });
 
-// ─── Daftar karyawan ─────────────────────────────────────────
+// ─── Daftar semua user (untuk dropdown input transaksi) ──────
 router.get('/employees', async (req, res) => {
   try {
     const users = await db.allAsync(
-      "SELECT id, username, full_name FROM users WHERE role = 'employee' ORDER BY full_name"
+      "SELECT id, username, full_name, role FROM users ORDER BY role DESC, full_name"
     );
     res.json(users);
   } catch (err) {

@@ -22,3 +22,50 @@
 [2026-03-16T20:21:05.186Z] [FINANCE:pakchris] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 16)
 [2026-03-17T07:57:50.869Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-17T08:01:35.633Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:14:26.754Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:16:50.968Z] [FINANCE:pakchris] (::1) | FINANCE_INPUT_TX | Finance input transaksi "CA Cair" untuk karyawan ID 7 (masuk)
+[2026-03-17T08:17:06.001Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:17:20.406Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:18:10.760Z] [EMPLOYEE:aziz] (::1) | CREATE_BATCH_TRANSACTION | Menambahkan 1 transaksi sekaligus
+[2026-03-17T08:18:29.628Z] [EMPLOYEE:aziz] (::1) | REQUEST_CLOSE_CA | Karyawan mengajukan penutupan CA "Pasang Panel Meratus"
+[2026-03-17T08:18:35.738Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:18:40.022Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:18:56.647Z] [FINANCE:pakchris] (::1) | REJECT_CLOSE_CA | Finance menolak penutupan CA "Pasang Panel Meratus" — Alasan: masih ada barang aer
+[2026-03-17T08:19:02.141Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:19:06.350Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:19:27.156Z] [EMPLOYEE:aziz] (::1) | REQUEST_CLOSE_CA | Karyawan mengajukan penutupan CA "Pasang Panel Meratus"
+[2026-03-17T08:19:32.242Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:19:36.930Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:19:44.009Z] [FINANCE:pakchris] (::1) | CLOSE_CA | Finance menutup CA "Pasang Panel Meratus"
+[2026-03-17T08:19:53.027Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:19:56.978Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:20:12.801Z] [EMPLOYEE:aziz] (::1) | REQUEST_REIMBURSE_CA | Karyawan mengajukan klaim reimburse untuk CA "Pasang Panel Meratus"
+[2026-03-17T08:20:17.370Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:20:21.285Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:22:55.810Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:33:13.478Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:33:20.063Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:33:35.862Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:33:41.102Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:47:10.741Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:47:18.740Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:47:31.651Z] [EMPLOYEE:aziz] (::1) | CREATE_CA | Karyawan mengajukan CA "CA Pasang Panel Meratus" sebesar 250000
+[2026-03-17T08:47:38.968Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:47:42.989Z] [FINANCE:kangfahmi] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:47:47.897Z] [FINANCE:kangfahmi] (::1) | APPROVE_CA | Finance menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-17T08:48:06.861Z] [FINANCE:kangfahmi] (::1) | FINANCE_INPUT_TX | Finance input transaksi "CA Cair" untuk karyawan ID 7 (masuk)
+[2026-03-17T08:48:43.244Z] [FINANCE:kangfahmi] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:48:47.457Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:49:38.068Z] [EMPLOYEE:aziz] (::1) | CREATE_BATCH_TRANSACTION | Menambahkan 1 transaksi sekaligus
+[2026-03-17T08:49:53.601Z] [EMPLOYEE:aziz] (::1) | REQUEST_CLOSE_CA | Karyawan mengajukan penutupan CA "CA Pasang Panel Meratus"
+[2026-03-17T08:49:56.547Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:49:59.994Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:50:08.765Z] [FINANCE:pakchris] (::1) | CLOSE_CA | Finance menutup CA "CA Pasang Panel Meratus"
+[2026-03-17T08:50:13.665Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:50:16.291Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T08:50:24.241Z] [EMPLOYEE:aziz] (::1) | REQUEST_REIMBURSE_CA | Karyawan mengajukan klaim reimburse untuk CA "CA Pasang Panel Meratus"
+[2026-03-17T08:50:27.096Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T08:50:30.716Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T08:55:29.555Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:11:00.169Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T09:12:17.192Z] [FINANCE:pakchris] (::1) | APPROVE_REIMBURSE_CA | Finance menyetujui reimburse CA "CA Pasang Panel Meratus" sebesar 50000

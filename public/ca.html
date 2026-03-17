@@ -35,6 +35,12 @@
             <div class="empty"><div class="empty-icon">✅</div>Tidak ada request penutupan</div>
           </div>
         </div>
+        <div class="card" style="border-left:4px solid var(--green,#22c55e); margin-top:1rem">
+          <div class="card-title" style="color:var(--green,#16a34a)">💸 Permintaan Reimburse</div>
+          <div id="pendingReimburseList">
+            <div class="empty"><div class="empty-icon">✅</div>Tidak ada permintaan reimburse</div>
+          </div>
+        </div>
       </div>
 
       <!-- All CA list -->
@@ -140,6 +146,57 @@
     </div>
   </div>
 
+  <!-- Approve Reimburse Modal (finance) -->
+  <div class="modal-overlay" id="approveReimburseOverlay" style="z-index: 210;">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <span class="modal-title">Setujui Reimburse</span>
+        <button class="modal-close" id="approveReimburseClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="approveReimburseAlert" class="alert alert-error"></div>
+        <p style="margin-bottom:.75rem;color:var(--gray-600);font-size:.875rem" id="approveReimburseDesc"></p>
+        <div class="form-group">
+          <label for="reimburseAmount">Nominal Reimburse (Rp) <span style="color:var(--red)">*</span></label>
+          <input type="text" id="reimburseAmount" inputmode="numeric" placeholder="Contoh: 250.000" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="reimburseProof">Bukti Transfer / Pembayaran <span style="color:var(--red)">*</span></label>
+          <input type="file" id="reimburseProof" accept="image/*" />
+        </div>
+        <div class="form-group">
+          <label for="reimburseNote">Catatan (opsional)</label>
+          <input type="text" id="reimburseNote" placeholder="Misal: Transfer via BCA tanggal..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="approveReimburseCancel">Batal</button>
+        <button class="btn btn-primary" id="approveReimburseSubmit">Setujui & Proses</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Reimburse Modal (finance) -->
+  <div class="modal-overlay" id="rejectReimburseOverlay" style="z-index: 210;">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title">Tolak Permintaan Reimburse</span>
+        <button class="modal-close" id="rejectReimburseClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom:.75rem;color:var(--gray-600)">Karyawan akan diberitahu alasan penolakan reimburse ini.</p>
+        <div class="form-group">
+          <label for="rejectReimburseReason">Alasan Penolakan <span style="color:var(--red)">*</span></label>
+          <textarea id="rejectReimburseReason" placeholder="Misal: Nominal tidak sesuai laporan..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="rejectReimburseCancel">Batal</button>
+        <button class="btn btn-primary" id="rejectReimburseSubmit" style="background:var(--red,#ef4444)">Tolak Reimburse</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CA Detail Modal -->
   <div class="modal-overlay" id="detailOverlay">
     <div class="modal" style="max-width:700px">
@@ -226,9 +283,8 @@
     };
 
     window.onLayoutReady = async function(user) {
-      if (user.role === 'employee') {
-        document.getElementById('btnNewCA').style.display = '';
-      } else {
+      document.getElementById('btnNewCA').style.display = '';
+      if (user.role === 'finance') {
         document.getElementById('pendingSection').style.display = '';
       }
 
@@ -295,7 +351,7 @@
               <td>${fmt.format(ca.initial_amount)}</td>
               <td class="text-muted">${ca.project_name || '–'}</td>
               <td>${STATUS_LABEL[ca.status] || ca.status}${ca.close_reject_reason && ca.status === 'open' ? '<br><span style="color:var(--red,#ef4444);font-size:.72rem">⚠️ Close ditolak</span>' : ''}</td>
-              <td>${ca.reimbursement_requested ? '<span class="badge badge-masuk">Diminta</span>' : '<span class="text-muted">–</span>'}</td>
+              <td>${REIMBURSE_LABEL(ca)}</td>
               <td class="text-muted" style="font-size:.8rem">${fmtDate(ca.request_at)}</td>
               <td><button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button></td>
             </tr>
@@ -304,46 +360,63 @@
       </table></div>`;
     }
 
+    const REIMBURSE_LABEL = (ca) => {
+      if (!ca.reimbursement_requested) return '<span class="text-muted">–</span>';
+      if (ca.reimbursement_status === 'approved') return '<span class="badge badge-masuk">✅ Dibayar</span>';
+      if (ca.reimbursement_status === 'rejected') return '<span class="badge badge-keluar">❌ Ditolak</span>';
+      return '<span class="badge" style="background:var(--yellow,#fbbf24);color:#7c2d12">⏳ Menunggu</span>';
+    };
+
+    function renderPendingRow(ca, actions, subtitle) {
+      const sub = subtitle !== undefined
+        ? subtitle
+        : `${fmt.format(ca.initial_amount)}${ca.project_name ? ' · ' + ca.project_name : ''}`;
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px solid var(--gray-100); flex-wrap:wrap; gap:.4rem">
+          <div style="flex:1; min-width:0">
+            <div style="font-weight:600">${ca.title} <span class="text-muted" style="font-weight:400; font-size:.8rem">— ${ca.request_by_name}</span></div>
+            <div class="text-muted" style="font-size:.8rem">${sub}</div>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-shrink:0">${actions}</div>
+        </div>`;
+    }
+
     function renderPending(cas) {
       const pending = cas.filter(ca => ca.status === 'pending');
       const pendClose = cas.filter(ca => ca.status === 'pending_close');
+      const pendReimburse = cas.filter(ca => ca.reimbursement_status === 'pending');
 
       const pendEl = document.getElementById('pendingList');
-      if (pending.length === 0) {
-        pendEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>Tidak ada CA yang menunggu persetujuan</div>`;
-      } else {
-        pendEl.innerHTML = pending.map(ca => `
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
-            <div>
-              <div style="font-weight:600">${ca.title} <span class="text-muted" style="font-weight:400; font-size:.8rem">— ${ca.request_by_name}</span></div>
-              <div class="text-muted" style="font-size:.8rem">${fmt.format(ca.initial_amount)} · ${fmtDateTime(ca.request_at)}</div>
-            </div>
-            <div style="display:flex;gap:.4rem">
-              <button class="btn btn-primary btn-sm" onclick="approveCa(${ca.id})">Setujui</button>
-              <button class="btn btn-ghost btn-sm" onclick="rejectCa(${ca.id})">Tolak</button>
-            </div>
-          </div>
-        `).join('');
-      }
+      pendEl.innerHTML = pending.length === 0
+        ? `<div class="empty"><div class="empty-icon">✅</div>Tidak ada CA yang menunggu persetujuan</div>`
+        : pending.map(ca => renderPendingRow(ca,
+            `<button class="btn btn-primary btn-sm" onclick="approveCa(${ca.id})">Setujui</button>
+             <button class="btn btn-ghost btn-sm" onclick="rejectCa(${ca.id})">Tolak</button>
+             <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>`
+          )).join('');
 
       const closeEl = document.getElementById('pendingCloseList');
-      if (pendClose.length === 0) {
-        closeEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>Tidak ada request penutupan</div>`;
-      } else {
-        closeEl.innerHTML = pendClose.map(ca => `
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; border-bottom:1px solid var(--gray-100)">
-            <div>
-              <div style="font-weight:600">${ca.title} <span class="text-muted" style="font-weight:400; font-size:.8rem">— ${ca.request_by_name}</span></div>
-              <div class="text-muted" style="font-size:.8rem">${ca.close_request_note ? `"${ca.close_request_note}"` : 'Tanpa catatan'} · ${fmtDateTime(ca.close_requested_at)}</div>
-            </div>
-            <div style="display:flex;gap:.4rem">
-              <button class="btn btn-primary btn-sm" onclick="approveClose(${ca.id})">Setujui Close</button>
-              <button class="btn btn-ghost btn-sm" onclick="rejectClose(${ca.id})">Tolak</button>
-              <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>
-            </div>
-          </div>
-        `).join('');
-      }
+      closeEl.innerHTML = pendClose.length === 0
+        ? `<div class="empty"><div class="empty-icon">✅</div>Tidak ada request penutupan</div>`
+        : pendClose.map(ca => renderPendingRow(ca,
+            `<button class="btn btn-primary btn-sm" onclick="approveClose(${ca.id})">Setujui Close</button>
+             <button class="btn btn-ghost btn-sm" onclick="rejectClose(${ca.id})">Tolak</button>
+             <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>`
+          )).join('');
+
+      const reimburseEl = document.getElementById('pendingReimburseList');
+      reimburseEl.innerHTML = pendReimburse.length === 0
+        ? `<div class="empty"><div class="empty-icon">✅</div>Tidak ada permintaan reimburse</div>`
+        : pendReimburse.map(ca => {
+            const kekurangan = Math.max(0, (ca.total_keluar_ca || 0) - (ca.total_masuk_ca || 0));
+            const sub = `Kekurangan: ${fmt.format(kekurangan)}${ca.project_name ? ' · ' + ca.project_name : ''}`;
+            return renderPendingRow(ca,
+              `<button class="btn btn-primary btn-sm" onclick="openApproveReimburse(${ca.id}, '${ca.title.replace(/'/g,"\\'")}', ${kekurangan})">Proses Reimburse</button>
+               <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${ca.id})">Tolak</button>
+               <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>`,
+              sub
+            );
+          }).join('');
     }
 
     // ─── CA Actions (finance) ─────────────────
@@ -381,6 +454,29 @@
       rejectCloseTargetId = id;
       document.getElementById('rejectCloseReason').value = '';
       document.getElementById('rejectCloseOverlay').classList.add('open');
+    }
+
+    // ─── Reimburse Actions (finance) ──────────
+    let reimburseTargetId = null;
+
+    function openApproveReimburse(id, title, kekurangan) {
+      reimburseTargetId = id;
+      const amountEl = document.getElementById('reimburseAmount');
+      const kek = parseFloat(kekurangan) || 0;
+      amountEl.value = kek > 0 ? formatThousands(String(Math.round(kek))) : '';
+      amountEl.readOnly = kek > 0;
+      amountEl.style.background = kek > 0 ? 'var(--gray-100,#f3f4f6)' : '';
+      document.getElementById('reimburseProof').value = '';
+      document.getElementById('reimburseNote').value = '';
+      document.getElementById('approveReimburseDesc').textContent = `CA: ${title}${kek > 0 ? ` — Kekurangan: ${fmt.format(kek)}` : ''}`;
+      hideAlert('approveReimburseAlert');
+      document.getElementById('approveReimburseOverlay').classList.add('open');
+    }
+
+    function openRejectReimburse(id) {
+      reimburseTargetId = id;
+      document.getElementById('rejectReimburseReason').value = '';
+      document.getElementById('rejectReimburseOverlay').classList.add('open');
     }
 
     // ─── Detail Modal ─────────────────────────
@@ -424,7 +520,19 @@
         if (ca.close_reject_reason && ca.status === 'open') meta += `<div><strong>Alasan tolak penutupan:</strong> <span style="color:var(--red,#ef4444)">${ca.close_reject_reason}</span></div>`;
         if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} pada ${fmtDateTime(ca.closed_at)}</div>`;
         if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
-        if (ca.reimbursement_requested) meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">Diminta</span></div>`;
+        if (ca.reimbursement_status === 'pending') {
+          meta += `<div><strong>Reimburse:</strong> <span class="badge" style="background:var(--yellow,#fbbf24);color:#7c2d12">⏳ Menunggu diproses finance</span></div>`;
+        } else if (ca.reimbursement_status === 'approved') {
+          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">✅ Disetujui — ${fmt.format(ca.reimbursement_amount)}</span></div>`;
+          meta += `<div><strong>Diproses oleh:</strong> ${ca.reimbursement_by_name || '–'} pada ${fmtDateTime(ca.reimbursement_at)}</div>`;
+          if (ca.reimbursement_proof) meta += `<div><strong>Bukti Reimburse:</strong> <a href="${ca.reimbursement_proof}" target="_blank" onclick="event.preventDefault(); openLightbox('${ca.reimbursement_proof}')"><img src="${ca.reimbursement_proof}" style="height:40px;border-radius:4px;cursor:pointer;vertical-align:middle" /></a></div>`;
+        } else if (ca.reimbursement_status === 'rejected') {
+          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-keluar">❌ Ditolak</span></div>`;
+          meta += `<div><strong>Alasan tolak reimburse:</strong> <span style="color:var(--red,#ef4444)">${ca.reimbursement_reject_reason}</span></div>`;
+          meta += `<div><strong>Ditolak oleh:</strong> ${ca.reimbursement_by_name || '–'} pada ${fmtDateTime(ca.reimbursement_at)}</div>`;
+        } else if (ca.reimbursement_requested) {
+          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">Diminta</span></div>`;
+        }
         document.getElementById('detailMeta').innerHTML = meta;
 
         const txs = ca.transactions || [];
@@ -445,23 +553,49 @@
         actionsEl.innerHTML = '';
         document.getElementById('closeRequestForm').style.display = 'none';
 
-        if (window.currentUser.role === 'finance') {
-          let editBtn = `<button class="btn btn-ghost btn-sm" onclick="openEditCa()">Edit CA</button>`;
-          if (ca.status === 'pending') {
-            actionsEl.innerHTML = editBtn + `
-              <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
-              <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>
-            `;
-          } else if (ca.status === 'pending_close') {
-            actionsEl.innerHTML = editBtn + `
-              <button class="btn btn-primary btn-sm" onclick="approveClose(${id})">Setujui Penutupan</button>
-              <button class="btn btn-ghost btn-sm" onclick="rejectClose(${id})">Tolak Penutupan</button>
-            `;
-          } else {
-            actionsEl.innerHTML = editBtn;
+        const isOwner = ca.request_by === window.currentUser.userId;
+        const isFinance = window.currentUser.role === 'finance';
+
+        if (isFinance) {
+          let html = `<button class="btn btn-ghost btn-sm" onclick="openEditCa()">Edit CA</button>`;
+          if (!isOwner) {
+            if (ca.status === 'pending') {
+              html += `
+                <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
+                <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>`;
+            } else if (ca.status === 'pending_close') {
+              html += `
+                <button class="btn btn-primary btn-sm" onclick="approveClose(${id})">Setujui Penutupan</button>
+                <button class="btn btn-ghost btn-sm" onclick="rejectClose(${id})">Tolak Penutupan</button>`;
+            }
+          }
+          if (ca.reimbursement_status === 'pending') {
+            const detailKek = Math.max(0, (ca.total_keluar_ca || 0) - (ca.total_masuk_ca || 0));
+            html += `
+              <button class="btn btn-primary btn-sm" onclick="openApproveReimburse(${id}, '${ca.title.replace(/'/g, "\\'")}', ${detailKek})">💸 Proses Reimburse</button>
+              <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
+          }
+          actionsEl.innerHTML = html;
+          // Owner actions for finance's own CA
+          if (isOwner && ca.status === 'open') {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary btn-sm'; btn.id = 'btnRequestClose'; btn.textContent = 'Tutup CA';
+            actionsEl.appendChild(btn);
+            btn.addEventListener('click', () => { document.getElementById('closeRequestForm').style.display = ''; btn.style.display = 'none'; });
+          } else if (isOwner && ca.status === 'closed' && !ca.reimbursement_requested) {
+            const label = sisa > 0 ? 'Request Reimburse (Ada Sisa Dana)' : 'Request Reimburse (Kurang)';
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary btn-sm'; btn.id = 'btnReimburse'; btn.textContent = label;
+            actionsEl.appendChild(btn);
+            btn.addEventListener('click', async () => {
+              if (!confirm('Ajukan request reimburse?')) return;
+              const res = await fetch(`/api/ca/${id}/request-reimburse`, { method: 'PATCH' });
+              if (res.ok) { showAlert('detailSuccess', 'Request reimburse berhasil diajukan'); await refreshDetail(id); await loadCAs(); }
+              else { const d = await res.json(); showAlert('detailAlert', d.error); }
+            });
           }
         } else {
-          // employee
+          // Employee owner actions
           if (ca.status === 'open') {
             actionsEl.innerHTML = `<button class="btn btn-primary btn-sm" id="btnRequestClose">Request Close</button>`;
             document.getElementById('btnRequestClose').addEventListener('click', () => {
@@ -667,6 +801,70 @@
         if (openDetailId === id) await refreshDetail(id);
       } catch { alert('Gagal menolak request close'); }
       finally { btn.disabled = false; btn.textContent = 'Tolak Penutupan'; }
+    });
+
+    // ─── Approve Reimburse Modal ──────────────
+    document.getElementById('reimburseAmount').addEventListener('input', function () {
+      const pos = this.selectionStart;
+      const before = this.value.length;
+      this.value = formatThousands(this.value);
+      const diff = this.value.length - before;
+      this.setSelectionRange(pos + diff, pos + diff);
+    });
+
+    function closeApproveReimburseModal() { document.getElementById('approveReimburseOverlay').classList.remove('open'); }
+    document.getElementById('approveReimburseClose').addEventListener('click', closeApproveReimburseModal);
+    document.getElementById('approveReimburseCancel').addEventListener('click', closeApproveReimburseModal);
+    document.getElementById('approveReimburseOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('approveReimburseOverlay')) closeApproveReimburseModal(); });
+
+    document.getElementById('approveReimburseSubmit').addEventListener('click', async () => {
+      const amountRaw = document.getElementById('reimburseAmount').value.replace(/\./g, '').replace(',', '.');
+      const amount = parseFloat(amountRaw);
+      const proofFile = document.getElementById('reimburseProof').files[0];
+      const note = document.getElementById('reimburseNote').value.trim();
+
+      if (isNaN(amount) || amount <= 0) { showAlert('approveReimburseAlert', 'Nominal reimburse wajib diisi'); return; }
+      if (!proofFile) { showAlert('approveReimburseAlert', 'Bukti transfer wajib dilampirkan'); return; }
+
+      const btn = document.getElementById('approveReimburseSubmit');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const fd = new FormData();
+        fd.append('amount', amount);
+        fd.append('proof', proofFile);
+        if (note) fd.append('note', note);
+        const res = await fetch(`/api/ca/${reimburseTargetId}/approve-reimburse`, { method: 'PATCH', body: fd });
+        if (!res.ok) { const d = await res.json(); showAlert('approveReimburseAlert', d.error); return; }
+        closeApproveReimburseModal();
+        await loadCAs();
+        if (openDetailId === reimburseTargetId) await refreshDetail(reimburseTargetId);
+      } catch { showAlert('approveReimburseAlert', 'Gagal memproses reimburse'); }
+      finally { btn.disabled = false; btn.textContent = 'Setujui & Proses'; }
+    });
+
+    // ─── Reject Reimburse Modal ───────────────
+    function closeRejectReimburseModal() { document.getElementById('rejectReimburseOverlay').classList.remove('open'); }
+    document.getElementById('rejectReimburseClose').addEventListener('click', closeRejectReimburseModal);
+    document.getElementById('rejectReimburseCancel').addEventListener('click', closeRejectReimburseModal);
+    document.getElementById('rejectReimburseOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('rejectReimburseOverlay')) closeRejectReimburseModal(); });
+
+    document.getElementById('rejectReimburseSubmit').addEventListener('click', async () => {
+      const reason = document.getElementById('rejectReimburseReason').value.trim();
+      if (!reason) { alert('Alasan penolakan wajib diisi'); return; }
+      const btn = document.getElementById('rejectReimburseSubmit');
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      try {
+        const res = await fetch(`/api/ca/${reimburseTargetId}/reject-reimburse`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason })
+        });
+        if (!res.ok) { const d = await res.json(); alert(d.error); return; }
+        closeRejectReimburseModal();
+        await loadCAs();
+        if (openDetailId === reimburseTargetId) await refreshDetail(reimburseTargetId);
+      } catch { alert('Gagal menolak reimburse'); }
+      finally { btn.disabled = false; btn.textContent = 'Tolak Reimburse'; }
     });
 
     // ─── Share Link Publik CA ─────────────────

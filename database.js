@@ -110,12 +110,30 @@ db.serialize(() => {
     )
   `);
 
-  // Migration: tambah close_reject_reason ke cash_advances
+  // Migration: tambah kolom baru ke cash_advances
   db.all("PRAGMA table_info(cash_advances)", (err, cols) => {
     if (err) return;
     const names = cols.map(c => c.name);
     if (!names.includes('close_reject_reason'))
       db.run("ALTER TABLE cash_advances ADD COLUMN close_reject_reason TEXT");
+    if (!names.includes('reimbursement_status')) {
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_status TEXT", () => {
+        // Migrate existing reimburse requests that were submitted before this column existed
+        db.run("UPDATE cash_advances SET reimbursement_status='pending' WHERE reimbursement_requested=1 AND reimbursement_status IS NULL");
+      });
+    } else {
+      db.run("UPDATE cash_advances SET reimbursement_status='pending' WHERE reimbursement_requested=1 AND reimbursement_status IS NULL");
+    }
+    if (!names.includes('reimbursement_reject_reason'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_reject_reason TEXT");
+    if (!names.includes('reimbursement_amount'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_amount REAL");
+    if (!names.includes('reimbursement_proof'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_proof TEXT");
+    if (!names.includes('reimbursement_at'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_at TEXT");
+    if (!names.includes('reimbursement_by'))
+      db.run("ALTER TABLE cash_advances ADD COLUMN reimbursement_by INTEGER");
   });
 
   // Migration: tambah kolom baru jika belum ada

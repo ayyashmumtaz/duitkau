@@ -259,12 +259,15 @@
       const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
       let items = [];
       if (user.role === 'finance') {
-        items = cas.filter(ca => ca.status === 'pending' || ca.status === 'pending_close');
+        items = cas.filter(ca =>
+          ca.status === 'pending' || ca.status === 'pending_close' || ca.reimbursement_status === 'pending'
+        );
       } else {
         items = cas.filter(ca =>
           ca.status === 'open' ||
           ca.status === 'rejected' ||
-          (ca.status === 'closed' && !ca.reimbursement_requested)
+          (ca.status === 'closed' && !ca.reimbursement_status) ||
+          ca.reimbursement_status === 'rejected'
         );
       }
 
@@ -273,7 +276,7 @@
         pending_close: '🔒 Request penutupan CA',
         open:          '✅ CA aktif — siap digunakan',
         rejected:      '❌ CA ditolak',
-        closed:        '🏁 Ditutup — cek reimburse',
+        closed:        '🏁 Ditutup — ajukan reimburse',
       };
 
       let html = '<div class="notif-popup-header">Notifikasi CA</div>';
@@ -284,6 +287,10 @@
           let desc = STATUS_DESC[ca.status] || ca.status;
           if (ca.status === 'open' && ca.close_reject_reason) {
             desc = `⚠️ Close ditolak: "${ca.close_reject_reason}"`;
+          } else if (ca.reimbursement_status === 'pending') {
+            desc = '💸 Reimburse menunggu diproses';
+          } else if (ca.reimbursement_status === 'rejected') {
+            desc = `❌ Reimburse ditolak: "${ca.reimbursement_reject_reason || ''}"`;
           }
           return `
           <div class="notif-popup-item" onclick="window.location.href='/ca.html?id=${ca.id}'">

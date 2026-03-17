@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../database');
+const upload = require('../middleware/upload');
 const { requireLogin } = require('../middleware/auth');
 const { logEvent } = require('../utils/logger');
 
@@ -12,12 +13,16 @@ const caSelect = `
     opn.full_name  AS open_by_name,
     cls.full_name  AS closed_by_name,
     crq.full_name  AS close_requested_by_name,
-    pr.name        AS project_name
+    rmb.full_name  AS reimbursement_by_name,
+    pr.name        AS project_name,
+    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='masuk' AND t.status='approved'),0) AS total_masuk_ca,
+    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='keluar' AND t.status='approved'),0) AS total_keluar_ca
   FROM cash_advances ca
   LEFT JOIN users req ON ca.request_by = req.id
   LEFT JOIN users opn ON ca.open_by    = opn.id
   LEFT JOIN users cls ON ca.closed_by  = cls.id
   LEFT JOIN users crq ON ca.close_requested_by = crq.id
+  LEFT JOIN users rmb ON ca.reimbursement_by   = rmb.id
   LEFT JOIN projects pr ON ca.project_id = pr.id
 `;
 
@@ -27,7 +32,8 @@ router.get('/notify', async (req, res) => {
     let count = 0;
     if (req.session.role === 'finance') {
       const r = await db.getAsync(
-        "SELECT COUNT(*) as n FROM cash_advances WHERE status IN ('pending','pending_close')"
+        `SELECT COUNT(*) as n FROM cash_advances
+         WHERE status IN ('pending','pending_close') OR reimbursement_status = 'pending'`
       );
       count = r.n;
     } else {
@@ -36,7 +42,8 @@ router.get('/notify', async (req, res) => {
          WHERE request_by = ? AND (
            status = 'open' OR
            status = 'rejected' OR
-           (status = 'closed' AND reimbursement_requested = 0)
+           (status = 'closed' AND reimbursement_status IS NULL) OR
+           reimbursement_status = 'rejected'
          )`,
         [req.session.userId]
       );
@@ -68,11 +75,8 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ─── POST / — employee requests new CA ────────────────────────
+// ─── POST / — create CA (employee: pending, finance: auto-open)
 router.post('/', async (req, res) => {
-  if (req.session.role !== 'employee')
-    return res.status(403).json({ error: 'Hanya karyawan yang bisa mengajukan CA' });
-
   const { title, description, initial_amount, project_id } = req.body;
   if (!title || !title.trim())
     return res.status(400).json({ error: 'Judul CA wajib diisi' });
@@ -80,16 +84,26 @@ router.post('/', async (req, res) => {
   if (isNaN(amount) || amount <= 0)
     return res.status(400).json({ error: 'Nominal CA harus berupa angka positif' });
 
+  const projectId = project_id ? parseInt(project_id) || null : null;
+  const isFinance = req.session.role === 'finance';
+
   try {
-    const result = await db.runAsync(
-      `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by)
-       VALUES (?, ?, ?, ?, ?)`,
-      [title.trim(), description || null, amount, project_id ? parseInt(project_id) || null : null, req.session.userId]
-    );
+    let result;
+    if (isFinance) {
+      result = await db.runAsync(
+        `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by, status, open_by, open_at)
+         VALUES (?, ?, ?, ?, ?, 'open', ?, datetime('now','localtime'))`,
+        [title.trim(), description || null, amount, projectId, req.session.userId, req.session.userId]
+      );
+    } else {
+      result = await db.runAsync(
+        `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by)
+         VALUES (?, ?, ?, ?, ?)`,
+        [title.trim(), description || null, amount, projectId, req.session.userId]
+      );
+    }
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [result.lastID]);
-    
-    logEvent(req, 'CREATE_CA', `Karyawan mengajukan CA "${row.title}" sebesar ${row.initial_amount}`);
-    
+    logEvent(req, 'CREATE_CA', `${isFinance ? 'Finance' : 'Karyawan'} mengajukan CA "${row.title}" sebesar ${row.initial_amount}`);
     res.status(201).json(row);
   } catch (err) {
     console.error(err);
@@ -201,10 +215,8 @@ router.patch('/:id/reject', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/request-close — employee requests close ───────
+// ─── PATCH /:id/request-close — request close (owner only) ───
 router.patch('/:id/request-close', async (req, res) => {
-  if (req.session.role !== 'employee')
-    return res.status(403).json({ error: 'Hanya karyawan yang bisa request close' });
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
@@ -214,6 +226,16 @@ router.patch('/:id/request-close', async (req, res) => {
       return res.status(400).json({ error: 'CA tidak dalam status open' });
 
     const note = req.body.note || null;
+    // Finance closing their own CA: skip approval, directly closed
+    if (req.session.role === 'finance') {
+      await db.runAsync(
+        `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=datetime('now','localtime'), close_reject_reason=NULL WHERE id=?`,
+        [req.session.userId, req.params.id]
+      );
+      const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+      logEvent(req, 'CLOSE_CA', `Finance menutup CA-nya sendiri "${row.title}"`);
+      return res.json(row);
+    }
     await db.runAsync(
       `UPDATE cash_advances SET status='pending_close',
         close_requested_by=?, close_requested_at=datetime('now','localtime'), close_request_note=?,
@@ -284,10 +306,8 @@ router.patch('/:id/approve-close', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/request-reimburse — employee requests reimburse
+// ─── PATCH /:id/request-reimburse — request reimburse (owner)
 router.patch('/:id/request-reimburse', async (req, res) => {
-  if (req.session.role !== 'employee')
-    return res.status(403).json({ error: 'Hanya karyawan yang bisa request reimburse' });
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
@@ -297,15 +317,83 @@ router.patch('/:id/request-reimburse', async (req, res) => {
       return res.status(400).json({ error: 'CA belum ditutup' });
 
     await db.runAsync(
-      `UPDATE cash_advances SET reimbursement_requested=1 WHERE id=?`,
+      `UPDATE cash_advances SET reimbursement_requested=1, reimbursement_status='pending' WHERE id=?`,
       [req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    logEvent(req, 'REQUEST_REIMBURSE_CA', `Karyawan mengajukan klaim reimburse untuk CA "${row.title}"`);
+    logEvent(req, 'REQUEST_REIMBURSE_CA', `Mengajukan klaim reimburse untuk CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal request reimburse' });
+  }
+});
+
+// ─── PATCH /:id/approve-reimburse — finance approves reimburse
+router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) => {
+  if (req.session.role !== 'finance')
+    return res.status(403).json({ error: 'Hanya finance yang bisa memproses reimburse' });
+  try {
+    const ca = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.reimbursement_status !== 'pending')
+      return res.status(400).json({ error: 'Tidak ada permintaan reimburse yang menunggu' });
+
+    const amount = parseFloat(req.body.amount);
+    if (isNaN(amount) || amount <= 0)
+      return res.status(400).json({ error: 'Nominal reimburse harus berupa angka positif' });
+
+    const kekurangan = Math.max(0, (ca.total_keluar_ca || 0) - (ca.total_masuk_ca || 0));
+    if (kekurangan > 0 && Math.abs(amount - kekurangan) > 1)
+      return res.status(400).json({ error: `Nominal reimburse harus sesuai kekurangan: Rp ${kekurangan.toLocaleString('id-ID')}` });
+
+    const proof = req.file ? `/uploads/${req.file.filename}` : null;
+    const note = req.body.note || null;
+
+    await db.runAsync(
+      `UPDATE cash_advances SET
+        reimbursement_status='approved', reimbursement_amount=?, reimbursement_proof=?,
+        reimbursement_by=?, reimbursement_at=datetime('now','localtime'),
+        reimbursement_reject_reason=NULL
+       WHERE id=?`,
+      [amount, proof, req.session.userId, req.params.id]
+    );
+    // Store note in a temp field reuse or log
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'APPROVE_REIMBURSE_CA', `Finance menyetujui reimburse CA "${row.title}" sebesar ${amount}${note ? ` — Catatan: ${note}` : ''}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal memproses reimburse' });
+  }
+});
+
+// ─── PATCH /:id/reject-reimburse — finance rejects reimburse ─
+router.patch('/:id/reject-reimburse', async (req, res) => {
+  if (req.session.role !== 'finance')
+    return res.status(403).json({ error: 'Hanya finance yang bisa menolak reimburse' });
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.reimbursement_status !== 'pending')
+      return res.status(400).json({ error: 'Tidak ada permintaan reimburse yang menunggu' });
+
+    const reason = (req.body.reason || '').trim();
+    if (!reason) return res.status(400).json({ error: 'Alasan penolakan wajib diisi' });
+
+    await db.runAsync(
+      `UPDATE cash_advances SET
+        reimbursement_status='rejected', reimbursement_reject_reason=?,
+        reimbursement_by=?, reimbursement_at=datetime('now','localtime')
+       WHERE id=?`,
+      [reason, req.session.userId, req.params.id]
+    );
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'REJECT_REIMBURSE_CA', `Finance menolak reimburse CA "${row.title}" — Alasan: ${reason}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal menolak reimburse' });
   }
 });
 

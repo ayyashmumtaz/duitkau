@@ -189,14 +189,33 @@
     };
 
     async function loadEmployees() {
-      const res = await fetch('/api/finance/employees').then(r => r.json());
+      const users = await fetch('/api/finance/employees').then(r => r.json());
       const sel = document.getElementById('userId');
-      res.forEach(emp => {
-        const opt = document.createElement('option');
-        opt.value = emp.id;
-        opt.textContent = emp.full_name + ' (@' + emp.username + ')';
-        sel.appendChild(opt);
-      });
+      const employees = users.filter(u => u.role === 'employee');
+      const financeUsers = users.filter(u => u.role === 'finance');
+
+      if (employees.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Karyawan';
+        employees.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.full_name + ' (@' + u.username + ')';
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      }
+      if (financeUsers.length > 0) {
+        const grp = document.createElement('optgroup');
+        grp.label = 'Tim Finance';
+        financeUsers.forEach(u => {
+          const opt = document.createElement('option');
+          opt.value = u.id;
+          opt.textContent = u.full_name + ' (@' + u.username + ')';
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      }
     }
 
     async function loadCategories() {
