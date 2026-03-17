@@ -112,8 +112,8 @@ router.get('/:token', async (req, res) => {
     if (p.categoryId) { whereClauses.push('t.category_id = ?'); params.push(p.categoryId); }
     if (p.caId) { whereClauses.push('t.ca_id = ?'); params.push(p.caId); }
     if (p.periodType === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(p.periodValue)) { whereClauses.push("t.date = ?"); params.push(p.periodValue); }
-    else if (p.periodType === 'month' && /^\d{4}-\d{2}$/.test(p.periodValue)) { whereClauses.push("strftime('%Y-%m', t.date) = ?"); params.push(p.periodValue); }
-    else if (p.periodType === 'year' && /^\d{4}$/.test(p.periodValue)) { whereClauses.push("strftime('%Y', t.date) = ?"); params.push(p.periodValue); }
+    else if (p.periodType === 'month' && /^\d{4}-\d{2}$/.test(p.periodValue)) { whereClauses.push("DATE_FORMAT(t.date, '%Y-%m') = ?"); params.push(p.periodValue); }
+    else if (p.periodType === 'year' && /^\d{4}$/.test(p.periodValue)) { whereClauses.push("DATE_FORMAT(t.date, '%Y') = ?"); params.push(p.periodValue); }
 
     const where = 'WHERE ' + whereClauses.join(' AND ');
     const rows = await db.allAsync(

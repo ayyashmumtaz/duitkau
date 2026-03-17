@@ -19,7 +19,7 @@ router.get('/summary', async (req, res) => {
          JOIN users u ON t.user_id = u.id
          LEFT JOIN projects pr ON t.project_id = pr.id
          LEFT JOIN categories c ON t.category_id = c.id
-         WHERE t.status = 'approved' AND strftime('%Y-%m', t.date) = ?
+         WHERE t.status = 'approved' AND DATE_FORMAT(t.date, '%Y-%m') = ?
          ORDER BY u.full_name, t.date DESC`,
         [month]
       );
@@ -162,9 +162,9 @@ router.get('/report', async (req, res) => {
     if (periodType === 'date' && periodValue && /^\d{4}-\d{2}-\d{2}$/.test(periodValue)) {
       whereClauses.push("t.date = ?"); params.push(periodValue);
     } else if (periodType === 'month' && periodValue && /^\d{4}-\d{2}$/.test(periodValue)) {
-      whereClauses.push("strftime('%Y-%m', t.date) = ?"); params.push(periodValue);
+      whereClauses.push("DATE_FORMAT(t.date, '%Y-%m') = ?"); params.push(periodValue);
     } else if (periodType === 'year' && periodValue && /^\d{4}$/.test(periodValue)) {
-      whereClauses.push("strftime('%Y', t.date) = ?"); params.push(periodValue);
+      whereClauses.push("DATE_FORMAT(t.date, '%Y') = ?"); params.push(periodValue);
     }
 
     const where = 'WHERE ' + whereClauses.join(' AND ');
@@ -199,7 +199,7 @@ router.get('/employees', async (req, res) => {
 router.get('/months', async (req, res) => {
   try {
     const months = await db.allAsync(
-      `SELECT DISTINCT strftime('%Y-%m', date) as month FROM transactions ORDER BY month DESC`
+      `SELECT DISTINCT DATE_FORMAT(date, '%Y-%m') as month FROM transactions ORDER BY month DESC`
     );
     res.json(months.map(m => m.month));
   } catch (err) {

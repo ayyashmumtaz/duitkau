@@ -38,13 +38,10 @@ function logEvent(req, action, details) {
 
   // Catat juga ke Database
   if (db.isConnected()) {
-    db.run(
+    db.runAsync(
       `INSERT INTO event_logs (username, role, ip, action, details) VALUES (?, ?, ?, ?, ?)`,
-      [username, role, ip, action, details],
-      (err) => {
-        if (err) console.error('Gagal menulis log ke DB:', err.message);
-      }
-    );
+      [username, role, ip, action, details]
+    ).catch(err => console.error('Gagal menulis log ke DB:', err.message));
   }
 }
 

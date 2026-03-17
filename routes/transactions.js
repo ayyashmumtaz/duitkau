@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
        LEFT JOIN users ib ON t.input_by = ib.id`;
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       rows = await db.allAsync(
-        `${baseSelect} WHERE t.user_id = ? AND strftime('%Y-%m', t.date) = ?
+        `${baseSelect} WHERE t.user_id = ? AND DATE_FORMAT(t.date, '%Y-%m') = ?
          ORDER BY t.date DESC, t.created_at DESC`,
         [req.session.userId, month]
       );
@@ -84,43 +84,41 @@ router.post('/batch', upload.any(), async (req, res) => {
   const fileMap = {};
   for (const file of (req.files || [])) fileMap[file.fieldname] = `/uploads/${file.filename}`;
 
+  // Validate all items before opening transaction
+  for (let i = 0; i < items.length; i++) {
+    const { name, amount, date, category_id } = items[i];
+    const parsedAmount = parseFloat(amount);
+    if (!name?.trim() || isNaN(parsedAmount) || parsedAmount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+      return res.status(400).json({ error: `Item ${i + 1}: data tidak valid` });
+    if (!category_id)
+      return res.status(400).json({ error: `Item ${i + 1}: kategori wajib dipilih` });
+    if (!fileMap[`proof_${i}`])
+      return res.status(400).json({ error: `Item ${i + 1}: bukti foto wajib disertakan` });
+  }
+
   try {
-    await db.runAsync('BEGIN TRANSACTION');
-    const insertedList = [];
-    for (let i = 0; i < items.length; i++) {
-      const { name, amount, date, note, project_id, category_id, ca_id } = items[i];
-      const parsedAmount = parseFloat(amount);
-      if (!name?.trim() || isNaN(parsedAmount) || parsedAmount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        await db.runAsync('ROLLBACK');
-        return res.status(400).json({ error: `Item ${i + 1}: data tidak valid` });
+    const insertedList = await db.transaction(async (tx) => {
+      const list = [];
+      for (let i = 0; i < items.length; i++) {
+        const { name, amount, date, note, project_id, category_id, ca_id } = items[i];
+        const proofImage  = fileMap[`proof_${i}`];
+        const projectId   = project_id  ? parseInt(project_id)  || null : null;
+        const categoryId  = parseInt(category_id);
+        const caId        = ca_id        ? parseInt(ca_id)       || null : null;
+        const result = await tx.runAsync(
+          `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
+           VALUES (?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
+          [req.session.userId, name.trim(), parseFloat(amount), date, note || null, proofImage, req.session.userId, projectId, categoryId, caId]
+        );
+        const inserted = await tx.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
+        list.push(inserted);
       }
-      if (!category_id) {
-        await db.runAsync('ROLLBACK');
-        return res.status(400).json({ error: `Item ${i + 1}: kategori wajib dipilih` });
-      }
-      const proofImage = fileMap[`proof_${i}`] || null;
-      if (!proofImage) {
-        await db.runAsync('ROLLBACK');
-        return res.status(400).json({ error: `Item ${i + 1}: bukti foto wajib disertakan` });
-      }
-      const projectId = project_id ? parseInt(project_id) || null : null;
-      const categoryId = parseInt(category_id);
-      const caId = ca_id ? parseInt(ca_id) || null : null;
-      const result = await db.runAsync(
-        `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
-         VALUES (?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
-        [req.session.userId, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId, caId]
-      );
-      const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
-      insertedList.push(inserted);
-    }
-    await db.runAsync('COMMIT');
-    
+      return list;
+    });
+
     logEvent(req, 'CREATE_BATCH_TRANSACTION', `Menambahkan ${items.length} transaksi sekaligus`);
-    
     res.status(201).json(insertedList);
   } catch (err) {
-    await db.runAsync('ROLLBACK').catch(() => {});
     console.error(err);
     res.status(500).json({ error: 'Gagal menyimpan batch transaksi' });
   }

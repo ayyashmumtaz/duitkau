@@ -233,3 +233,10 @@
 [2026-03-17T13:04:50.761Z] [EMPLOYEE:mujuy] (::1) | LOGIN | Pengguna employee berhasil login
 [2026-03-17T13:21:44.048Z] [EMPLOYEE:mujuy] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-17T13:21:51.018Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:24:25.184Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T13:24:26.675Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:47:10.469Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:47:33.805Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:48:34.312Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:49:31.469Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T13:50:10.752Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login

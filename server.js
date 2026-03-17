@@ -24,15 +24,23 @@ app.use(
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Health check (tidak diblokir oleh DB guard) ─────────────
-app.get('/api/health', (req, res) => {
-  const connected = db.isConnected();
-  res.status(connected ? 200 : 503).json({ db: connected });
+app.get('/api/health', async (req, res) => {
+  if (!db.isConnected()) return res.status(503).json({ db: false });
+  try {
+    await db.allAsync('SELECT 1');
+    res.json({ db: true });
+  } catch {
+    res.status(503).json({ db: false });
+  }
 });
+
+// ─── Settings (bypass DB guard — dibutuhkan saat DB belum dikonfigurasi) ─
+app.use('/api/settings', require('./routes/settings'));
 
 // ─── DB Guard — blokir semua API lain jika DB tidak terhubung ─
 app.use('/api', (req, res, next) => {
   if (!db.isConnected()) {
-    return res.status(503).json({ error: 'Database tidak terhubung. Coba beberapa saat lagi.' });
+    return res.status(503).json({ error: 'Database tidak terhubung. Konfigurasi di /settings.html' });
   }
   next();
 });

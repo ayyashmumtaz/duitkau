@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pengaturan — Cakra ERP</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .settings-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f0f2f7;
+    }
+
+    /* Top bar (same as navbar but standalone) */
+    .settings-topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--gray-200);
+      height: var(--navbar-h);
+      display: flex;
+      align-items: stretch;
+      box-shadow: 0 1px 0 var(--gray-200), 0 2px 8px rgba(0,0,0,.04);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .settings-topbar-brand {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      padding: 0 1.25rem;
+      background: var(--sidebar-bg);
+      border-right: 1px solid rgba(255,255,255,.06);
+      text-decoration: none;
+    }
+    .settings-topbar-brand img { height: 26px; width: auto; }
+    .settings-topbar-brand-text { line-height: 1.2; }
+    .settings-topbar-brand-text .brand-name { font-size: .88rem; font-weight: 700; color: #fff; }
+    .settings-topbar-brand-text .brand-name span { color: var(--accent); }
+    .settings-topbar-brand-text .brand-sub { font-size: .62rem; color: rgba(255,255,255,.35); letter-spacing: .05em; text-transform: uppercase; }
+
+    .settings-topbar-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+    }
+    .settings-topbar-title {
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--gray-400);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .settings-topbar-actions { display: flex; align-items: center; gap: .65rem; }
+    .topbar-user-info { font-size: .85rem; color: var(--gray-600); display: flex; align-items: center; gap: .35rem; }
+    .topbar-user-info strong { color: var(--gray-800); }
+
+    /* Page body */
+    .settings-body {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      padding: 2.5rem 1rem;
+    }
+
+    .settings-container { width: 100%; max-width: 560px; }
+
+    /* Setup banner (shown when not authenticated) */
+    .setup-banner {
+      background: linear-gradient(135deg, #1e2b3c, #111827);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: #fff;
+      display: none;
+    }
+    .setup-banner.show { display: block; }
+    .setup-banner h2 { font-size: 1rem; font-weight: 700; margin-bottom: .3rem; }
+    .setup-banner p  { font-size: .82rem; color: rgba(255,255,255,.6); line-height: 1.6; }
+
+    /* Connection status badge */
+    .conn-status {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .25rem .75rem;
+      border-radius: 99px;
+      font-size: .75rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+    }
+    .conn-status .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%; background: currentColor;
+    }
+    .conn-status.connected    { background: var(--green-light); color: #166534; }
+    .conn-status.disconnected { background: var(--red-light);   color: #991b1b; }
+    .conn-status.connected .dot { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* Form sections */
+    .settings-section-title {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--gray-500);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: .85rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: .75rem; align-items: end; }
+    .form-row .form-group { margin-bottom: 0; }
+
+    .password-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .4rem;
+    }
+    .keep-pwd-label {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-size: .78rem;
+      color: var(--gray-500);
+      cursor: pointer;
+      user-select: none;
+    }
+    .keep-pwd-label input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+
+    .btn-test {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: 1.5px solid var(--gray-200);
+      padding: .52rem 1rem;
+      border-radius: 7px;
+      font-size: .86rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+      white-space: nowrap;
+    }
+    .btn-test:hover { background: var(--gray-200); border-color: var(--gray-300); }
+    .btn-test:disabled { opacity: .5; cursor: not-allowed; }
+
+    .test-result {
+      font-size: .82rem;
+      padding: .5rem .85rem;
+      border-radius: 7px;
+      margin-top: .5rem;
+      display: none;
+    }
+    .test-result.ok  { background: var(--green-light); color: #166534; border: 1px solid #86efac; display: block; }
+    .test-result.err { background: var(--red-light);   color: #991b1b; border: 1px solid #fca5a5; display: block; }
+
+    .form-actions {
+      display: flex;
+      gap: .65rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 600px) {
+      .settings-topbar-brand { width: 56px; padding: 0; justify-content: center; }
+      .settings-topbar-brand-text { display: none; }
+      .settings-body { padding: 1.25rem .75rem; }
+      .form-row { grid-template-columns: 1fr; }
+      .topbar-user-info { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="settings-wrap">
+
+    <!-- Top bar -->
+    <div class="settings-topbar">
+      <a href="/apps.html" class="settings-topbar-brand" title="Kembali ke Cakra ERP">
+        <img src="/assets/logo/logo-CSK.png" alt="Cakra" />
+        <div class="settings-topbar-brand-text">
+          <div class="brand-name"><span>Cakra</span> ERP</div>
+          <div class="brand-sub">Pengaturan</div>
+        </div>
+      </a>
+      <div class="settings-topbar-body">
+        <div class="settings-topbar-title">Pengaturan Sistem</div>
+        <div class="settings-topbar-actions">
+          <div class="topbar-user-info" id="userInfo" style="display:none">
+            Halo, <strong id="topbarName"></strong>
+            <span class="chip">Super Admin</span>
+          </div>
+          <a href="/finance.html" class="btn btn-ghost btn-sm" id="backBtn" style="display:none">← Kembali ke App</a>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn" style="display:none">Keluar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="settings-body">
+      <div class="settings-container">
+
+        <!-- Access denied (logged in but not super_admin) -->
+        <div id="accessDenied" style="display:none" class="card" style="text-align:center; padding:2rem">
+          <div style="font-size:2rem; margin-bottom:.75rem">🔒</div>
+          <div style="font-weight:700; margin-bottom:.4rem">Akses Ditolak</div>
+          <div style="font-size:.85rem; color:var(--gray-500)">Halaman ini hanya untuk Super Admin.</div>
+          <a href="/apps.html" class="btn btn-primary" style="margin-top:1.25rem">Kembali ke Apps</a>
+        </div>
+
+        <!-- Main settings (shown when: super_admin OR DB not connected) -->
+        <div id="mainContent" style="display:none">
+
+          <!-- First-time setup banner -->
+          <div class="setup-banner" id="setupBanner">
+            <h2>⚙️ Setup Awal Database</h2>
+            <p>MySQL belum dikonfigurasi. Masukkan detail koneksi di bawah untuk menghubungkan aplikasi ke database MySQL.</p>
+          </div>
+
+          <!-- Connection status -->
+          <div class="conn-status disconnected" id="connStatus">
+            <span class="dot"></span>
+            <span id="connStatusText">Tidak terhubung</span>
+          </div>
+
+          <!-- DB config card -->
+          <div class="card">
+            <div class="settings-section-title">Koneksi Database MySQL</div>
+
+            <div id="settingsAlert" class="alert alert-error"></div>
+            <div id="settingsSuccess" class="alert alert-success"></div>
+
+            <div style="display:grid; grid-template-columns:1fr auto; gap:.75rem; align-items:end; margin-bottom:.9rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label for="dbHost">Host</label>
+                <input type="text" id="dbHost" placeholder="localhost atau IP address" />
+              </div>
+              <div class="form-group" style="margin-bottom:0; width:90px">
+                <label for="dbPort">Port</label>
+                <input type="number" id="dbPort" value="3306" min="1" max="65535" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="dbUser">Username</label>
+              <input type="text" id="dbUser" placeholder="duitkau" autocomplete="username" />
+            </div>
+
+            <div class="form-group">
+              <label for="dbPassword">Password</label>
+              <div class="password-row">
+                <input type="password" id="dbPassword" placeholder="Masukkan password" autocomplete="current-password" />
+                <label class="keep-pwd-label" id="keepPwdRow" style="display:none">
+                  <input type="checkbox" id="keepPassword" />
+                  Gunakan password tersimpan (tidak diubah)
+                </label>
+              </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom:.5rem">
+              <div class="form-group" style="margin-bottom:0">
+                <label for="dbName">Nama Database</label>
+                <input type="text" id="dbName" placeholder="duitkau" />
+              </div>
+              <div style="padding-bottom:0">
+                <button class="btn-test" id="testBtn" type="button">Uji Koneksi</button>
+              </div>
+            </div>
+
+            <div class="test-result" id="testResult"></div>
+
+            <div class="form-actions">
+              <button class="btn btn-primary" id="saveBtn" type="button">Simpan &amp; Hubungkan</button>
+              <a href="/finance.html" class="btn btn-ghost" id="backBtn2" style="display:none">Batal</a>
+            </div>
+          </div>
+
+          <!-- Info card -->
+          <div class="card" style="margin-top:1rem; background:var(--gray-50); border-color:var(--gray-200)">
+            <div class="settings-section-title">Petunjuk Setup MySQL</div>
+            <div style="font-size:.83rem; color:var(--gray-600); line-height:1.8">
+              <strong>Docker:</strong><br>
+              <code style="background:var(--gray-100); padding:.2rem .5rem; border-radius:4px; font-size:.78rem; display:block; margin:.4rem 0">
+                docker run -d --name duitkau-mysql \<br>
+                &nbsp;&nbsp;-e MYSQL_ROOT_PASSWORD=root \<br>
+                &nbsp;&nbsp;-e MYSQL_DATABASE=duitkau \<br>
+                &nbsp;&nbsp;-e MYSQL_USER=duitkau \<br>
+                &nbsp;&nbsp;-e MYSQL_PASSWORD=duitkau123 \<br>
+                &nbsp;&nbsp;-p 3306:3306 mysql:8.4
+              </code>
+              <strong>Install driver:</strong><br>
+              <code style="background:var(--gray-100); padding:.2rem .5rem; border-radius:4px; font-size:.78rem; display:inline-block; margin:.4rem 0">
+                npm install mysql2 &amp;&amp; npm uninstall sqlite3
+              </code><br>
+              Setelah dikonfigurasi, schema database akan dibuat otomatis dan akun default di-seed.
+            </div>
+          </div>
+
+        </div><!-- /mainContent -->
+
+      </div>
+    </div>
+
+  </div><!-- /settings-wrap -->
+
+  <script>
+  (async function () {
+    // ── Helpers ────────────────────────────────────
+    function show(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+    function hide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+    function showAlert(id, msg) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('show');
+    }
+    function hideAlert(id) { document.getElementById(id)?.classList.remove('show'); }
+
+    // ── Check auth & DB state ──────────────────────
+    let isAuthenticated = false;
+    let isSetupMode     = false;
+
+    try {
+      const health = await fetch('/api/health').then(r => r.json()).catch(() => ({ db: false }));
+      if (!health.db) {
+        // DB not connected — setup mode (no auth required)
+        isSetupMode = true;
+      } else {
+        // DB connected — check auth
+        const me = await fetch('/api/auth/me').then(r => r.json()).catch(() => ({}));
+        if (!me.userId) {
+          window.location.href = '/login.html';
+          return;
+        }
+        if (me.role !== 'super_admin') {
+          show('accessDenied');
+          return;
+        }
+        isAuthenticated = true;
+        document.getElementById('topbarName').textContent = me.fullName;
+        show('userInfo');
+        show('backBtn');
+        show('logoutBtn');
+        show('backBtn2');
+      }
+    } catch {
+      isSetupMode = true;
+    }
+
+    show('mainContent');
+
+    if (isSetupMode) {
+      document.getElementById('setupBanner').classList.add('show');
+    }
+
+    // ── Load current config ────────────────────────
+    const cfg = await fetch('/api/settings/db').then(r => r.json()).catch(() => ({}));
+
+    document.getElementById('dbHost').value = cfg.host || '';
+    document.getElementById('dbPort').value = cfg.port || 3306;
+    document.getElementById('dbUser').value = cfg.user || '';
+    document.getElementById('dbName').value = cfg.database || '';
+
+    if (cfg.hasPassword) {
+      show('keepPwdRow');
+      document.getElementById('keepPassword').checked = true;
+    }
+
+    updateConnStatus(cfg.connected);
+
+    function updateConnStatus(connected) {
+      const el  = document.getElementById('connStatus');
+      const txt = document.getElementById('connStatusText');
+      el.className  = 'conn-status ' + (connected ? 'connected' : 'disconnected');
+      txt.textContent = connected ? 'Terhubung ke MySQL' : 'Tidak terhubung';
+    }
+
+    // Toggle password field based on keepPassword checkbox
+    document.getElementById('keepPassword')?.addEventListener('change', function () {
+      document.getElementById('dbPassword').disabled = this.checked;
+      if (this.checked) document.getElementById('dbPassword').value = '';
+    });
+    if (cfg.hasPassword && document.getElementById('keepPassword')?.checked) {
+      document.getElementById('dbPassword').disabled = true;
+    }
+
+    // ── Test connection ────────────────────────────
+    document.getElementById('testBtn').addEventListener('click', async () => {
+      hideAlert('settingsAlert');
+      hideAlert('settingsSuccess');
+      const resultEl = document.getElementById('testResult');
+      resultEl.className = 'test-result';
+
+      const btn = document.getElementById('testBtn');
+      btn.disabled = true;
+      btn.textContent = 'Menguji...';
+
+      try {
+        const body = {
+          host:     document.getElementById('dbHost').value.trim(),
+          port:     document.getElementById('dbPort').value,
+          user:     document.getElementById('dbUser').value.trim(),
+          password: document.getElementById('keepPassword')?.checked
+                      ? '__keep__'
+                      : document.getElementById('dbPassword').value,
+          database: document.getElementById('dbName').value.trim(),
+        };
+        const res  = await fetch('/api/settings/db/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        resultEl.textContent  = data.ok ? '✓ ' + data.message : '✗ ' + data.message;
+        resultEl.className    = 'test-result ' + (data.ok ? 'ok' : 'err');
+      } catch {
+        resultEl.textContent = '✗ Gagal menghubungi server';
+        resultEl.className   = 'test-result err';
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Uji Koneksi';
+      }
+    });
+
+    // ── Save & connect ─────────────────────────────
+    document.getElementById('saveBtn').addEventListener('click', async () => {
+      hideAlert('settingsAlert');
+      hideAlert('settingsSuccess');
+      document.getElementById('testResult').className = 'test-result';
+
+      const host     = document.getElementById('dbHost').value.trim();
+      const port     = document.getElementById('dbPort').value;
+      const user     = document.getElementById('dbUser').value.trim();
+      const database = document.getElementById('dbName').value.trim();
+      const keepPwd  = document.getElementById('keepPassword')?.checked || false;
+      const password = keepPwd ? '' : document.getElementById('dbPassword').value;
+
+      if (!host || !user || !database) {
+        showAlert('settingsAlert', 'Host, username, dan nama database wajib diisi.');
+        return;
+      }
+
+      const btn = document.getElementById('saveBtn');
+      btn.disabled    = true;
+      btn.textContent = 'Menyimpan...';
+
+      try {
+        const res  = await fetch('/api/settings/db', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, port, user, password, database, keepPassword: keepPwd }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          showAlert('settingsSuccess', '✓ ' + data.message);
+          updateConnStatus(true);
+          document.getElementById('setupBanner').classList.remove('show');
+          if (!isAuthenticated) {
+            // Redirect to login after successful first-time setup
+            setTimeout(() => { window.location.href = '/login.html'; }, 1800);
+          }
+        } else {
+          showAlert('settingsAlert', data.error || 'Gagal menyimpan konfigurasi.');
+          updateConnStatus(false);
+        }
+      } catch {
+        showAlert('settingsAlert', 'Terjadi kesalahan. Coba lagi.');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Simpan & Hubungkan';
+      }
+    });
+
+    // ── Logout ─────────────────────────────────────
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+      window.location.href = '/login.html';
+    });
+
+  })();
+  </script>
+</body>
+</html>

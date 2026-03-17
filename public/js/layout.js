@@ -35,6 +35,11 @@
     { type: 'item', href: '/logs.html', icon: '📜', label: 'Event Log', page: 'logs' },
   ];
 
+  const SUPER_ADMIN_NAV_GROUPS = [
+    ...FINANCE_NAV_GROUPS,
+    { type: 'item', href: '/settings.html', icon: '⚙️', label: 'Pengaturan', page: 'settings' },
+  ];
+
   // Finance bottom-nav (mobile)
   const FINANCE_BOTTOM = [
     { href: '/finance.html',        icon: '📊', label: 'Dashboard',       page: 'finance'        },
@@ -146,7 +151,9 @@
   function injectSidebar(user) {
     const ph = document.getElementById('sidebar-placeholder');
     if (!ph) return;
-    const nav = (user.role === 'finance' || user.role === 'super_admin') ? FINANCE_NAV_GROUPS : EMPLOYEE_NAV;
+    const nav = user.role === 'super_admin' ? SUPER_ADMIN_NAV_GROUPS
+              : user.role === 'finance'     ? FINANCE_NAV_GROUPS
+              : EMPLOYEE_NAV;
     ph.outerHTML = `<aside class="sidebar">${renderSidebarItems(nav)}</aside>`;
 
     // Set navbar page title from active nav item

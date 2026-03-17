@@ -179,7 +179,7 @@ router.post('/', async (req, res) => {
       // Fallback: finance/super_admin self-approves
       result = await db.runAsync(
         `INSERT INTO cash_advances (title, description, initial_amount, allowance, transport, accommodation, other_expenses, start_date, end_date, project_id, request_by, status, open_by, open_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, datetime('now','localtime'))`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open', ?, NOW())`,
         [title.trim(), description || null, amount, amt.allowance, amt.transport, amt.accommodation, amt.other_expenses, start_date, end_date, projectId, req.session.userId, req.session.userId]
       );
     } else {
@@ -295,7 +295,7 @@ router.patch('/:id/approve', async (req, res) => {
         return res.status(403).json({ error: 'Hanya finance yang bisa menyetujui CA ini' });
 
       await db.runAsync(
-        `UPDATE cash_advances SET status='open', open_by=?, open_at=datetime('now','localtime') WHERE id=?`,
+        `UPDATE cash_advances SET status='open', open_by=?, open_at=NOW() WHERE id=?`,
         [req.session.userId, req.params.id]
       );
     } else {
@@ -307,7 +307,7 @@ router.patch('/:id/approve', async (req, res) => {
         return res.status(400).json({ error: 'Anda sudah memberikan keputusan untuk CA ini' });
 
       await db.runAsync(
-        `UPDATE ca_approvals SET status='approved', decided_at=datetime('now','localtime')
+        `UPDATE ca_approvals SET status='approved', decided_at=NOW()
          WHERE ca_id=? AND type='open' AND approver_id=?`,
         [req.params.id, req.session.userId]
       );
@@ -315,7 +315,7 @@ router.patch('/:id/approve', async (req, res) => {
       const { allApproved } = await checkApprovalStatus(req.params.id, 'open');
       if (allApproved) {
         await db.runAsync(
-          `UPDATE cash_advances SET status='open', open_by=?, open_at=datetime('now','localtime') WHERE id=?`,
+          `UPDATE cash_advances SET status='open', open_by=?, open_at=NOW() WHERE id=?`,
           [req.session.userId, req.params.id]
         );
       }
@@ -354,7 +354,7 @@ router.patch('/:id/reject', async (req, res) => {
 
       const reason = (req.body && req.body.reason) ? req.body.reason.trim() : null;
       await db.runAsync(
-        `UPDATE ca_approvals SET status='rejected', decided_at=datetime('now','localtime'), reject_reason=?
+        `UPDATE ca_approvals SET status='rejected', decided_at=NOW(), reject_reason=?
          WHERE ca_id=? AND type='open' AND approver_id=?`,
         [reason, req.params.id, req.session.userId]
       );
@@ -391,7 +391,7 @@ router.patch('/:id/request-close', async (req, res) => {
     const note = req.body.note || null;
     if (isFinanceRole(req.session.role)) {
       await db.runAsync(
-        `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=datetime('now','localtime'), close_reject_reason=NULL WHERE id=?`,
+        `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=NOW(), close_reject_reason=NULL WHERE id=?`,
         [req.session.userId, req.params.id]
       );
       const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
@@ -400,7 +400,7 @@ router.patch('/:id/request-close', async (req, res) => {
     }
     await db.runAsync(
       `UPDATE cash_advances SET status='pending_close',
-        close_requested_by=?, close_requested_at=datetime('now','localtime'), close_request_note=?,
+        close_requested_by=?, close_requested_at=NOW(), close_request_note=?,
         close_reject_reason=NULL
        WHERE id=?`,
       [req.session.userId, note, req.params.id]
@@ -452,7 +452,7 @@ router.patch('/:id/approve-close', async (req, res) => {
       return res.status(400).json({ error: 'CA tidak dalam status pending_close' });
 
     await db.runAsync(
-      `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=datetime('now','localtime') WHERE id=?`,
+      `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=NOW() WHERE id=?`,
       [req.session.userId, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
@@ -564,20 +564,20 @@ router.patch('/:id/vote-reimburse', async (req, res) => {
       const reason = (req.body.reason || '').trim();
       if (!reason) return res.status(400).json({ error: 'Alasan penolakan wajib diisi' });
       await db.runAsync(
-        `UPDATE ca_approvals SET status='rejected', decided_at=datetime('now','localtime'), reject_reason=?
+        `UPDATE ca_approvals SET status='rejected', decided_at=NOW(), reject_reason=?
          WHERE ca_id=? AND type='reimburse' AND approver_id=?`,
         [reason, req.params.id, req.session.userId]
       );
       await db.runAsync(
         `UPDATE cash_advances SET reimbursement_status='rejected',
-           reimbursement_reject_reason=?, reimbursement_by=?, reimbursement_at=datetime('now','localtime')
+           reimbursement_reject_reason=?, reimbursement_by=?, reimbursement_at=NOW()
          WHERE id=?`,
         [reason, req.session.userId, req.params.id]
       );
       logEvent(req, 'REJECT_REIMBURSE_CA', `${req.session.username} menolak reimburse CA "${ca.title}" — ${reason}`);
     } else {
       await db.runAsync(
-        `UPDATE ca_approvals SET status='approved', decided_at=datetime('now','localtime')
+        `UPDATE ca_approvals SET status='approved', decided_at=NOW()
          WHERE ca_id=? AND type='reimburse' AND approver_id=?`,
         [req.params.id, req.session.userId]
       );
@@ -628,7 +628,7 @@ router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) 
     await db.runAsync(
       `UPDATE cash_advances SET
         reimbursement_status='approved', reimbursement_amount=?, reimbursement_proof=?,
-        reimbursement_by=?, reimbursement_at=datetime('now','localtime'),
+        reimbursement_by=?, reimbursement_at=NOW(),
         reimbursement_reject_reason=NULL
        WHERE id=?`,
       [amount, proof, req.session.userId, req.params.id]
@@ -664,7 +664,7 @@ router.patch('/:id/reject-reimburse', async (req, res) => {
     await db.runAsync(
       `UPDATE cash_advances SET
         reimbursement_status='rejected', reimbursement_reject_reason=?,
-        reimbursement_by=?, reimbursement_at=datetime('now','localtime')
+        reimbursement_by=?, reimbursement_at=NOW()
        WHERE id=?`,
       [reason, req.session.userId, req.params.id]
     );
@@ -698,7 +698,7 @@ router.patch('/:id/request-refund', upload.single('proof'), async (req, res) => 
     await db.runAsync(
       `UPDATE cash_advances SET
         refund_status='pending', refund_amount=?, refund_proof=?,
-        refund_note=?, refund_requested_by=?, refund_requested_at=datetime('now','localtime'),
+        refund_note=?, refund_requested_by=?, refund_requested_at=NOW(),
         refund_confirmed_at=NULL, refund_confirmed_by=NULL, refund_reject_reason=NULL
        WHERE id=?`,
       [amount, proof, req.body.note || null, req.session.userId, req.params.id]
@@ -731,7 +731,7 @@ router.patch('/:id/confirm-refund', async (req, res) => {
     );
     await db.runAsync(
       `UPDATE cash_advances SET
-        refund_status='confirmed', refund_confirmed_by=?, refund_confirmed_at=datetime('now','localtime')
+        refund_status='confirmed', refund_confirmed_by=?, refund_confirmed_at=NOW()
        WHERE id=?`,
       [req.session.userId, req.params.id]
     );
@@ -760,7 +760,7 @@ router.patch('/:id/reject-refund', async (req, res) => {
     await db.runAsync(
       `UPDATE cash_advances SET
         refund_status='rejected', refund_reject_reason=?,
-        refund_confirmed_by=?, refund_confirmed_at=datetime('now','localtime')
+        refund_confirmed_by=?, refund_confirmed_at=NOW()
        WHERE id=?`,
       [reason, req.session.userId, req.params.id]
     );
