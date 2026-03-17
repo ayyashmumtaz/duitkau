@@ -221,6 +221,7 @@ function groupByEmployee(rows) {
       id: row.id, type: row.type, name: row.name, amount: row.amount,
       date: row.date, note: row.note, proof_image: row.proof_image, created_at: row.created_at,
       project_name: row.project_name, category_name: row.category_name, ca_title: row.ca_title,
+      ca_id: row.ca_id,
     });
     if (row.type === 'masuk') grouped[row.user_id].totalMasuk += row.amount;
     else grouped[row.user_id].totalKeluar += row.amount;

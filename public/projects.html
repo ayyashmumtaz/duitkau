@@ -33,14 +33,15 @@
                 <th>Nama Proyek</th>
                 <th>Nomor PO</th>
                 <th>Deskripsi</th>
-                <th>Jumlah Transaksi</th>
+                <th>Approver</th>
+                <th>Transaksi</th>
                 <th>Dibuat</th>
                 <th class="text-right">Aksi</th>
               </tr>
             </thead>
             <tbody id="projBody">
               <tr>
-                <td colspan="7">
+                <td colspan="8">
                   <div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div>
                 </td>
               </tr>
@@ -102,6 +103,33 @@
     </div>
   </div>
 
+  <!-- Modal Kelola Approver -->
+  <div class="modal-overlay" id="approverOverlay">
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <span class="modal-title" id="approverModalTitle">Kelola Approver</span>
+        <button class="modal-close" id="approverClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="approverAlert" class="alert alert-error"></div>
+        <p class="text-muted" style="font-size:.82rem;margin-bottom:.75rem">Approver harus menyetujui CA dan reimburse sebelum bisa diproses.</p>
+        <div id="approverList" style="margin-bottom:1rem"></div>
+        <div class="form-group" style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:0">
+          <div style="flex:1">
+            <label style="font-size:.82rem">Tambah Approver</label>
+            <select id="approverUserSelect">
+              <option value="">-- Pilih user --</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnAddApprover">Tambah</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="approverDone">Selesai</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Confirm Modal -->
   <div class="modal-overlay" id="confirmOverlay">
     <div class="modal">
@@ -155,7 +183,11 @@
           <td><strong>${proj.name}</strong></td>
           <td class="text-muted">${proj.po_number || '–'}</td>
           <td class="text-muted">${proj.description || '–'}</td>
-          <td class="text-muted">${proj.tx_count} transaksi</td>
+          <td>
+            <span class="badge ${proj.approver_count > 0 ? 'badge-masuk' : 'badge-keluar'}" style="font-size:.72rem">${proj.approver_count > 0 ? proj.approver_count + ' orang' : 'Belum ada'}</span>
+            ${_isSuperAdmin ? `<br><button class="btn btn-ghost btn-sm" style="margin-top:.3rem;font-size:.72rem" onclick="openApprovers(${proj.id}, '${proj.name.replace(/'/g, "\\'")}')">Kelola</button>` : ''}
+          </td>
+          <td class="text-muted">${proj.tx_count}</td>
           <td class="text-muted">${fmtDate(proj.created_at)}</td>
           <td class="text-right">
             ${_isSuperAdmin ? `
@@ -280,6 +312,70 @@
         btn.disabled = false;
         btn.textContent = 'Hapus';
       }
+    });
+
+    // ─── Kelola Approver ──────────────────────
+    let _approverProjectId = null;
+
+    async function openApprovers(projectId, projectName) {
+      _approverProjectId = projectId;
+      document.getElementById('approverModalTitle').textContent = `Approver: ${projectName}`;
+      hideAlert('approverAlert');
+      // Load all users into select
+      const users = await fetch('/api/employees').then(r => r.json());
+      const sel = document.getElementById('approverUserSelect');
+      sel.innerHTML = '<option value="">-- Pilih user --</option>';
+      users.forEach(u => {
+        const o = document.createElement('option');
+        o.value = u.id;
+        o.textContent = `${u.full_name} (${u.role})`;
+        sel.appendChild(o);
+      });
+      await refreshApproverList(projectId);
+      document.getElementById('approverOverlay').classList.add('open');
+    }
+
+    async function refreshApproverList(projectId) {
+      const list = await fetch(`/api/projects/${projectId}/approvers`).then(r => r.json());
+      const el = document.getElementById('approverList');
+      if (list.length === 0) {
+        el.innerHTML = '<p class="text-muted" style="font-size:.82rem">Belum ada approver — CA akan disetujui langsung oleh finance.</p>';
+        return;
+      }
+      el.innerHTML = list.map(a => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem 0;border-bottom:1px solid var(--gray-100)">
+          <span style="font-size:.88rem">${a.full_name} <span class="text-muted">(${a.role})</span></span>
+          <button class="btn btn-danger btn-sm" style="font-size:.72rem" onclick="removeApprover(${projectId}, ${a.user_id})">Hapus</button>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('btnAddApprover').addEventListener('click', async () => {
+      const userId = document.getElementById('approverUserSelect').value;
+      if (!userId) { showAlert('approverAlert', 'Pilih user terlebih dahulu'); return; }
+      const res = await fetch(`/api/projects/${_approverProjectId}/approvers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+      });
+      if (!res.ok) { const d = await res.json(); showAlert('approverAlert', d.error); return; }
+      hideAlert('approverAlert');
+      document.getElementById('approverUserSelect').value = '';
+      await refreshApproverList(_approverProjectId);
+      await loadProjects();
+    });
+
+    async function removeApprover(projectId, userId) {
+      if (!confirm('Hapus approver ini dari proyek?')) return;
+      await fetch(`/api/projects/${projectId}/approvers/${userId}`, { method: 'DELETE' });
+      await refreshApproverList(projectId);
+      await loadProjects();
+    }
+
+    document.getElementById('approverClose').addEventListener('click', () => document.getElementById('approverOverlay').classList.remove('open'));
+    document.getElementById('approverDone').addEventListener('click', () => document.getElementById('approverOverlay').classList.remove('open'));
+    document.getElementById('approverOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('approverOverlay')) document.getElementById('approverOverlay').classList.remove('open');
     });
 
     function showAlert(id, msg) {

@@ -60,7 +60,15 @@ router.get('/ca/:token', async (req, res) => {
        ORDER BY t.date DESC, t.created_at DESC`,
       [p.caId]
     );
-    res.json({ ...ca, transactions: txs, label: row.label });
+    const approvals = await db.allAsync(
+      `SELECT caa.type, caa.status, caa.decided_at, caa.reject_reason, u.full_name AS approver_name
+       FROM ca_approvals caa
+       JOIN users u ON caa.approver_id = u.id
+       WHERE caa.ca_id = ?
+       ORDER BY caa.type, caa.created_at`,
+      [p.caId]
+    );
+    res.json({ ...ca, transactions: txs, approvals, label: row.label });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal mengambil data CA' });

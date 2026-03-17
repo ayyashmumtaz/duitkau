@@ -260,7 +260,8 @@
         <div id="detailSuccess" class="alert alert-success"></div>
         <div id="detailCloseRejectWarning" class="alert alert-error" style="display:none"></div>
 
-        <div id="detailMeta" style="margin-bottom:1rem; font-size:.875rem; color:var(--gray-600); line-height:1.8"></div>
+        <!-- Info grid -->
+        <div id="detailMeta" style="margin-bottom:1.25rem"></div>
 
         <!-- Summary bar -->
         <div class="summary-grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:1rem" id="detailSummary"></div>
@@ -269,7 +270,7 @@
         <div id="detailActions" style="margin-bottom:1rem; display:flex; flex-wrap:wrap; gap:.5rem"></div>
 
         <!-- Request close form (employee) -->
-        <div id="closeRequestForm" style="display:none; margin-bottom:1rem">
+        <div id="closeRequestForm" style="display:none; margin-bottom:1rem; padding:1rem; background:var(--gray-50,#f9fafb); border-radius:8px; border:1px solid var(--gray-200)">
           <div class="form-group">
             <label for="closeNote">Catatan Penutupan (opsional)</label>
             <textarea id="closeNote" placeholder="Ringkasan realisasi..."></textarea>
@@ -278,7 +279,7 @@
         </div>
 
         <!-- Transactions table -->
-        <div class="card-title" style="margin-bottom:.5rem">Transaksi Terkait</div>
+        <div style="font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; color:var(--gray-400); margin-bottom:.5rem">Transaksi Terkait</div>
         <div class="table-wrapper">
           <table>
             <thead>
@@ -300,6 +301,17 @@
         <button class="btn btn-ghost btn-sm" id="btnCopyLink">Salin Link</button>
         <button class="btn btn-ghost" id="detailCloseBtn">Tutup</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Approval Popover -->
+  <div class="modal-overlay" id="approvalPopoverOverlay">
+    <div class="modal" style="max-width:400px">
+      <div class="modal-header">
+        <span class="modal-title" id="approvalPopoverTitle">Status Approval</span>
+        <button class="modal-close" id="approvalPopoverClose">✕</button>
+      </div>
+      <div class="modal-body" id="approvalPopoverBody" style="min-height:80px"></div>
     </div>
   </div>
 
@@ -401,8 +413,15 @@
               ${window.currentUser.role === 'finance' ? `<td class="text-muted">${ca.request_by_name || '–'}</td>` : ''}
               <td>${fmt.format(ca.initial_amount)}</td>
               <td class="text-muted">${ca.project_name || '–'}</td>
-              <td>${STATUS_LABEL[ca.status] || ca.status}${ca.close_reject_reason && ca.status === 'open' ? '<br><span style="color:var(--red,#ef4444);font-size:.72rem">⚠️ Close ditolak</span>' : ''}</td>
-              <td>${REIMBURSE_LABEL(ca)}</td>
+              <td style="cursor:pointer" onclick="openApprovalPopover(${ca.id})" title="Lihat detail approval">
+                ${STATUS_LABEL[ca.status] || ca.status}
+                ${ca.total_open_approvals > 0 ? `<span style="font-size:.7rem;color:var(--gray-400);display:block;margin-top:.15rem">${ca.total_open_approvals - ca.pending_open_approvals}/${ca.total_open_approvals} setuju</span>` : ''}
+                ${ca.close_reject_reason && ca.status === 'open' ? '<span style="color:var(--red,#ef4444);font-size:.72rem;display:block">⚠️ Close ditolak</span>' : ''}
+              </td>
+              <td style="${ca.reimbursement_requested ? 'cursor:pointer' : ''}" ${ca.reimbursement_requested ? `onclick="openApprovalPopover(${ca.id})"` : ''} ${ca.reimbursement_requested ? 'title="Lihat detail approval"' : ''}>
+                ${REIMBURSE_LABEL(ca)}
+                ${ca.total_reimburse_approvals > 0 ? `<span style="font-size:.7rem;color:var(--gray-400);display:block;margin-top:.15rem">${ca.total_reimburse_approvals - ca.pending_reimburse_approvals}/${ca.total_reimburse_approvals} setuju</span>` : ''}
+              </td>
               <td class="text-muted" style="font-size:.8rem">${fmtDate(ca.request_at)}</td>
               <td><button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button></td>
             </tr>
@@ -561,30 +580,46 @@
           warnEl.classList.remove('show');
         }
 
-        let meta = '';
-        if (ca.description) meta += `<div><strong>Deskripsi:</strong> ${ca.description}</div>`;
-        meta += `<div><strong>Nominal Diajukan:</strong> ${fmt.format(ca.initial_amount)}</div>`;
-        meta += `<div><strong>Status:</strong> ${STATUS_LABEL[ca.status] || ca.status}</div>`;
-        meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'} pada ${fmtDateTime(ca.request_at)}</div>`;
-        if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} pada ${fmtDateTime(ca.open_at)}</div>`;
-        if (ca.close_requested_by_name) meta += `<div><strong>Request close oleh:</strong> ${ca.close_requested_by_name} pada ${fmtDateTime(ca.close_requested_at)}${ca.close_request_note ? ` — "${ca.close_request_note}"` : ''}</div>`;
-        if (ca.close_reject_reason && ca.status === 'open') meta += `<div><strong>Alasan tolak penutupan:</strong> <span style="color:var(--red,#ef4444)">${ca.close_reject_reason}</span></div>`;
-        if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} pada ${fmtDateTime(ca.closed_at)}</div>`;
-        if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
+        // Approval progress
+        const approvals = ca.approvals || [];
+        const openApprovals = approvals.filter(a => a.type === 'open');
+        const reimburseApprovals = approvals.filter(a => a.type === 'reimburse');
+
+        // ── Info grid ──────────────────────────────────────────
+        const row = (label, value) =>
+          `<div style="display:contents">
+            <div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400);padding:.35rem 0">${label}</div>
+            <div style="font-size:.875rem;color:var(--gray-700);padding:.35rem 0">${value}</div>
+          </div>`;
+
+        let infoRows = '';
+        if (ca.description) infoRows += row('Deskripsi', ca.description);
+        infoRows += row('Status', STATUS_LABEL[ca.status] || ca.status);
+        infoRows += row('Nominal Diajukan', fmt.format(ca.initial_amount));
+        if (ca.project_name) infoRows += row('Proyek', `${ca.project_name}${ca.project_po_number ? ` <span style="color:var(--gray-400);font-size:.8rem">· ${ca.project_po_number}</span>` : ''}`);
+        infoRows += row('Diajukan oleh', `${ca.request_by_name || '–'} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.request_at)}</span>`);
+        if (ca.open_by_name) infoRows += row('Disetujui oleh', `${ca.open_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.open_at)}</span>`);
+        if (ca.close_requested_by_name) infoRows += row('Request close oleh', `${ca.close_requested_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.close_requested_at)}</span>${ca.close_request_note ? `<div style="font-size:.8rem;color:var(--gray-500);margin-top:.15rem">"${ca.close_request_note}"</div>` : ''}`);
+        if (ca.close_reject_reason && ca.status === 'open') infoRows += row('Tolak penutupan', `<span style="color:var(--red,#ef4444)">${ca.close_reject_reason}</span>`);
+        if (ca.closed_by_name) infoRows += row('Ditutup oleh', `${ca.closed_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.closed_at)}</span>`);
+
+        // Reimbursement row
         if (ca.reimbursement_status === 'pending') {
-          meta += `<div><strong>Reimburse:</strong> <span class="badge" style="background:var(--yellow,#fbbf24);color:#7c2d12">⏳ Menunggu diproses finance</span></div>`;
+          infoRows += row('Reimburse', `<span class="badge" style="background:#fef3c7;color:#92400e">⏳ Menunggu diproses finance</span>`);
         } else if (ca.reimbursement_status === 'approved') {
-          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">✅ Disetujui — ${fmt.format(ca.reimbursement_amount)}</span></div>`;
-          meta += `<div><strong>Diproses oleh:</strong> ${ca.reimbursement_by_name || '–'} pada ${fmtDateTime(ca.reimbursement_at)}</div>`;
-          if (ca.reimbursement_proof) meta += `<div><strong>Bukti Reimburse:</strong> <a href="${ca.reimbursement_proof}" target="_blank" onclick="event.preventDefault(); openLightbox('${ca.reimbursement_proof}')"><img src="${ca.reimbursement_proof}" style="height:40px;border-radius:4px;cursor:pointer;vertical-align:middle" /></a></div>`;
+          infoRows += row('Reimburse', `<span class="badge badge-masuk">✅ Disetujui — ${fmt.format(ca.reimbursement_amount)}</span>`);
+          infoRows += row('Diproses oleh', `${ca.reimbursement_by_name || '–'} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.reimbursement_at)}</span>`);
+          if (ca.reimbursement_proof) infoRows += row('Bukti Reimburse', `<a href="${ca.reimbursement_proof}" target="_blank" onclick="event.preventDefault(); openLightbox('${ca.reimbursement_proof}')"><img src="${ca.reimbursement_proof}" style="height:44px;border-radius:6px;cursor:pointer;border:1px solid var(--gray-200)" /></a>`);
         } else if (ca.reimbursement_status === 'rejected') {
-          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-keluar">❌ Ditolak</span></div>`;
-          meta += `<div><strong>Alasan tolak reimburse:</strong> <span style="color:var(--red,#ef4444)">${ca.reimbursement_reject_reason}</span></div>`;
-          meta += `<div><strong>Ditolak oleh:</strong> ${ca.reimbursement_by_name || '–'} pada ${fmtDateTime(ca.reimbursement_at)}</div>`;
+          infoRows += row('Reimburse', `<span class="badge badge-keluar">❌ Ditolak</span>`);
+          infoRows += row('Alasan tolak', `<span style="color:var(--red,#ef4444)">${ca.reimbursement_reject_reason}</span>`);
+          infoRows += row('Ditolak oleh', `${ca.reimbursement_by_name || '–'} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.reimbursement_at)}</span>`);
         } else if (ca.reimbursement_requested) {
-          meta += `<div><strong>Reimburse:</strong> <span class="badge badge-masuk">Diminta</span></div>`;
+          infoRows += row('Reimburse', `<span class="badge badge-masuk">Diminta</span>`);
         }
-        document.getElementById('detailMeta').innerHTML = meta;
+
+        document.getElementById('detailMeta').innerHTML =
+          `<div style="display:grid;grid-template-columns:auto 1fr;gap:0 1rem;border:1px solid var(--gray-100);border-radius:10px;padding:.75rem 1rem">${infoRows}</div>`;
 
         const txs = ca.transactions || [];
         const totalKeluar = txs.filter(t => t.type === 'keluar').reduce((s, t) => s + t.amount, 0);
@@ -608,13 +643,24 @@
         const isFinance = window.currentUser.role === 'finance' || window.currentUser.role === 'super_admin';
         const isSuperAdmin = window.currentUser.role === 'super_admin';
 
+        // Cari vote user saat ini
+        const myOpenVote = openApprovals.find(a => a.approver_id === window.currentUser.userId);
+        const myReimburseVote = reimburseApprovals.find(a => a.approver_id === window.currentUser.userId);
+
         if (isFinance) {
           let html = `<button class="btn btn-ghost btn-sm" onclick="openEditCa()">Edit CA</button>`;
           if (!isOwner) {
             if (ca.status === 'pending') {
-              html += `
-                <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
-                <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>`;
+              if (openApprovals.length === 0) {
+                // Fallback: tidak ada approver, finance langsung setujui
+                html += `
+                  <button class="btn btn-primary btn-sm" onclick="approveCa(${id}); closeDetail();">Setujui CA</button>
+                  <button class="btn btn-ghost btn-sm" onclick="rejectCa(${id}); closeDetail();">Tolak CA</button>`;
+              } else {
+                // Ada approver — finance lihat progres saja
+                const pending = openApprovals.filter(a => a.status === 'pending').length;
+                if (pending > 0) html += `<span style="font-size:.8rem;color:var(--gray-500)">⏳ Menunggu ${pending} approver</span>`;
+              }
             } else if (ca.status === 'pending_close') {
               html += `
                 <button class="btn btn-primary btn-sm" onclick="approveClose(${id})">Setujui Penutupan</button>
@@ -623,14 +669,93 @@
           }
           if (ca.reimbursement_status === 'pending') {
             const detailKek = Math.max(0, (ca.total_keluar_ca || 0) - (ca.total_masuk_ca || 0));
-            html += `
-              <button class="btn btn-primary btn-sm" onclick="openApproveReimburse(${id}, '${ca.title.replace(/'/g, "\\'")}', ${detailKek})">💸 Proses Reimburse</button>
-              <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
+            if (reimburseApprovals.length === 0) {
+              // Fallback: tidak ada approver reimburse, finance langsung proses
+              html += `
+                <button class="btn btn-primary btn-sm" onclick="openApproveReimburse(${id}, '${ca.title.replace(/'/g, "\\'")}', ${detailKek})">💸 Proses Reimburse</button>
+                <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
+            } else {
+              const pendingR = reimburseApprovals.filter(a => a.status === 'pending').length;
+              if (pendingR > 0) {
+                html += `<span style="font-size:.8rem;color:var(--gray-500)">⏳ Menunggu ${pendingR} approver reimburse</span>`;
+              } else if (reimburseApprovals.every(a => a.status === 'approved')) {
+                // Semua approver setuju, finance proses pembayaran
+                html += `
+                  <button class="btn btn-primary btn-sm" onclick="openApproveReimburse(${id}, '${ca.title.replace(/'/g, "\\'")}', ${detailKek})">💸 Proses Pembayaran Reimburse</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
+              }
+            }
           }
           actionsEl.innerHTML = html;
           if (isOwner && ca.status === 'open') appendOwnerCloseActions();
         } else {
           if (ca.status === 'open') appendOwnerCloseActions();
+        }
+
+        // Tombol vote untuk approver (siapapun yang punya pending vote)
+        if (myOpenVote && myOpenVote.status === 'pending' && ca.status === 'pending') {
+          const btnApprove = document.createElement('button');
+          btnApprove.className = 'btn btn-primary btn-sm';
+          btnApprove.textContent = '✅ Setujui CA';
+          btnApprove.addEventListener('click', async () => {
+            const res = await fetch(`/api/ca/${id}/approve`, { method: 'PATCH' });
+            const d = await res.json();
+            if (!res.ok) { showAlert('detailAlert', d.error); return; }
+            showAlert('detailSuccess', 'CA berhasil disetujui');
+            await refreshDetail(id); await loadCAs();
+          });
+          actionsEl.appendChild(btnApprove);
+
+          const btnReject = document.createElement('button');
+          btnReject.className = 'btn btn-ghost btn-sm';
+          btnReject.textContent = '❌ Tolak CA';
+          btnReject.addEventListener('click', async () => {
+            const reason = prompt('Alasan penolakan (opsional):');
+            if (reason === null) return;
+            const res = await fetch(`/api/ca/${id}/reject`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ reason })
+            });
+            const d = await res.json();
+            if (!res.ok) { showAlert('detailAlert', d.error); return; }
+            showAlert('detailSuccess', 'CA ditolak');
+            await refreshDetail(id); await loadCAs();
+          });
+          actionsEl.appendChild(btnReject);
+        }
+
+        if (myReimburseVote && myReimburseVote.status === 'pending') {
+          const btnVA = document.createElement('button');
+          btnVA.className = 'btn btn-primary btn-sm';
+          btnVA.textContent = '✅ Setujui Reimburse';
+          btnVA.addEventListener('click', async () => {
+            const res = await fetch(`/api/ca/${id}/vote-reimburse`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ vote: 'approve' })
+            });
+            const d = await res.json();
+            if (!res.ok) { showAlert('detailAlert', d.error); return; }
+            showAlert('detailSuccess', 'Reimburse disetujui');
+            await refreshDetail(id); await loadCAs();
+          });
+          actionsEl.appendChild(btnVA);
+
+          const btnVR = document.createElement('button');
+          btnVR.className = 'btn btn-ghost btn-sm';
+          btnVR.textContent = '❌ Tolak Reimburse';
+          btnVR.addEventListener('click', async () => {
+            const reason = prompt('Alasan penolakan reimburse:');
+            if (!reason?.trim()) return;
+            const res = await fetch(`/api/ca/${id}/vote-reimburse`, {
+              method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ vote: 'reject', reason })
+            });
+            const d = await res.json();
+            if (!res.ok) { showAlert('detailAlert', d.error); return; }
+            showAlert('detailSuccess', 'Reimburse ditolak');
+            await refreshDetail(id); await loadCAs();
+          });
+          actionsEl.appendChild(btnVR);
         }
 
         function appendOwnerCloseActions() {
@@ -757,6 +882,53 @@
     document.getElementById('detailClose').addEventListener('click', closeDetail);
     document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);
     document.getElementById('detailOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('detailOverlay')) closeDetail(); });
+
+    // ─── Approval Popover ─────────────────────
+    const approvalItem = (a) => {
+      const icon  = a.status === 'approved' ? '✅' : a.status === 'rejected' ? '❌' : '⏳';
+      const color = a.status === 'approved' ? '#16a34a' : a.status === 'rejected' ? '#dc2626' : '#9ca3af';
+      const label = a.status === 'approved' ? 'Setuju' : a.status === 'rejected' ? 'Tolak' : 'Menunggu';
+      const note  = a.reject_reason ? `<div style="font-size:.75rem;color:#dc2626;margin-top:.15rem">${a.reject_reason}</div>` : '';
+      return `<div style="display:flex;align-items:flex-start;gap:.5rem;padding:.35rem .5rem;background:var(--gray-50,#f9fafb);border-radius:6px;border:1px solid var(--gray-100)">
+        <span>${icon}</span>
+        <div style="flex:1;font-size:.84rem;color:var(--gray-700)">${a.approver_name}${note}</div>
+        <span style="font-size:.72rem;font-weight:600;color:${color};white-space:nowrap">${label}</span>
+      </div>`;
+    };
+
+    const approvalSection = (title, list) => {
+      if (list.length === 0) return '';
+      const approved = list.filter(a => a.status === 'approved').length;
+      return `<div style="margin-bottom:1rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem">
+          <span style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-400)">${title}</span>
+          <span style="font-size:.75rem;color:var(--gray-500)">${approved}/${list.length} menyetujui</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem">${list.map(approvalItem).join('')}</div>
+      </div>`;
+    };
+
+    async function openApprovalPopover(id) {
+      document.getElementById('approvalPopoverTitle').textContent = 'Status Approval';
+      document.getElementById('approvalPopoverBody').innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--gray-400)">🔄 Memuat...</div>`;
+      document.getElementById('approvalPopoverOverlay').classList.add('open');
+      try {
+        const ca = await fetch(`/api/ca/${id}`).then(r => r.json());
+        if (ca.error) { document.getElementById('approvalPopoverBody').innerHTML = `<div style="color:var(--red,#ef4444)">${ca.error}</div>`; return; }
+        document.getElementById('approvalPopoverTitle').textContent = ca.title;
+        const approvals = ca.approvals || [];
+        const openApprovals = approvals.filter(a => a.type === 'open');
+        const reimburseApprovals = approvals.filter(a => a.type === 'reimburse');
+        const body = approvalSection('Persetujuan CA', openApprovals)
+                   + approvalSection('Persetujuan Reimburse', reimburseApprovals);
+        document.getElementById('approvalPopoverBody').innerHTML = body ||
+          `<div style="text-align:center;padding:1.5rem;color:var(--gray-400)">Tidak ada data approval untuk CA ini.</div>`;
+      } catch {
+        document.getElementById('approvalPopoverBody').innerHTML = `<div style="color:var(--red,#ef4444)">Gagal memuat data.</div>`;
+      }
+    }
+    document.getElementById('approvalPopoverClose').addEventListener('click', () => document.getElementById('approvalPopoverOverlay').classList.remove('open'));
+    document.getElementById('approvalPopoverOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('approvalPopoverOverlay')) document.getElementById('approvalPopoverOverlay').classList.remove('open'); });
 
     // ─── New CA Modal ─────────────────────────
     function formatThousands(raw) {

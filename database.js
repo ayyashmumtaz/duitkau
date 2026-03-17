@@ -160,6 +160,32 @@ db.serialize(() => {
     }
   });
 
+  // New tables: project_approvers & ca_approvals
+  db.run(`
+    CREATE TABLE IF NOT EXISTS project_approvers (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+      user_id    INTEGER NOT NULL REFERENCES users(id)    ON DELETE CASCADE,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(project_id, user_id)
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ca_approvals (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      ca_id         INTEGER NOT NULL REFERENCES cash_advances(id) ON DELETE CASCADE,
+      type          TEXT    NOT NULL CHECK(type IN ('open','reimburse')),
+      approver_id   INTEGER NOT NULL REFERENCES users(id),
+      status        TEXT    NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+      decided_at    TEXT,
+      reject_reason TEXT,
+      created_at    TEXT DEFAULT (datetime('now','localtime')),
+      UNIQUE(ca_id, type, approver_id)
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_ca_approvals_ca_id    ON ca_approvals(ca_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_ca_approvals_approver ON ca_approvals(approver_id, status)`);
+
   // Migration: tambah po_number ke projects
   db.all("PRAGMA table_info(projects)", (err, cols) => {
     if (err) return;

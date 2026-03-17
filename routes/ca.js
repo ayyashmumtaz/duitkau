@@ -18,8 +18,12 @@ const caSelect = `
     rmb.full_name  AS reimbursement_by_name,
     pr.name        AS project_name,
     pr.po_number   AS project_po_number,
-    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='masuk' AND t.status='approved'),0) AS total_masuk_ca,
-    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='keluar' AND t.status='approved'),0) AS total_keluar_ca
+    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='masuk'  AND t.status='approved'),0) AS total_masuk_ca,
+    COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='keluar' AND t.status='approved'),0) AS total_keluar_ca,
+    (SELECT COUNT(*) FROM ca_approvals WHERE ca_id=ca.id AND type='open'      AND status='pending') AS pending_open_approvals,
+    (SELECT COUNT(*) FROM ca_approvals WHERE ca_id=ca.id AND type='open')                           AS total_open_approvals,
+    (SELECT COUNT(*) FROM ca_approvals WHERE ca_id=ca.id AND type='reimburse' AND status='pending') AS pending_reimburse_approvals,
+    (SELECT COUNT(*) FROM ca_approvals WHERE ca_id=ca.id AND type='reimburse')                      AS total_reimburse_approvals
   FROM cash_advances ca
   LEFT JOIN users req ON ca.request_by = req.id
   LEFT JOIN users opn ON ca.open_by    = opn.id
@@ -29,22 +33,76 @@ const caSelect = `
   LEFT JOIN projects pr ON ca.project_id = pr.id
 `;
 
+// ─── Helpers ──────────────────────────────────────────────────
+async function getProjectApprovers(projectId) {
+  if (!projectId) return [];
+  const rows = await db.allAsync(
+    `SELECT user_id FROM project_approvers WHERE project_id = ?`, [projectId]
+  );
+  return rows.map(r => r.user_id);
+}
+
+async function createApprovalRecords(caId, type, approverIds) {
+  for (const uid of approverIds) {
+    await db.runAsync(
+      `INSERT OR IGNORE INTO ca_approvals (ca_id, type, approver_id) VALUES (?, ?, ?)`,
+      [caId, type, uid]
+    );
+  }
+}
+
+async function checkApprovalStatus(caId, type) {
+  const rows = await db.allAsync(
+    `SELECT status FROM ca_approvals WHERE ca_id = ? AND type = ?`, [caId, type]
+  );
+  return {
+    allApproved:  rows.length > 0 && rows.every(r => r.status === 'approved'),
+    anyRejected:  rows.some(r => r.status === 'rejected'),
+    pendingCount: rows.filter(r => r.status === 'pending').length,
+    total:        rows.length,
+  };
+}
+
+// ─── GET /my-pending-votes — CAs waiting for my approval ─────
+router.get('/my-pending-votes', async (req, res) => {
+  try {
+    const rows = await db.allAsync(
+      `SELECT caa.ca_id, caa.type, ca.title, ca.initial_amount,
+              pr.name AS project_name, req.full_name AS request_by_name
+       FROM ca_approvals caa
+       JOIN cash_advances ca ON ca.id = caa.ca_id
+       LEFT JOIN projects pr  ON ca.project_id = pr.id
+       LEFT JOIN users    req ON ca.request_by  = req.id
+       WHERE caa.approver_id = ? AND caa.status = 'pending'`,
+      [req.session.userId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengambil data' });
+  }
+});
+
 // ─── GET /notify — notification count ────────────────────────
 router.get('/notify', async (req, res) => {
   try {
     let count = 0;
     if (isFinanceRole(req.session.role)) {
+      // Finance sees pending CAs that have no project approvers (fallback path)
       const r = await db.getAsync(
-        `SELECT COUNT(*) as n FROM cash_advances
-         WHERE status IN ('pending','pending_close') OR reimbursement_status = 'pending'`
+        `SELECT COUNT(*) as n FROM cash_advances ca
+         WHERE (ca.status = 'pending' AND NOT EXISTS (
+                  SELECT 1 FROM ca_approvals WHERE ca_id=ca.id AND type='open'))
+            OR ca.status = 'pending_close'
+            OR (ca.reimbursement_status = 'pending' AND NOT EXISTS (
+                  SELECT 1 FROM ca_approvals WHERE ca_id=ca.id AND type='reimburse' AND status='pending'))`
       );
       count = r.n;
     } else {
       const r = await db.getAsync(
         `SELECT COUNT(*) as n FROM cash_advances
          WHERE request_by = ? AND (
-           status = 'open' OR
-           status = 'rejected' OR
+           status = 'open' OR status = 'rejected' OR
            (status = 'closed' AND reimbursement_status IS NULL) OR
            reimbursement_status = 'rejected'
          )`,
@@ -52,6 +110,12 @@ router.get('/notify', async (req, res) => {
       );
       count = r.n;
     }
+    // Pending votes for the current user (any role)
+    const votes = await db.getAsync(
+      `SELECT COUNT(*) as n FROM ca_approvals WHERE approver_id = ? AND status = 'pending'`,
+      [req.session.userId]
+    );
+    count += votes.n;
     res.json({ count });
   } catch (err) {
     console.error(err);
@@ -66,9 +130,13 @@ router.get('/', async (req, res) => {
     if (isFinanceRole(req.session.role)) {
       rows = await db.allAsync(`${caSelect} ORDER BY ca.created_at DESC`);
     } else {
+      // Employees see their own CAs + CAs where they have a pending vote
       rows = await db.allAsync(
-        `${caSelect} WHERE ca.request_by = ? ORDER BY ca.created_at DESC`,
-        [req.session.userId]
+        `${caSelect}
+         WHERE ca.request_by = ?
+            OR ca.id IN (SELECT ca_id FROM ca_approvals WHERE approver_id = ?)
+         ORDER BY ca.created_at DESC`,
+        [req.session.userId, req.session.userId]
       );
     }
     res.json(rows);
@@ -78,7 +146,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ─── POST / — create CA (employee: pending, finance: auto-open)
+// ─── POST / — create CA ───────────────────────────────────────
 router.post('/', async (req, res) => {
   const { title, description, initial_amount, project_id } = req.body;
   if (!title || !title.trim())
@@ -93,8 +161,12 @@ router.post('/', async (req, res) => {
   const isFinance = isFinanceRole(req.session.role);
 
   try {
+    const approverIds = await getProjectApprovers(projectId);
+    const hasApprovers = approverIds.length > 0;
+
     let result;
-    if (isFinance) {
+    if (!hasApprovers && isFinance) {
+      // Fallback: finance/super_admin self-approves
       result = await db.runAsync(
         `INSERT INTO cash_advances (title, description, initial_amount, project_id, request_by, status, open_by, open_at)
          VALUES (?, ?, ?, ?, ?, 'open', ?, datetime('now','localtime'))`,
@@ -106,9 +178,13 @@ router.post('/', async (req, res) => {
          VALUES (?, ?, ?, ?, ?)`,
         [title.trim(), description || null, amount, projectId, req.session.userId]
       );
+      if (hasApprovers) {
+        await createApprovalRecords(result.lastID, 'open', approverIds);
+      }
     }
+
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [result.lastID]);
-    logEvent(req, 'CREATE_CA', `${isFinance ? 'Finance' : 'Karyawan'} mengajukan CA "${row.title}" sebesar ${row.initial_amount}`);
+    logEvent(req, 'CREATE_CA', `${isFinance ? 'Finance' : 'Karyawan'} mengajukan CA "${row.title}" sebesar ${row.initial_amount}${hasApprovers ? ` (${approverIds.length} approver)` : ''}`);
     res.status(201).json(row);
   } catch (err) {
     console.error(err);
@@ -116,12 +192,18 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ─── GET /:id — detail + transactions ─────────────────────────
+// ─── GET /:id — detail + transactions + approvals ─────────────
 router.get('/:id', async (req, res) => {
   try {
     const ca = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
-    if (!isFinanceRole(req.session.role) && ca.request_by !== req.session.userId)
+
+    // Access: finance OR owner OR anyone with a ca_approvals row
+    const isApprover = await db.getAsync(
+      `SELECT 1 FROM ca_approvals WHERE ca_id=? AND approver_id=?`,
+      [req.params.id, req.session.userId]
+    );
+    if (!isFinanceRole(req.session.role) && ca.request_by !== req.session.userId && !isApprover)
       return res.status(403).json({ error: 'Akses ditolak' });
 
     const txs = await db.allAsync(
@@ -134,7 +216,17 @@ router.get('/:id', async (req, res) => {
        ORDER BY t.date DESC, t.created_at DESC`,
       [req.params.id]
     );
-    res.json({ ...ca, transactions: txs });
+
+    const approvals = await db.allAsync(
+      `SELECT caa.*, u.full_name AS approver_name, u.username AS approver_username
+       FROM ca_approvals caa
+       JOIN users u ON caa.approver_id = u.id
+       WHERE caa.ca_id = ?
+       ORDER BY caa.type, caa.created_at`,
+      [req.params.id]
+    );
+
+    res.json({ ...ca, transactions: txs, approvals });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal mengambil detail CA' });
@@ -159,7 +251,6 @@ router.put('/:id', async (req, res) => {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
 
-    // Cek apakah transaksinya sudah melebihi jumlah yang baru? Biarkan saja finance menanggung resikonya.
     await db.runAsync(
       `UPDATE cash_advances SET title=?, description=?, initial_amount=?, project_id=? WHERE id=?`,
       [title.trim(), description || null, amount, project_id ? parseInt(project_id) || null : null, req.params.id]
@@ -173,24 +264,52 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/approve — finance opens CA ────────────────────
+// ─── PATCH /:id/approve — approve CA (approver or finance fallback)
 router.patch('/:id/approve', async (req, res) => {
-  if (!isFinanceRole(req.session.role))
-    return res.status(403).json({ error: 'Hanya finance yang bisa menyetujui CA' });
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
     if (ca.status !== 'pending')
       return res.status(400).json({ error: 'CA tidak dalam status pending' });
 
-    await db.runAsync(
-      `UPDATE cash_advances SET status='open', open_by=?, open_at=datetime('now','localtime') WHERE id=?`,
-      [req.session.userId, req.params.id]
+    const approvalRows = await db.allAsync(
+      `SELECT * FROM ca_approvals WHERE ca_id = ? AND type = 'open'`, [req.params.id]
     );
+
+    if (approvalRows.length === 0) {
+      // Fallback: finance/super_admin only
+      if (!isFinanceRole(req.session.role))
+        return res.status(403).json({ error: 'Hanya finance yang bisa menyetujui CA ini' });
+
+      await db.runAsync(
+        `UPDATE cash_advances SET status='open', open_by=?, open_at=datetime('now','localtime') WHERE id=?`,
+        [req.session.userId, req.params.id]
+      );
+    } else {
+      // Project approver path
+      const myRow = approvalRows.find(r => r.approver_id === req.session.userId);
+      if (!myRow)
+        return res.status(403).json({ error: 'Anda bukan approver untuk CA ini' });
+      if (myRow.status !== 'pending')
+        return res.status(400).json({ error: 'Anda sudah memberikan keputusan untuk CA ini' });
+
+      await db.runAsync(
+        `UPDATE ca_approvals SET status='approved', decided_at=datetime('now','localtime')
+         WHERE ca_id=? AND type='open' AND approver_id=?`,
+        [req.params.id, req.session.userId]
+      );
+
+      const { allApproved } = await checkApprovalStatus(req.params.id, 'open');
+      if (allApproved) {
+        await db.runAsync(
+          `UPDATE cash_advances SET status='open', open_by=?, open_at=datetime('now','localtime') WHERE id=?`,
+          [req.session.userId, req.params.id]
+        );
+      }
+    }
+
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    
-    logEvent(req, 'APPROVE_CA', `Finance menyetujui CA "${row.title}"`);
-    
+    logEvent(req, 'APPROVE_CA', `${req.session.username} menyetujui CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -198,22 +317,39 @@ router.patch('/:id/approve', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/reject — finance rejects CA ───────────────────
+// ─── PATCH /:id/reject — reject CA (approver or finance fallback)
 router.patch('/:id/reject', async (req, res) => {
-  if (!isFinanceRole(req.session.role))
-    return res.status(403).json({ error: 'Hanya finance yang bisa menolak CA' });
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
     if (ca.status !== 'pending')
       return res.status(400).json({ error: 'CA tidak dalam status pending' });
 
-    await db.runAsync(
-      `UPDATE cash_advances SET status='rejected' WHERE id=?`,
-      [req.params.id]
+    const approvalRows = await db.allAsync(
+      `SELECT * FROM ca_approvals WHERE ca_id = ? AND type = 'open'`, [req.params.id]
     );
+
+    if (approvalRows.length === 0) {
+      if (!isFinanceRole(req.session.role))
+        return res.status(403).json({ error: 'Hanya finance yang bisa menolak CA ini' });
+    } else {
+      const myRow = approvalRows.find(r => r.approver_id === req.session.userId);
+      if (!myRow)
+        return res.status(403).json({ error: 'Anda bukan approver untuk CA ini' });
+      if (myRow.status !== 'pending')
+        return res.status(400).json({ error: 'Anda sudah memberikan keputusan untuk CA ini' });
+
+      const reason = (req.body && req.body.reason) ? req.body.reason.trim() : null;
+      await db.runAsync(
+        `UPDATE ca_approvals SET status='rejected', decided_at=datetime('now','localtime'), reject_reason=?
+         WHERE ca_id=? AND type='open' AND approver_id=?`,
+        [reason, req.params.id, req.session.userId]
+      );
+    }
+
+    await db.runAsync(`UPDATE cash_advances SET status='rejected' WHERE id=?`, [req.params.id]);
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    logEvent(req, 'REJECT_CA', `Finance menolak CA "${row.title}"`);
+    logEvent(req, 'REJECT_CA', `${req.session.username} menolak CA "${row.title}"`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -221,7 +357,7 @@ router.patch('/:id/reject', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/request-close — request close (owner only) ───
+// ─── PATCH /:id/request-close ─────────────────────────────────
 router.patch('/:id/request-close', async (req, res) => {
   try {
     const ca = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
@@ -240,7 +376,6 @@ router.patch('/:id/request-close', async (req, res) => {
     }
 
     const note = req.body.note || null;
-    // Finance closing their own CA: skip approval, directly closed
     if (isFinanceRole(req.session.role)) {
       await db.runAsync(
         `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=datetime('now','localtime'), close_reject_reason=NULL WHERE id=?`,
@@ -266,7 +401,7 @@ router.patch('/:id/request-close', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/reject-close — finance rejects close request ──
+// ─── PATCH /:id/reject-close ──────────────────────────────────
 router.patch('/:id/reject-close', async (req, res) => {
   if (!isFinanceRole(req.session.role))
     return res.status(403).json({ error: 'Hanya finance yang bisa menolak permintaan close' });
@@ -293,7 +428,7 @@ router.patch('/:id/reject-close', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/approve-close — finance approves close ────────
+// ─── PATCH /:id/approve-close ─────────────────────────────────
 router.patch('/:id/approve-close', async (req, res) => {
   if (!isFinanceRole(req.session.role))
     return res.status(403).json({ error: 'Hanya finance yang bisa menutup CA' });
@@ -304,15 +439,11 @@ router.patch('/:id/approve-close', async (req, res) => {
       return res.status(400).json({ error: 'CA tidak dalam status pending_close' });
 
     await db.runAsync(
-      `UPDATE cash_advances SET status='closed',
-        closed_by=?, closed_at=datetime('now','localtime')
-       WHERE id=?`,
+      `UPDATE cash_advances SET status='closed', closed_by=?, closed_at=datetime('now','localtime') WHERE id=?`,
       [req.session.userId, req.params.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    
     logEvent(req, 'CLOSE_CA', `Finance menutup CA "${row.title}"`);
-    
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -368,7 +499,7 @@ router.post('/:id/transactions', upload.single('proof_image'), async (req, res) 
   }
 });
 
-// ─── PATCH /:id/request-reimburse — request reimburse (owner)
+// ─── PATCH /:id/request-reimburse — request reimburse (owner) ─
 router.patch('/:id/request-reimburse', async (req, res) => {
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
@@ -382,8 +513,14 @@ router.patch('/:id/request-reimburse', async (req, res) => {
       `UPDATE cash_advances SET reimbursement_requested=1, reimbursement_status='pending' WHERE id=?`,
       [req.params.id]
     );
+
+    const approverIds = await getProjectApprovers(ca.project_id);
+    if (approverIds.length > 0) {
+      await createApprovalRecords(ca.id, 'reimburse', approverIds);
+    }
+
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    logEvent(req, 'REQUEST_REIMBURSE_CA', `Mengajukan klaim reimburse untuk CA "${row.title}"`);
+    logEvent(req, 'REQUEST_REIMBURSE_CA', `Mengajukan klaim reimburse untuk CA "${row.title}"${approverIds.length > 0 ? ` (${approverIds.length} approver)` : ''}`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -391,7 +528,60 @@ router.patch('/:id/request-reimburse', async (req, res) => {
   }
 });
 
-// ─── PATCH /:id/approve-reimburse — finance approves reimburse
+// ─── PATCH /:id/vote-reimburse — approver votes on reimburse ──
+router.patch('/:id/vote-reimburse', async (req, res) => {
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.reimbursement_status !== 'pending')
+      return res.status(400).json({ error: 'Tidak ada permintaan reimburse yang menunggu' });
+
+    const myRow = await db.getAsync(
+      `SELECT * FROM ca_approvals WHERE ca_id=? AND type='reimburse' AND approver_id=?`,
+      [req.params.id, req.session.userId]
+    );
+    if (!myRow)
+      return res.status(403).json({ error: 'Anda bukan approver reimburse untuk CA ini' });
+    if (myRow.status !== 'pending')
+      return res.status(400).json({ error: 'Anda sudah memberikan keputusan' });
+
+    const { vote } = req.body;
+    if (!['approve', 'reject'].includes(vote))
+      return res.status(400).json({ error: 'Vote harus approve atau reject' });
+
+    if (vote === 'reject') {
+      const reason = (req.body.reason || '').trim();
+      if (!reason) return res.status(400).json({ error: 'Alasan penolakan wajib diisi' });
+      await db.runAsync(
+        `UPDATE ca_approvals SET status='rejected', decided_at=datetime('now','localtime'), reject_reason=?
+         WHERE ca_id=? AND type='reimburse' AND approver_id=?`,
+        [reason, req.params.id, req.session.userId]
+      );
+      await db.runAsync(
+        `UPDATE cash_advances SET reimbursement_status='rejected',
+           reimbursement_reject_reason=?, reimbursement_by=?, reimbursement_at=datetime('now','localtime')
+         WHERE id=?`,
+        [reason, req.session.userId, req.params.id]
+      );
+      logEvent(req, 'REJECT_REIMBURSE_CA', `${req.session.username} menolak reimburse CA "${ca.title}" — ${reason}`);
+    } else {
+      await db.runAsync(
+        `UPDATE ca_approvals SET status='approved', decided_at=datetime('now','localtime')
+         WHERE ca_id=? AND type='reimburse' AND approver_id=?`,
+        [req.params.id, req.session.userId]
+      );
+      logEvent(req, 'APPROVE_REIMBURSE_VOTE', `${req.session.username} menyetujui reimburse CA "${ca.title}"`);
+    }
+
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal memproses vote reimburse' });
+  }
+});
+
+// ─── PATCH /:id/approve-reimburse — finance processes payment ─
 router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) => {
   if (!isFinanceRole(req.session.role))
     return res.status(403).json({ error: 'Hanya finance yang bisa memproses reimburse' });
@@ -400,6 +590,18 @@ router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) 
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
     if (ca.reimbursement_status !== 'pending')
       return res.status(400).json({ error: 'Tidak ada permintaan reimburse yang menunggu' });
+
+    // Check all project approvers have voted
+    const approvalRows = await db.allAsync(
+      `SELECT * FROM ca_approvals WHERE ca_id=? AND type='reimburse'`, [req.params.id]
+    );
+    if (approvalRows.length > 0) {
+      const notAllApproved = approvalRows.some(r => r.status !== 'approved');
+      if (notAllApproved) {
+        const pending = approvalRows.filter(r => r.status === 'pending').length;
+        return res.status(400).json({ error: `Masih ada ${pending} approver yang belum menyetujui reimburse` });
+      }
+    }
 
     const amount = parseFloat(req.body.amount);
     if (isNaN(amount) || amount <= 0)
@@ -420,7 +622,6 @@ router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) 
        WHERE id=?`,
       [amount, proof, req.session.userId, req.params.id]
     );
-    // Create masuk transaction to balance the CA
     const today = new Date().toISOString().slice(0, 10);
     await db.runAsync(
       `INSERT INTO transactions (user_id, type, name, amount, date, proof_image, status, input_by, project_id, ca_id)
@@ -428,7 +629,7 @@ router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) 
       [ca.request_by, amount, today, proof, req.session.userId, ca.project_id, ca.id]
     );
     const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
-    logEvent(req, 'APPROVE_REIMBURSE_CA', `Finance menyetujui reimburse CA "${row.title}" sebesar ${amount}${note ? ` — Catatan: ${note}` : ''}`);
+    logEvent(req, 'APPROVE_REIMBURSE_CA', `Finance memproses reimburse CA "${row.title}" sebesar ${amount}${note ? ` — Catatan: ${note}` : ''}`);
     res.json(row);
   } catch (err) {
     console.error(err);
@@ -436,7 +637,7 @@ router.patch('/:id/approve-reimburse', upload.single('proof'), async (req, res) 
   }
 });
 
-// ─── PATCH /:id/reject-reimburse — finance rejects reimburse ─
+// ─── PATCH /:id/reject-reimburse — finance rejects reimburse ──
 router.patch('/:id/reject-reimburse', async (req, res) => {
   if (!isFinanceRole(req.session.role))
     return res.status(403).json({ error: 'Hanya finance yang bisa menolak reimburse' });
@@ -465,7 +666,7 @@ router.patch('/:id/reject-reimburse', async (req, res) => {
   }
 });
 
-// ─── DELETE /:id — super_admin only ──────────────────────────
+// ─── DELETE /:id — super_admin only ───────────────────────────
 router.delete('/:id', async (req, res) => {
   if (req.session.role !== 'super_admin')
     return res.status(403).json({ error: 'Hanya super admin yang bisa menghapus CA' });

@@ -143,7 +143,31 @@
       meta += `<div><strong>Nominal Diajukan:</strong> ${fmt.format(ca.initial_amount)}</div>`;
       meta += `<div><strong>Diajukan oleh:</strong> ${ca.request_by_name || '–'}</div>`;
       meta += `<div><strong>Tanggal Pengajuan:</strong> ${fmtDateTime(ca.request_at)}</div>`;
-      if (ca.open_by_name) meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} · ${fmtDateTime(ca.open_at)}</div>`;
+      const approvals = ca.approvals || [];
+      const openApprovals = approvals.filter(a => a.type === 'open');
+      const reimburseApprovals = approvals.filter(a => a.type === 'reimburse');
+      if (openApprovals.length > 0) {
+        const approvedCount = openApprovals.filter(a => a.status === 'approved').length;
+        meta += `<div style="grid-column:1/-1"><strong>Persetujuan CA:</strong> ${approvedCount}/${openApprovals.length} menyetujui</div>`;
+        meta += openApprovals.map(a => {
+          const icon = a.status === 'approved' ? '✅' : a.status === 'rejected' ? '❌' : '⏳';
+          const when = a.decided_at ? ` · ${fmtDateTime(a.decided_at)}` : '';
+          const reason = a.reject_reason ? ` — <em>${a.reject_reason}</em>` : '';
+          return `<div style="grid-column:1/-1;padding-left:1rem;font-size:.82rem;color:var(--gray-600)">${icon} ${a.approver_name}${when}${reason}</div>`;
+        }).join('');
+      } else if (ca.open_by_name) {
+        meta += `<div><strong>Disetujui oleh:</strong> ${ca.open_by_name} · ${fmtDateTime(ca.open_at)}</div>`;
+      }
+      if (reimburseApprovals.length > 0) {
+        const approvedCount = reimburseApprovals.filter(a => a.status === 'approved').length;
+        meta += `<div style="grid-column:1/-1"><strong>Persetujuan Reimburse:</strong> ${approvedCount}/${reimburseApprovals.length} menyetujui</div>`;
+        meta += reimburseApprovals.map(a => {
+          const icon = a.status === 'approved' ? '✅' : a.status === 'rejected' ? '❌' : '⏳';
+          const when = a.decided_at ? ` · ${fmtDateTime(a.decided_at)}` : '';
+          const reason = a.reject_reason ? ` — <em>${a.reject_reason}</em>` : '';
+          return `<div style="grid-column:1/-1;padding-left:1rem;font-size:.82rem;color:var(--gray-600)">${icon} ${a.approver_name}${when}${reason}</div>`;
+        }).join('');
+      }
       if (ca.closed_by_name) meta += `<div><strong>Ditutup oleh:</strong> ${ca.closed_by_name} · ${fmtDateTime(ca.closed_at)}</div>`;
       if (ca.project_name) meta += `<div><strong>Proyek:</strong> ${ca.project_name}</div>`;
       document.getElementById('caDetailMeta').innerHTML = meta;

@@ -130,3 +130,41 @@
 [2026-03-17T10:24:48.049Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
 [2026-03-17T10:26:52.111Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-17T10:26:53.680Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:37:33.660Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T10:37:43.391Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:37:50.008Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:38:38.486Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:39:23.478Z] [SUPER_ADMIN:aziz] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Ayyash Mumtaz" ke proyek ID 3
+[2026-03-17T10:39:30.035Z] [SUPER_ADMIN:aziz] (::1) | REMOVE_PROJECT_APPROVER | Menghapus approver (user_id=8) dari proyek ID 3
+[2026-03-17T10:39:34.064Z] [SUPER_ADMIN:aziz] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Zul Fahmi" ke proyek ID 3
+[2026-03-17T10:39:40.109Z] [SUPER_ADMIN:aziz] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Immanuel Chrismas" ke proyek ID 3
+[2026-03-17T10:39:54.863Z] [SUPER_ADMIN:aziz] (::1) | CREATE_CA | Finance mengajukan CA "CA Pasang Panel Meratus" sebesar 1000000 (2 approver)
+[2026-03-17T10:40:15.456Z] [SUPER_ADMIN:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:40:18.689Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:40:27.210Z] [FINANCE:pakchris] (::1) | APPROVE_CA | pakchris menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-17T10:40:30.829Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:40:36.332Z] [FINANCE:kangfahmi] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:40:41.327Z] [FINANCE:kangfahmi] (::1) | APPROVE_CA | kangfahmi menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-17T10:41:40.319Z] [FINANCE:kangfahmi] (::1) | ADD_CA_TX | Input transaksi masuk CA "CA Pasang Panel Meratus": "Transport Ke meratus" sebesar 250000
+[2026-03-17T10:42:03.482Z] [FINANCE:kangfahmi] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:42:10.834Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T10:42:20.301Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:42:23.388Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T10:42:35.964Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:42:40.156Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:43:42.849Z] [SUPER_ADMIN:aziz] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Pasang Panel Meratus": "bensin + tol" sebesar 270000
+[2026-03-17T10:43:49.618Z] [SUPER_ADMIN:aziz] (::1) | REQUEST_REIMBURSE_CA | Mengajukan klaim reimburse untuk CA "CA Pasang Panel Meratus" (2 approver)
+[2026-03-17T10:49:11.942Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:54:04.353Z] [SUPER_ADMIN:aziz] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:55:12.976Z] [SUPER_ADMIN:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:55:19.388Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-17T10:55:33.677Z] [SUPER_ADMIN:admin] (::1) | UPDATE_USER | Memperbarui profil akun: Azizryan (aziz)
+[2026-03-17T10:55:38.290Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T10:55:42.860Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:10:18.787Z] [EMPLOYEE:aziz] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-17T11:10:58.925Z] [EMPLOYEE:aziz] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:11:01.716Z] [FINANCE:pakchris] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:11:16.220Z] [FINANCE:pakchris] (::1) | APPROVE_REIMBURSE_VOTE | pakchris menyetujui reimburse CA "CA Pasang Panel Meratus"
+[2026-03-17T11:11:22.120Z] [FINANCE:pakchris] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-17T11:11:25.556Z] [FINANCE:kangfahmi] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-17T11:11:51.594Z] [FINANCE:kangfahmi] (::1) | REJECT_REIMBURSE_CA | kangfahmi menolak reimburse CA "CA Pasang Panel Meratus" — TOLONG UPLOAD FILE KEKURANGAN

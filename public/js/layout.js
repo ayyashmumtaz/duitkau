@@ -280,18 +280,35 @@
         closed:        '🏁 Ditutup — ajukan reimburse',
       };
 
+      // Pending votes for current user
+      const myVotes = await fetch('/api/ca/my-pending-votes').then(r => r.json()).catch(() => []);
+
       let html = '<div class="notif-popup-header">Notifikasi CA</div>';
-      if (items.length === 0) {
+
+      if (myVotes.length > 0) {
+        html += '<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Perlu Persetujuan Anda</div>';
+        html += myVotes.map(v => `
+          <div class="notif-popup-item" onclick="window.location.href='/ca.html?id=${v.ca_id}'">
+            <div style="font-weight:600;font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title}</div>
+            <div style="font-size:.75rem;color:var(--gray-500)">${v.type === 'open' ? '🔑 Menunggu persetujuan CA' : '💸 Menunggu persetujuan reimburse'}</div>
+            <div style="font-size:.75rem;color:var(--gray-400)">${fmt.format(v.initial_amount)} · ${v.request_by_name}</div>
+          </div>`).join('');
+      }
+
+      if (items.length === 0 && myVotes.length === 0) {
         html += '<div class="notif-popup-empty">✅ Tidak ada notifikasi</div>';
-      } else {
+      } else if (items.length > 0) {
+        if (myVotes.length > 0) html += '<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Informasi CA</div>';
         html += items.map(ca => {
           let desc = STATUS_DESC[ca.status] || ca.status;
           if (ca.status === 'open' && ca.close_reject_reason) {
             desc = `⚠️ Close ditolak: "${ca.close_reject_reason}"`;
           } else if (ca.reimbursement_status === 'pending') {
-            desc = '💸 Reimburse menunggu diproses';
+            desc = ca.pending_reimburse_approvals > 0 ? `💸 Reimburse menunggu ${ca.pending_reimburse_approvals} approver` : '💸 Reimburse menunggu diproses';
           } else if (ca.reimbursement_status === 'rejected') {
             desc = `❌ Reimburse ditolak: "${ca.reimbursement_reject_reason || ''}"`;
+          } else if (ca.status === 'pending' && ca.pending_open_approvals > 0) {
+            desc = `⏳ Menunggu ${ca.pending_open_approvals} persetujuan`;
           }
           return `
           <div class="notif-popup-item" onclick="window.location.href='/ca.html?id=${ca.id}'">
