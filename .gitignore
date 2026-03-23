@@ -4,3 +4,4 @@ node_modules/
 public/uploads/*
 config.json
 logs/events.txt
+logs/events.txt

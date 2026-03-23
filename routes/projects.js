@@ -9,7 +9,8 @@ router.get('/', requireLogin, async (req, res) => {
     const rows = await db.allAsync(
       `SELECT p.*,
         COUNT(DISTINCT t.id)  as tx_count,
-        COUNT(DISTINCT pa.id) as approver_count
+        COUNT(DISTINCT pa.id) as approver_count,
+        (SELECT COUNT(*) FROM cash_advances ca WHERE ca.project_id = p.id) as ca_count
        FROM projects p
        LEFT JOIN transactions      t  ON t.project_id  = p.id
        LEFT JOIN project_approvers pa ON pa.project_id = p.id
@@ -53,10 +54,21 @@ router.put('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
 router.delete('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
   try {
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [req.params.id]);
+    if (!project) return res.status(404).json({ error: 'Proyek tidak ditemukan' });
+
+    const linkedCA = await db.getAsync(
+      `SELECT COUNT(*) AS n FROM cash_advances WHERE project_id = ?`,
+      [req.params.id]
+    );
+    if (linkedCA.n > 0)
+      return res.status(400).json({
+        error: `Proyek tidak bisa dihapus — ada ${linkedCA.n} Cash Advance yang terkait proyek ini.`
+      });
+
     await db.runAsync('DELETE FROM project_approvers WHERE project_id = ?', [req.params.id]);
     await db.runAsync('UPDATE transactions SET project_id = NULL WHERE project_id = ?', [req.params.id]);
-    await db.runAsync('DELETE FROM projects WHERE id = ?', [req.params.id]);
-    logEvent(req, 'DELETE_PROJECT', `Menghapus proyek "${project ? project.name : 'Unknown'}" (ID: ${req.params.id})`);
+await db.runAsync('DELETE FROM projects WHERE id = ?', [req.params.id]);
+    logEvent(req, 'DELETE_PROJECT', `Menghapus proyek "${project.name}" (ID: ${req.params.id})`);
     res.status(204).end();
   } catch { res.status(500).json({ error: 'Gagal menghapus proyek' }); }
 });

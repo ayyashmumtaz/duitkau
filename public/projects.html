@@ -94,7 +94,8 @@
       </div>
       <div class="modal-body">
         <p>Hapus proyek <strong id="deleteName"></strong>?</p>
-        <p class="text-muted mt-1" style="font-size:.85rem">Transaksi yang terhubung ke proyek ini akan kehilangan asosiasi proyeknya, namun tidak dihapus.</p>
+        <div id="deleteCAWarning" class="alert alert-error" style="margin-top:.75rem"></div>
+        <p class="text-muted mt-1" style="font-size:.85rem" id="deleteHint">Transaksi yang terhubung ke proyek ini akan kehilangan asosiasi proyeknya, namun tidak dihapus.</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="btnDeleteCancel">Batal</button>
@@ -112,7 +113,7 @@
       </div>
       <div class="modal-body">
         <div id="approverAlert" class="alert alert-error"></div>
-        <p class="text-muted" style="font-size:.82rem;margin-bottom:.75rem">Approver harus menyetujui CA dan reimburse sebelum bisa diproses.</p>
+        <p class="text-muted" id="approverSubtitle" style="font-size:.82rem;margin-bottom:.75rem">Approver harus menyetujui CA dan reimburse sebelum bisa diproses.</p>
         <div id="approverList" style="margin-bottom:1rem"></div>
         <div class="form-group" style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:0">
           <div style="flex:1">
@@ -192,7 +193,7 @@
           <td class="text-right">
             ${_isSuperAdmin ? `
             <button class="btn btn-ghost btn-sm" onclick="openEdit(${proj.id}, '${proj.name.replace(/'/g, "\\'")}', '${(proj.po_number || '').replace(/'/g, "\\'")}', '${(proj.description || '').replace(/'/g, "\\'")}')">✏️ Edit</button>
-            <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${proj.id}, '${proj.name.replace(/'/g, "\\'")}')">🗑️ Hapus</button>
+            <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${proj.id}, '${proj.name.replace(/'/g, "\\'")}', ${proj.ca_count || 0})">🗑️ Hapus</button>
             ` : '–'}
           </td>
         </tr>
@@ -261,9 +262,13 @@
         if (!res.ok) { showAlert('modalAlert', data.error); return; }
 
         closeModal();
-        showAlert('mainSuccess', id ? 'Proyek berhasil diperbarui!' : 'Proyek berhasil ditambahkan!');
         await loadProjects();
-        setTimeout(() => hideAlert('mainSuccess'), 3000);
+        if (id) {
+          showAlert('mainSuccess', 'Proyek berhasil diperbarui!');
+          setTimeout(() => hideAlert('mainSuccess'), 3000);
+        } else {
+          await openApprovers(data.id, data.name, true);
+        }
       } catch {
         showAlert('modalAlert', 'Terjadi kesalahan, coba lagi');
       } finally {
@@ -273,9 +278,22 @@
     });
 
     // ─── Modal Hapus ──────────────────────────
-    function openDelete(id, name) {
+    function openDelete(id, name, activeCaCount) {
       deleteTargetId = id;
       document.getElementById('deleteName').textContent = name;
+      const warning = document.getElementById('deleteCAWarning');
+      const hint = document.getElementById('deleteHint');
+      const confirmBtn = document.getElementById('btnDeleteConfirm');
+      if (activeCaCount > 0) {
+        warning.textContent = `⚠️ Proyek ini memiliki ${activeCaCount} Cash Advance. Proyek tidak bisa dihapus selama masih ada CA yang terkait.`;
+        warning.classList.add('show');
+        hint.style.display = 'none';
+        confirmBtn.disabled = true;
+      } else {
+        warning.classList.remove('show');
+        hint.style.display = '';
+        confirmBtn.disabled = false;
+      }
       document.getElementById('deleteOverlay').classList.add('open');
     }
 
@@ -317,9 +335,12 @@
     // ─── Kelola Approver ──────────────────────
     let _approverProjectId = null;
 
-    async function openApprovers(projectId, projectName) {
+    async function openApprovers(projectId, projectName, isNew = false) {
       _approverProjectId = projectId;
       document.getElementById('approverModalTitle').textContent = `Approver: ${projectName}`;
+      document.getElementById('approverSubtitle').textContent = isNew
+        ? 'Proyek berhasil dibuat! Tambahkan approver sekarang, atau klik Selesai untuk lewati.'
+        : 'Approver harus menyetujui CA dan reimburse sebelum bisa diproses.';
       hideAlert('approverAlert');
       // Load all users into select
       const users = await fetch('/api/employees').then(r => r.json());
