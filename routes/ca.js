@@ -49,7 +49,7 @@ async function getProjectApprovers(projectId) {
 async function createApprovalRecords(caId, type, approverIds) {
   for (const uid of approverIds) {
     await db.runAsync(
-      `INSERT OR IGNORE INTO ca_approvals (ca_id, type, approver_id) VALUES (?, ?, ?)`,
+      `INSERT IGNORE INTO ca_approvals (ca_id, type, approver_id) VALUES (?, ?, ?)`,
       [caId, type, uid]
     );
   }
@@ -725,7 +725,7 @@ router.patch('/:id/confirm-refund', async (req, res) => {
     // Create a masuk transaction to record the returned cash
     await db.runAsync(
       `INSERT INTO transactions (user_id, type, name, amount, date, note, status, input_by, project_id, ca_id)
-       VALUES (?, 'masuk', 'Pengembalian Dana CA', ?, date('now','localtime'), ?, 'approved', ?, ?, ?)`,
+       VALUES (?, 'masuk', 'Pengembalian Dana CA', ?, CURDATE(), ?, 'approved', ?, ?, ?)`,
       [ca.request_by, ca.refund_amount, ca.refund_note || null,
        req.session.userId, ca.project_id, ca.id]
     );
@@ -770,6 +770,45 @@ router.patch('/:id/reject-refund', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal menolak pengembalian' });
+  }
+});
+
+// ─── PATCH /:id/retract-vote — approver retracts their approval ─
+router.patch('/:id/retract-vote', async (req, res) => {
+  const { type, reason } = req.body;
+  if (!['open', 'reimburse'].includes(type))
+    return res.status(400).json({ error: 'Type tidak valid' });
+
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+
+    if (type === 'open' && ca.status !== 'pending')
+      return res.status(400).json({ error: 'CA sudah tidak dalam status pending, persetujuan tidak bisa dibatalkan' });
+    if (type === 'reimburse' && ca.reimbursement_status !== 'pending')
+      return res.status(400).json({ error: 'Reimburse sudah tidak dalam status pending' });
+
+    const myRow = await db.getAsync(
+      `SELECT * FROM ca_approvals WHERE ca_id=? AND type=? AND approver_id=?`,
+      [req.params.id, type, req.session.userId]
+    );
+    if (!myRow)
+      return res.status(403).json({ error: 'Anda bukan approver untuk CA ini' });
+    if (myRow.status !== 'approved')
+      return res.status(400).json({ error: 'Anda belum menyetujui CA ini' });
+
+    await db.runAsync(
+      `UPDATE ca_approvals SET status='pending', decided_at=NULL, reject_reason=NULL WHERE ca_id=? AND type=? AND approver_id=?`,
+      [req.params.id, type, req.session.userId]
+    );
+
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    const label = type === 'open' ? 'CA' : 'reimburse';
+    logEvent(req, 'RETRACT_VOTE', `${req.session.username} membatalkan persetujuan ${label} "${ca.title}"${reason ? ` — Alasan: ${reason}` : ''}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal membatalkan persetujuan' });
   }
 });
 

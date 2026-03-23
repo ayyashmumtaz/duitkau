@@ -31,7 +31,7 @@
               <tr>
                 <th>#</th>
                 <th>Nama Proyek</th>
-                <th>Nomor PO</th>
+                <th>Nomor SO</th>
                 <th>Deskripsi</th>
                 <th>Approver</th>
                 <th>Transaksi</th>
@@ -69,8 +69,8 @@
             <input type="text" id="projName" placeholder="Contoh: Proyek Alfa" required />
           </div>
           <div class="form-group">
-            <label for="projPO">Nomor PO <span style="color:var(--red)">*</span></label>
-            <input type="text" id="projPO" placeholder="Contoh: PO-2024-001" required />
+            <label for="projPO">Nomor SO <span style="color:var(--red)">*</span></label>
+            <input type="text" id="projPO" placeholder="Contoh: SO-2024-001" required />
           </div>
           <div class="form-group">
             <label for="projDesc">Deskripsi (opsional)</label>
@@ -243,7 +243,7 @@
       };
 
       if (!body.name) { showAlert('modalAlert', 'Nama proyek wajib diisi'); return; }
-      if (!body.po_number) { showAlert('modalAlert', 'Nomor PO wajib diisi'); return; }
+      if (!body.po_number) { showAlert('modalAlert', 'Nomor SO wajib diisi'); return; }
 
       const btn = document.getElementById('btnSave');
       btn.disabled = true;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DuitKau - Input Reimburse</title>
+  <title>DuitKau - Reimburse Pribadi</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="/js/layout.js"></script>
@@ -11,15 +11,15 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 </head>
-<body data-page="input-employee">
+<body data-page="input-personal">
   <div id="navbar-placeholder"></div>
 
   <div class="app-layout">
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
-      <h1 class="page-title">Input Reimburse Karyawan</h1>
-      <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">Input pengeluaran atas nama karyawan lain. Transaksi langsung berstatus <strong>Disetujui</strong>.</p>
+      <h1 class="page-title">Reimburse Pribadi</h1>
+      <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">Input pengeluaran atas nama Anda sendiri. Transaksi langsung berstatus <strong>Disetujui</strong>.</p>
 
       <div class="grid-2">
         <!-- FORM -->
@@ -30,25 +30,19 @@
 
           <form id="txForm">
             <div class="form-group">
-              <label for="userId">Karyawan</label>
-              <select id="userId" required>
-                <option value="">-- Pilih karyawan --</option>
-              </select>
+              <label>Nama Pengeluaran</label>
+              <input type="text" id="name" placeholder="Contoh: Reimburse BBM, Makan klien..." required />
             </div>
             <div class="form-group">
-              <label for="name">Nama Pengeluaran</label>
-              <input type="text" id="name" placeholder="Contoh: Gaji Maret, Reimburse BBM..." required />
-            </div>
-            <div class="form-group">
-              <label for="amount">Nominal (Rp)</label>
+              <label>Nominal (Rp)</label>
               <input type="text" id="amount" inputmode="numeric" placeholder="Contoh: 5.000.000" autocomplete="off" required />
             </div>
             <div class="form-group">
-              <label for="date">Tanggal Transaksi</label>
+              <label>Tanggal Transaksi</label>
               <input type="text" id="date" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" required />
             </div>
             <div class="form-group">
-              <label for="note">Catatan (opsional)</label>
+              <label>Catatan (opsional)</label>
               <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
             </div>
             <div class="form-group">
@@ -77,7 +71,7 @@
           </form>
         </div>
 
-        <!-- Riwayat input oleh finance hari ini -->
+        <!-- Riwayat input hari ini -->
         <div class="card">
           <div class="card-title">📋 Input Hari Ini</div>
           <div id="tableAlert" class="alert alert-error"></div>
@@ -85,14 +79,13 @@
             <table>
               <thead>
                 <tr>
-                  <th>Karyawan</th>
                   <th>Nama</th>
                   <th class="text-right">Nominal</th>
                   <th>Bukti</th>
                 </tr>
               </thead>
               <tbody id="todayBody">
-                <tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+                <tr><td colspan="3"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
               </tbody>
             </table>
           </div>
@@ -131,7 +124,6 @@
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
-    // ─── Date helpers ─────────────────────────
     function parseDateDMY(val) {
       const p = val.split('/');
       if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) return null;
@@ -142,7 +134,6 @@
     }
     const fpDate = flatpickr('#date', { dateFormat: 'd/m/Y', allowInput: true, locale: 'id' });
 
-    // ─── Nominal auto-format ──────────────────
     function formatThousands(raw) {
       const digits = raw.replace(/\D/g, '');
       if (!digits) return '';
@@ -161,39 +152,8 @@
 
     window.onLayoutReady = async function(user) {
       fpDate.setDate(new Date(), true);
-      await Promise.all([loadEmployees(), loadCategories(), loadToday()]);
+      await Promise.all([loadCategories(), loadToday(user.userId)]);
     };
-
-    async function loadEmployees() {
-      const users = await fetch('/api/finance/employees').then(r => r.json());
-      const sel = document.getElementById('userId');
-      const myId = window.currentUser?.userId;
-      const employees   = users.filter(u => u.role === 'employee' && u.id !== myId);
-      const financeUsers = users.filter(u => u.role === 'finance' && u.id !== myId);
-
-      if (employees.length > 0) {
-        const grp = document.createElement('optgroup');
-        grp.label = 'Karyawan';
-        employees.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.full_name + ' (@' + u.username + ')';
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      }
-      if (financeUsers.length > 0) {
-        const grp = document.createElement('optgroup');
-        grp.label = 'Tim Finance';
-        financeUsers.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.full_name + ' (@' + u.username + ')';
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      }
-    }
 
     async function loadCategories() {
       try {
@@ -208,20 +168,18 @@
       } catch {}
     }
 
-    async function loadToday() {
+    async function loadToday(userId) {
       const today = new Date().toISOString().slice(0, 10);
       try {
-        // Ambil laporan hari ini dari semua karyawan
-        const data = await fetch(`/api/finance/report?userId=all&periodType=date&periodValue=${today}`).then(r => r.json());
-        const allTx = data.flatMap(emp => emp.transactions.map(tx => ({ ...tx, fullName: emp.fullName, username: emp.username })));
+        const data = await fetch(`/api/finance/report?userId=${userId}&periodType=date&periodValue=${today}`).then(r => r.json());
+        const txs = data.flatMap(emp => emp.transactions);
         const tbody = document.getElementById('todayBody');
-        if (allTx.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
+        if (txs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="3"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
           return;
         }
-        tbody.innerHTML = allTx.map(tx => `
+        tbody.innerHTML = txs.map(tx => `
           <tr class="keluar">
-            <td>${tx.fullName}</td>
             <td>${tx.name}</td>
             <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
             <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
@@ -250,12 +208,10 @@
       if (!window.getDbOk()) return showAlert('formAlert', 'Database tidak terhubung');
       hideAlert('formAlert'); hideAlert('formSuccess');
 
-      // Confirm before submit
-      const empName = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text.split(' (')[0];
       const amtTxt = fmt.format(parseAmount(document.getElementById('amount').value));
       const catSel = document.getElementById('categoryId');
       const catTxt = catSel.value ? catSel.options[catSel.selectedIndex].text : '–';
-      const details = `Karyawan: <strong>${empName}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong>`;
+      const details = `Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong>`;
 
       const ok = await showConfirm('Simpan Transaksi?', details);
       if (!ok) return;
@@ -267,7 +223,7 @@
       if (!parsedDate) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); btn.disabled = false; btn.textContent = 'Simpan Transaksi'; return; }
 
       const fd = new FormData();
-      fd.append('userId', document.getElementById('userId').value);
+      fd.append('userId', window.currentUser.userId);
       fd.append('type', 'keluar');
       fd.append('name', document.getElementById('name').value);
       fd.append('amount', parseAmount(document.getElementById('amount').value));
@@ -282,12 +238,11 @@
         const data = await res.json();
         if (!res.ok) { showAlert('formAlert', data.error); return; }
 
-        const empNameFull = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text;
-        showAlert('formSuccess', `✅ Transaksi untuk ${empNameFull.split(' (')[0]} berhasil disimpan!`);
+        showAlert('formSuccess', '✅ Transaksi berhasil disimpan!');
         document.getElementById('txForm').reset();
         fpDate.setDate(new Date(), true);
         document.getElementById('previewWrap').classList.remove('show');
-        await loadToday();
+        await loadToday(window.currentUser.userId);
         setTimeout(() => hideAlert('formSuccess'), 4000);
       } catch { showAlert('formAlert', 'Gagal menyimpan transaksi'); }
       finally { btn.disabled = false; btn.textContent = 'Simpan Transaksi'; }

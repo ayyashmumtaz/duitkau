@@ -273,6 +273,10 @@
       background: linear-gradient(135deg, #67e8f9, #0891b2);
     }
 
+    .icon-settings {
+      background: linear-gradient(135deg, #94a3b8, #475569);
+    }
+
     .app-name {
       font-size: .92rem;
       font-weight: 700;
@@ -430,6 +434,12 @@
         <div class="app-desc">Arsip digital & dokumen</div>
       </div>
 
+      <a class="app-card app-card--active" id="cardSettings" href="/settings" style="display:none">
+        <div class="app-icon icon-settings">⚙️</div>
+        <div class="app-name">Pengaturan</div>
+        <div class="app-desc">Database, data master & konfigurasi sistem</div>
+      </a>
+
     </div>
 
     <div class="apps-footer">
@@ -459,6 +469,10 @@
         ? '/finance'
         : '/dashboard';
       document.getElementById('cardDuitkau').href = dest;
+
+      if (user.role === 'super_admin') {
+        document.getElementById('cardSettings').style.display = '';
+      }
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
         await fetch('/api/auth/logout', { method: 'POST' });

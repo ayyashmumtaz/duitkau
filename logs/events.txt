@@ -240,3 +240,36 @@
 [2026-03-17T13:48:34.312Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
 [2026-03-17T13:49:31.469Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
 [2026-03-17T13:50:10.752Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T19:39:38.211Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T19:44:06.007Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T19:44:19.817Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T19:44:35.880Z] [SUPER_ADMIN:admin] (::1) | DELETE_USER | Menghapus akun employee: Alice Putri (alice)
+[2026-03-23T19:44:38.426Z] [SUPER_ADMIN:admin] (::1) | DELETE_USER | Menghapus akun employee: Bob Santoso (bob)
+[2026-03-23T19:47:34.035Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T19:47:50.152Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T19:58:19.665Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T19:58:21.872Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T19:58:38.527Z] [SUPER_ADMIN:admin] (::1) | DELETE_USER | Menghapus akun employee: Charlie Wijaya (charlie)
+[2026-03-23T19:58:52.409Z] [SUPER_ADMIN:admin] (::1) | CREATE_USER | Membuat akun employee: Rahmat Gibran Zulbadriansyah (gibran)
+[2026-03-23T19:58:57.991Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T19:59:02.147Z] [EMPLOYEE:gibran] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-23T19:59:57.537Z] [EMPLOYEE:gibran] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T20:00:00.707Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T20:04:23.947Z] [SUPER_ADMIN:admin] (::1) | CREATE_PROJECT | Membuat proyek "Proyek Kapal Gibran" (SO: SO/XII/2026)
+[2026-03-23T20:04:33.533Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Tim Finance" ke proyek ID 1
+[2026-03-23T20:04:36.078Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Rahmat Gibran Zulbadriansyah" ke proyek ID 1
+[2026-03-23T20:04:42.908Z] [SUPER_ADMIN:admin] (::1) | REMOVE_PROJECT_APPROVER | Menghapus approver (user_id=6) dari proyek ID 1
+[2026-03-23T20:04:50.015Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Super Admin" ke proyek ID 1
+[2026-03-23T20:05:47.049Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "CA Pasang Panel Meratus" (id=1)
+[2026-03-23T20:07:23.568Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "CA Pasang Panel Meratus" (id=2)
+[2026-03-23T20:07:28.369Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T20:07:31.908Z] [EMPLOYEE:gibran] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-23T20:08:15.974Z] [EMPLOYEE:gibran] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-23T20:08:24.190Z] [EMPLOYEE:gibran] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T20:08:27.370Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T20:08:48.015Z] [SUPER_ADMIN:admin] (::1) | CREATE_CA | Finance mengajukan CA "CA Pasang Panel Meratus" sebesar 1600000 (2 approver)
+[2026-03-23T20:09:01.438Z] [SUPER_ADMIN:admin] (::1) | APPROVE_CA | admin menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-23T20:15:18.387Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-23T20:15:28.496Z] [SUPER_ADMIN:admin] (::1) | RETRACT_VOTE | admin membatalkan persetujuan CA "CA Pasang Panel Meratus" — Alasan: kurang jelas
+[2026-03-23T20:15:34.378Z] [SUPER_ADMIN:admin] (::1) | APPROVE_CA | admin menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-23T20:15:41.490Z] [SUPER_ADMIN:admin] (::1) | RETRACT_VOTE | admin membatalkan persetujuan CA "CA Pasang Panel Meratus" — Alasan: kurang jelas

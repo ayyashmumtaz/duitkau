@@ -22,11 +22,11 @@ router.get('/', requireLogin, async (req, res) => {
 router.post('/', requireLogin, requireSuperAdmin, async (req, res) => {
   const { name, po_number, description } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama proyek wajib diisi' });
-  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor PO wajib diisi' });
+  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor SO wajib diisi' });
   try {
     const result = await db.runAsync('INSERT INTO projects (name, po_number, description) VALUES (?, ?, ?)', [name.trim(), po_number.trim(), description || null]);
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [result.lastID]);
-    logEvent(req, 'CREATE_PROJECT', `Membuat proyek "${project.name}" (PO: ${project.po_number})`);
+    logEvent(req, 'CREATE_PROJECT', `Membuat proyek "${project.name}" (SO: ${project.po_number})`);
     res.status(201).json(project);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Nama proyek sudah ada' });
@@ -37,12 +37,12 @@ router.post('/', requireLogin, requireSuperAdmin, async (req, res) => {
 router.put('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
   const { name, po_number, description } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Nama proyek wajib diisi' });
-  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor PO wajib diisi' });
+  if (!po_number?.trim()) return res.status(400).json({ error: 'Nomor SO wajib diisi' });
   try {
     await db.runAsync('UPDATE projects SET name = ?, po_number = ?, description = ? WHERE id = ?', [name.trim(), po_number.trim(), description || null, req.params.id]);
     const project = await db.getAsync('SELECT * FROM projects WHERE id = ?', [req.params.id]);
     if (!project) return res.status(404).json({ error: 'Proyek tidak ditemukan' });
-    logEvent(req, 'UPDATE_PROJECT', `Memperbarui proyek (ID: ${req.params.id}) menjadi "${project.name}" (PO: ${project.po_number})`);
+    logEvent(req, 'UPDATE_PROJECT', `Memperbarui proyek (ID: ${req.params.id}) menjadi "${project.name}" (SO: ${project.po_number})`);
     res.json(project);
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Nama proyek sudah ada' });

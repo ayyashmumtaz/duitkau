@@ -261,7 +261,7 @@
         </div>
         <div class="form-group">
           <label for="refundProof">Bukti Pengembalian (Foto/Struk) <span style="color:var(--red)">*</span></label>
-          <input type="file" id="refundProof" accept="image/*" capture="environment" />
+          <input type="file" id="refundProof" accept="image/*" />
         </div>
       </div>
       <div class="modal-footer">
@@ -314,6 +314,27 @@
   </div>
 
   <!-- Add CA Transaction Modal -->
+  <div class="modal-overlay" id="retractVoteOverlay" style="z-index: 210;">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title" id="retractVoteTitle">Batal Setujui</span>
+        <button class="modal-close" id="retractVoteClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="retractVoteAlert" class="alert alert-error"></div>
+        <p style="margin-bottom:.75rem;color:var(--gray-600);font-size:.875rem">Persetujuan Anda akan dikembalikan ke status menunggu dan approver lain akan diinformasikan.</p>
+        <div class="form-group">
+          <label for="retractVoteReason">Alasan Pembatalan <span style="color:var(--red)">*</span></label>
+          <textarea id="retractVoteReason" placeholder="Misal: Perlu verifikasi ulang dokumen..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="retractVoteCancel">Batal</button>
+        <button class="btn btn-danger" id="retractVoteSubmit">↩️ Batalkan Persetujuan</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="addCaTxOverlay" style="z-index: 210;">
     <div class="modal" style="max-width:480px">
       <div class="modal-header">
@@ -348,7 +369,7 @@
         </div>
         <div class="form-group">
           <label for="caTxProof">Bukti (Foto/Struk)</label>
-          <input type="file" id="caTxProof" accept="image/*" capture="environment" />
+          <input type="file" id="caTxProof" accept="image/*" />
         </div>
       </div>
       <div class="modal-footer">
@@ -863,7 +884,10 @@
             const res = await fetch(`/api/ca/${id}/approve`, { method: 'PATCH' });
             const d = await res.json();
             if (!res.ok) { showAlert('detailAlert', d.error); return; }
-            showAlert('detailSuccess', 'CA berhasil disetujui');
+            const msg = d.status === 'open'
+              ? '✅ CA berhasil disetujui dan sekarang aktif'
+              : `🗳️ Suara Anda disimpan. Menunggu ${d.pending_open_approvals} approver lain`;
+            showAlert('detailSuccess', msg);
             await refreshDetail(id); await loadCAs();
           });
           actionsEl.appendChild(btnApprove);
@@ -886,6 +910,15 @@
           actionsEl.appendChild(btnReject);
         }
 
+        // Batal setujui — approver sudah approve tapi CA masih pending
+        if (myOpenVote && myOpenVote.status === 'approved' && ca.status === 'pending') {
+          const btnRetract = document.createElement('button');
+          btnRetract.className = 'btn btn-ghost btn-sm';
+          btnRetract.textContent = '↩️ Batal Setujui';
+          btnRetract.addEventListener('click', () => openRetractModal(id, 'open'));
+          actionsEl.appendChild(btnRetract);
+        }
+
         if (myReimburseVote && myReimburseVote.status === 'pending') {
           const btnVA = document.createElement('button');
           btnVA.className = 'btn btn-primary btn-sm';
@@ -897,7 +930,10 @@
             });
             const d = await res.json();
             if (!res.ok) { showAlert('detailAlert', d.error); return; }
-            showAlert('detailSuccess', 'Reimburse disetujui');
+            const msg = d.reimbursement_status === 'pending'
+              ? `🗳️ Suara Anda disimpan. Menunggu ${d.pending_reimburse_approvals} approver lain`
+              : '✅ Semua approver setuju, reimburse siap diproses';
+            showAlert('detailSuccess', msg);
             await refreshDetail(id); await loadCAs();
           });
           actionsEl.appendChild(btnVA);
@@ -918,6 +954,15 @@
             await refreshDetail(id); await loadCAs();
           });
           actionsEl.appendChild(btnVR);
+        }
+
+        // Batal setujui reimburse — approver sudah approve tapi reimburse masih pending
+        if (myReimburseVote && myReimburseVote.status === 'approved' && ca.reimbursement_status === 'pending') {
+          const btnRetractR = document.createElement('button');
+          btnRetractR.className = 'btn btn-ghost btn-sm';
+          btnRetractR.textContent = '↩️ Batal Setujui Reimburse';
+          btnRetractR.addEventListener('click', () => openRetractModal(id, 'reimburse'));
+          actionsEl.appendChild(btnRetractR);
         }
 
         function appendOwnerCloseActions() {
@@ -1364,6 +1409,56 @@
       finally { btn.disabled = false; btn.textContent = 'Tolak Reimburse'; }
     });
 
+    // ─── Retract Vote Modal ────────────────────
+    let _retractCaId = null, _retractType = null;
+
+    function openRetractModal(caId, type) {
+      _retractCaId = caId;
+      _retractType = type;
+      document.getElementById('retractVoteTitle').textContent =
+        type === 'open' ? 'Batal Setujui CA' : 'Batal Setujui Reimburse';
+      document.getElementById('retractVoteReason').value = '';
+      document.getElementById('retractVoteAlert').classList.remove('show');
+      document.getElementById('retractVoteOverlay').classList.add('open');
+      document.getElementById('retractVoteReason').focus();
+    }
+
+    function closeRetractModal() {
+      document.getElementById('retractVoteOverlay').classList.remove('open');
+      _retractCaId = null; _retractType = null;
+    }
+
+    document.getElementById('retractVoteClose').addEventListener('click', closeRetractModal);
+    document.getElementById('retractVoteCancel').addEventListener('click', closeRetractModal);
+    document.getElementById('retractVoteOverlay').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('retractVoteOverlay')) closeRetractModal();
+    });
+
+    document.getElementById('retractVoteSubmit').addEventListener('click', async () => {
+      const reason = document.getElementById('retractVoteReason').value.trim();
+      const alertEl = document.getElementById('retractVoteAlert');
+      if (!reason) { alertEl.textContent = 'Alasan wajib diisi'; alertEl.classList.add('show'); return; }
+      const btn = document.getElementById('retractVoteSubmit');
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      try {
+        const res = await fetch(`/api/ca/${_retractCaId}/retract-vote`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: _retractType, reason })
+        });
+        const d = await res.json();
+        if (!res.ok) { alertEl.textContent = d.error; alertEl.classList.add('show'); return; }
+        const caId = _retractCaId;
+        const type = _retractType;
+        closeRetractModal();
+        const msg = type === 'open'
+          ? '↩️ Persetujuan berhasil dibatalkan'
+          : '↩️ Persetujuan reimburse berhasil dibatalkan';
+        showAlert('detailSuccess', msg);
+        await refreshDetail(caId); await loadCAs();
+      } catch { alertEl.textContent = 'Gagal membatalkan persetujuan'; alertEl.classList.add('show'); }
+      finally { btn.disabled = false; btn.textContent = '↩️ Batalkan Persetujuan'; }
+    });
+
     // ─── Request Refund Modal (employee) ──────
     let refundTargetId = null;
 
@@ -1465,7 +1560,7 @@
     function openAddCaTx(id, title, isFinance, projectName, poNumber) {
       addCaTxTargetId = id;
       let desc = `CA: ${title}`;
-      if (projectName) desc += `\nProyek: ${projectName}${poNumber ? ` · PO: ${poNumber}` : ''}`;
+      if (projectName) desc += `\nProyek: ${projectName}${poNumber ? ` · SO: ${poNumber}` : ''}`;
       document.getElementById('addCaTxDesc').style.whiteSpace = 'pre-line';
       document.getElementById('addCaTxDesc').textContent = desc;
       document.getElementById('caTxName').value = '';
