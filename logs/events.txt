@@ -281,3 +281,6 @@
 [2026-03-23T21:50:32.127Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Super Admin" ke proyek ID 2
 [2026-03-23T21:50:42.562Z] [SUPER_ADMIN:admin] (::1) | UPDATE_CA | Finance mengubah data CA (ID: 3) menjadi "CA Pasang Panel Meratus" sebesar 1600000
 [2026-03-23T21:54:10.029Z] [SUPER_ADMIN:admin] (::1) | APPROVE_CA | admin menyetujui CA "CA Pasang Panel Meratus"
+[2026-03-23T21:56:14.838Z] [SUPER_ADMIN:admin] (::1) | FINANCE_INPUT_TX | Finance input transaksi "Transport Ke Meratus" untuk karyawan ID 1 (keluar)
+[2026-03-23T22:07:08.200Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-23T22:07:12.372Z] [EMPLOYEE:gibran] (::1) | LOGIN | Pengguna employee berhasil login

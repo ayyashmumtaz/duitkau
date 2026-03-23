@@ -3,102 +3,181 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DuitKau - Input Reimburse</title>
+  <title>DuitKau - Input Reimburse Karyawan</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
   <script src="/js/layout.js"></script>
   <script src="/js/utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
+  <style>
+    /* ── Sticky save bar ── */
+    .save-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+      background: #fff; border-top: 1.5px solid var(--gray-200);
+      box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .75rem 1.25rem; gap: 1rem;
+      transform: translateY(100%); transition: transform .2s ease;
+    }
+    .save-bar.visible { transform: translateY(0); }
+    .save-bar-info { line-height: 1.35; }
+    .save-bar-count { font-size: .72rem; color: var(--gray-500); }
+    .save-bar-total { font-size: 1rem; font-weight: 700; color: var(--gray-800); }
+
+    /* ── Queued items ── */
+    .queue-item {
+      display: flex; align-items: flex-start; gap: .75rem;
+      padding: .75rem 0; border-bottom: 1px solid var(--gray-100);
+    }
+    .queue-item:last-child { border-bottom: none; }
+    .queue-item-body { flex: 1; min-width: 0; }
+    .queue-item-name { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-item-meta { font-size: .75rem; color: var(--gray-500); margin-top: .15rem; }
+    .queue-item-amount { font-weight: 700; font-size: .9rem; color: var(--red); white-space: nowrap; }
+    .queue-item-actions { display: flex; gap: .35rem; margin-top: .35rem; }
+
+    .queue-item-thumb {
+      width: 42px; height: 42px; border-radius: 7px; object-fit: cover;
+      border: 1.5px solid var(--gray-200); flex-shrink: 0; cursor: pointer;
+    }
+
+    /* ── Form ── */
+    .input-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .65rem;
+    }
+    .input-grid .full { grid-column: 1 / -1; }
+
+    .proof-preview-mini {
+      display: flex; align-items: center; gap: .65rem; margin-top: .4rem;
+    }
+    .proof-preview-mini img {
+      width: 48px; height: 48px; border-radius: 7px; object-fit: cover;
+      border: 1.5px solid var(--gray-200); cursor: pointer;
+    }
+    .proof-preview-mini-remove {
+      font-size: .75rem; color: var(--red); cursor: pointer;
+    }
+
+    /* bottom padding so save-bar doesn't overlap */
+    .main-content { padding-bottom: 80px; }
+
+    @media (max-width: 768px) {
+      .save-bar { bottom: 58px; }
+      .main-content { padding-bottom: 140px; }
+    }
+
+    @media (max-width: 500px) {
+      .input-grid { grid-template-columns: 1fr; }
+      .input-grid .full { grid-column: 1; }
+    }
+  </style>
 </head>
 <body data-page="input-employee">
   <div id="navbar-placeholder"></div>
-
   <div class="app-layout">
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
       <h1 class="page-title">Input Reimburse Karyawan</h1>
-      <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">Input pengeluaran atas nama karyawan lain. Transaksi langsung berstatus <strong>Disetujui</strong>.</p>
+      <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">
+        Input pengeluaran atas nama karyawan lain. Tambah satu per satu, lalu simpan sekaligus. Transaksi langsung berstatus <strong>Disetujui</strong>.
+      </p>
 
-      <div class="grid-2">
-        <!-- FORM -->
-        <div class="card no-print">
-          <div class="card-title">✏️ Form Input</div>
+      <div class="grid-2" style="align-items:start">
+
+        <!-- FORM TAMBAH -->
+        <div class="card no-print" style="overflow:visible">
+          <div class="card-title" id="formTitle">➕ Tambah Pengeluaran</div>
           <div id="formAlert" class="alert alert-error"></div>
-          <div id="formSuccess" class="alert alert-success"></div>
 
-          <form id="txForm">
-            <div class="form-group">
-              <label for="userId">Karyawan</label>
-              <select id="userId" required>
+          <div class="input-grid">
+            <div class="form-group full">
+              <label>Karyawan <span style="color:var(--red)">*</span></label>
+              <select id="inpUser">
                 <option value="">-- Pilih karyawan --</option>
               </select>
             </div>
-            <div class="form-group">
-              <label for="name">Nama Pengeluaran</label>
-              <input type="text" id="name" placeholder="Contoh: Gaji Maret, Reimburse BBM..." required />
+            <div class="form-group full">
+              <label>Nama Pengeluaran <span style="color:var(--red)">*</span></label>
+              <input type="text" id="inpName" placeholder="Contoh: Makan klien, Bensin..." autocomplete="off" />
             </div>
             <div class="form-group">
-              <label for="amount">Nominal (Rp)</label>
-              <input type="text" id="amount" inputmode="numeric" placeholder="Contoh: 5.000.000" autocomplete="off" required />
+              <label>Nominal (Rp) <span style="color:var(--red)">*</span></label>
+              <input type="text" id="inpAmount" inputmode="numeric" placeholder="0" autocomplete="off" />
             </div>
             <div class="form-group">
-              <label for="date">Tanggal Transaksi</label>
-              <input type="text" id="date" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" required />
+              <label>Tanggal <span style="color:var(--red)">*</span></label>
+              <input type="text" id="inpDate" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" />
             </div>
-            <div class="form-group">
-              <label for="note">Catatan (opsional)</label>
-              <textarea id="note" placeholder="Keterangan tambahan..."></textarea>
-            </div>
-            <div class="form-group">
-              <label for="categoryId">Kategori <span style="color:var(--red)">*</span></label>
-              <select id="categoryId" required>
+            <div class="form-group full">
+              <label>Kategori</label>
+              <select id="inpCategory">
                 <option value="">-- Pilih kategori --</option>
               </select>
             </div>
-            <!-- Bukti Foto -->
-            <div class="form-group">
-              <label>Bukti Transaksi (Foto)</label>
-              <div class="file-input-wrap">
-                <input type="file" id="proofImage" accept="image/*"  />
-              </div>
-              <div class="file-input-hint">📷 Bisa pilih dari galeri atau ambil foto langsung</div>
-              <div class="proof-preview-wrap" id="previewWrap">
-                <div class="proof-preview-label">Preview:</div>
-                <img id="previewImg" src="" alt="Preview" />
-                <div class="proof-remove" id="removePreview">✕ Hapus foto</div>
+            <div class="form-group full">
+              <label>Catatan <span style="color:var(--gray-400);font-weight:400;font-size:.8rem">(opsional)</span></label>
+              <input type="text" id="inpNote" placeholder="Keterangan tambahan..." autocomplete="off" />
+            </div>
+            <div class="form-group full">
+              <label>Bukti Foto <span style="color:var(--gray-400);font-weight:400;font-size:.8rem">(opsional)</span></label>
+              <input type="file" id="inpProof" accept="image/*" />
+              <div class="proof-preview-mini" id="proofPreview" style="display:none">
+                <img id="proofPreviewImg" src="" alt="preview" onclick="openLightbox(this.src)" />
+                <span class="proof-preview-mini-remove" onclick="clearProof()">✕ Hapus foto</span>
               </div>
             </div>
+          </div>
 
-            <button type="submit" class="btn btn-primary btn-full" id="submitBtn">
-              Simpan Transaksi
-            </button>
-          </form>
+          <input type="hidden" id="editIdx" value="" />
+          <div style="display:flex;gap:.5rem;margin-top:.25rem">
+            <button class="btn btn-ghost" id="btnCancelEdit" style="display:none">Batal Edit</button>
+            <button class="btn btn-primary btn-full" id="btnAddToQueue">+ Tambah ke Daftar</button>
+          </div>
         </div>
 
-        <!-- Riwayat input oleh finance hari ini -->
-        <div class="card">
-          <div class="card-title">📋 Input Hari Ini</div>
-          <div id="tableAlert" class="alert alert-error"></div>
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Karyawan</th>
-                  <th>Nama</th>
-                  <th class="text-right">Nominal</th>
-                  <th>Bukti</th>
-                </tr>
-              </thead>
-              <tbody id="todayBody">
-                <tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
-              </tbody>
-            </table>
+        <!-- DAFTAR ANTRIAN + HARI INI -->
+        <div style="display:flex;flex-direction:column;gap:1rem">
+
+          <!-- Antrian -->
+          <div class="card" id="queueCard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+              <div class="card-title" style="margin-bottom:0">🗂️ Antrian</div>
+              <span class="badge badge-keluar" id="queueCount" style="display:none">0</span>
+            </div>
+            <div id="queueEmpty" style="text-align:center;padding:1.25rem 0;color:var(--gray-400);font-size:.85rem">
+              Belum ada pengeluaran ditambahkan
+            </div>
+            <div id="queueList"></div>
           </div>
+
+          <!-- Hari ini -->
+          <div class="card">
+            <div class="card-title">📋 Input Hari Ini</div>
+            <div id="tableAlert" class="alert alert-error"></div>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Karyawan</th><th>Nama</th><th class="text-right">Nominal</th><th>Bukti</th></tr></thead>
+                <tbody id="todayBody">
+                  <tr><td colspan="4"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       </div>
     </main>
+  </div>
+
+  <!-- Sticky save bar -->
+  <div class="save-bar" id="saveBar">
+    <div class="save-bar-info">
+      <div class="save-bar-count" id="saveBarCount">0 pengeluaran</div>
+      <div class="save-bar-total" id="saveBarTotal">Rp 0</div>
+    </div>
+    <button class="btn btn-primary" id="btnSaveAll">Simpan Semua</button>
   </div>
 
   <div id="bottom-nav-placeholder"></div>
@@ -109,114 +188,104 @@
     <img id="lightboxImg" src="" alt="Bukti transaksi" />
   </div>
 
-  <!-- Confirm Modal -->
-  <div class="modal-overlay" id="confirmOverlay">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title" id="confirmTitle">Konfirmasi</span>
-      </div>
-      <div class="modal-body">
-        <div id="confirmDetails" style="font-size:.9rem; line-height:1.7; color:var(--gray-600)"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-ghost" id="confirmCancel">Batal</button>
-        <button class="btn btn-primary" id="confirmOk">Ya, Lanjutkan</button>
-      </div>
-    </div>
-  </div>
-
   <div id="modals-placeholder"></div>
 
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
-    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const todayISO = new Date().toISOString().slice(0, 10);
 
-    // ─── Date helpers ─────────────────────────
-    function parseDateDMY(val) {
-      const p = val.split('/');
-      if (p.length !== 3 || p[0].length !== 2 || p[1].length !== 2 || p[2].length !== 4) return null;
-      const iso = `${p[2]}-${p[1]}-${p[0]}`;
-      const d = new Date(iso + 'T00:00:00');
-      if (isNaN(d.getTime())) return null;
-      return iso;
-    }
-    const fpDate = flatpickr('#date', { dateFormat: 'd/m/Y', allowInput: true, locale: 'id' });
+    let _queue = []; // { id, userId, userLabel, name, amount, date, dateISO, note, categoryId, categoryName, file, previewUrl }
+    let _queueCounter = 0;
+    let _editIdx = null;
+    let _proofFile = null, _proofPreviewUrl = null;
 
-    // ─── Nominal auto-format ──────────────────
-    function formatThousands(raw) {
-      const digits = raw.replace(/\D/g, '');
-      if (!digits) return '';
-      return parseInt(digits, 10).toLocaleString('id-ID');
-    }
-    function parseAmount(formatted) {
-      return parseFloat(formatted.replace(/\./g, '').replace(',', '.')) || 0;
-    }
-    document.getElementById('amount').addEventListener('input', function () {
-      const pos = this.selectionStart;
-      const before = this.value.length;
-      this.value = formatThousands(this.value);
+    const fpDate = flatpickr('#inpDate', { dateFormat: 'd/m/Y', allowInput: true, locale: 'id', defaultDate: new Date() });
+
+    // ── Amount formatting ──
+    document.getElementById('inpAmount').addEventListener('input', function () {
+      const pos = this.selectionStart, before = this.value.length;
+      const digits = this.value.replace(/\D/g, '');
+      this.value = digits ? parseInt(digits, 10).toLocaleString('id-ID') : '';
       const diff = this.value.length - before;
-      this.setSelectionRange(pos + diff, pos + diff);
+      this.setSelectionRange(Math.max(0, pos + diff), Math.max(0, pos + diff));
     });
 
-    window.onLayoutReady = async function(user) {
-      fpDate.setDate(new Date(), true);
-      await Promise.all([loadEmployees(), loadCategories(), loadToday()]);
+    // ── Proof ──
+    document.getElementById('inpProof').addEventListener('change', function () {
+      const file = this.files[0];
+      if (!file) { clearProof(); return; }
+      _proofFile = file;
+      const reader = new FileReader();
+      reader.onload = e => {
+        _proofPreviewUrl = e.target.result;
+        document.getElementById('proofPreviewImg').src = e.target.result;
+        document.getElementById('proofPreview').style.display = 'flex';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function clearProof() {
+      _proofFile = null; _proofPreviewUrl = null;
+      document.getElementById('inpProof').value = '';
+      document.getElementById('proofPreview').style.display = 'none';
+    }
+
+    // ── Init ──
+    window.onLayoutReady = async function (user) {
+      await Promise.all([loadEmployees(user.userId), loadCategories(), loadToday()]);
     };
 
-    async function loadEmployees() {
-      const users = await fetch('/api/finance/employees').then(r => r.json());
-      const sel = document.getElementById('userId');
-      const myId = window.currentUser?.userId;
-      const employees   = users.filter(u => u.role === 'employee' && u.id !== myId);
-      const financeUsers = users.filter(u => u.role === 'finance' && u.id !== myId);
+    async function loadEmployees(myId) {
+      try {
+        const users = await fetch('/api/finance/employees').then(r => r.json());
+        const sel = document.getElementById('inpUser');
+        const employees   = users.filter(u => u.role === 'employee' && u.id !== myId);
+        const financeUsers = users.filter(u => u.role === 'finance' && u.id !== myId);
 
-      if (employees.length > 0) {
-        const grp = document.createElement('optgroup');
-        grp.label = 'Karyawan';
-        employees.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.full_name + ' (@' + u.username + ')';
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      }
-      if (financeUsers.length > 0) {
-        const grp = document.createElement('optgroup');
-        grp.label = 'Tim Finance';
-        financeUsers.forEach(u => {
-          const opt = document.createElement('option');
-          opt.value = u.id;
-          opt.textContent = u.full_name + ' (@' + u.username + ')';
-          grp.appendChild(opt);
-        });
-        sel.appendChild(grp);
-      }
+        if (employees.length > 0) {
+          const grp = document.createElement('optgroup');
+          grp.label = 'Karyawan';
+          employees.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.full_name + ' (@' + u.username + ')';
+            grp.appendChild(opt);
+          });
+          sel.appendChild(grp);
+        }
+        if (financeUsers.length > 0) {
+          const grp = document.createElement('optgroup');
+          grp.label = 'Tim Finance';
+          financeUsers.forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.full_name + ' (@' + u.username + ')';
+            grp.appendChild(opt);
+          });
+          sel.appendChild(grp);
+        }
+      } catch {}
     }
 
     async function loadCategories() {
       try {
-        const res = await fetch('/api/categories').then(r => r.json());
-        const sel = document.getElementById('categoryId');
-        res.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = c.name;
-          sel.appendChild(opt);
+        const cats = await fetch('/api/categories').then(r => r.json());
+        const sel = document.getElementById('inpCategory');
+        cats.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.id; o.textContent = c.name;
+          sel.appendChild(o);
         });
       } catch {}
     }
 
     async function loadToday() {
-      const today = new Date().toISOString().slice(0, 10);
       try {
-        // Ambil laporan hari ini dari semua karyawan
-        const data = await fetch(`/api/finance/report?userId=all&periodType=date&periodValue=${today}`).then(r => r.json());
-        const allTx = data.flatMap(emp => emp.transactions.map(tx => ({ ...tx, fullName: emp.fullName, username: emp.username })));
+        const data = await fetch(`/api/finance/report?userId=all&periodType=date&periodValue=${todayISO}`).then(r => r.json());
+        const allTx = data.flatMap(emp => emp.transactions.map(tx => ({ ...tx, fullName: emp.fullName })));
         const tbody = document.getElementById('todayBody');
-        if (allTx.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
+        if (!allTx.length) {
+          tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
           return;
         }
         tbody.innerHTML = allTx.map(tx => `
@@ -225,86 +294,211 @@
             <td>${tx.name}</td>
             <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
             <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
-          </tr>
-        `).join('');
+          </tr>`).join('');
       } catch { showAlert('tableAlert', 'Gagal memuat riwayat'); }
     }
 
-    // ─── Preview foto ─────────────────────────
-    document.getElementById('proofImage').addEventListener('change', function () {
-      const file = this.files[0];
-      const wrap = document.getElementById('previewWrap');
-      if (!file) { wrap.classList.remove('show'); return; }
-      const reader = new FileReader();
-      reader.onload = (e) => { document.getElementById('previewImg').src = e.target.result; wrap.classList.add('show'); };
-      reader.readAsDataURL(file);
+    // ── Queue ──
+    function parseDateDMY(val) {
+      const p = val.split('/');
+      if (p.length !== 3) return null;
+      const iso = `${p[2]}-${p[1]}-${p[0]}`;
+      return isNaN(new Date(iso + 'T00:00:00').getTime()) ? null : iso;
+    }
+    function parseAmount(str) {
+      return parseFloat((str || '').replace(/\./g, '').replace(',', '.')) || 0;
+    }
+
+    document.getElementById('btnAddToQueue').addEventListener('click', () => {
+      hideAlert('formAlert');
+      const userSel  = document.getElementById('inpUser');
+      const userId   = userSel.value;
+      const userLabel = userId ? userSel.options[userSel.selectedIndex].text.split(' (@')[0] : '';
+      const name   = document.getElementById('inpName').value.trim();
+      const amount = parseAmount(document.getElementById('inpAmount').value);
+      const dateRaw = document.getElementById('inpDate').value;
+      const dateISO = parseDateDMY(dateRaw);
+      const catSel  = document.getElementById('inpCategory');
+      const note    = document.getElementById('inpNote').value.trim();
+
+      if (!userId)   return showAlert('formAlert', 'Karyawan wajib dipilih');
+      if (!name)     return showAlert('formAlert', 'Nama pengeluaran wajib diisi');
+      if (amount <= 0) return showAlert('formAlert', 'Nominal tidak valid');
+      if (!dateISO)  return showAlert('formAlert', 'Tanggal tidak valid (DD/MM/YYYY)');
+
+      if (_editIdx !== null) {
+        const item = _queue[_editIdx];
+        item.userId = userId; item.userLabel = userLabel;
+        item.name = name; item.amount = amount;
+        item.date = dateRaw; item.dateISO = dateISO;
+        item.note = note;
+        item.categoryId = catSel.value;
+        item.categoryName = catSel.value ? catSel.options[catSel.selectedIndex].text : '';
+        if (_proofFile) { item.file = _proofFile; item.previewUrl = _proofPreviewUrl; }
+        _editIdx = null;
+      } else {
+        _queue.push({
+          id: ++_queueCounter,
+          userId, userLabel,
+          name, amount, date: dateRaw, dateISO, note,
+          categoryId: catSel.value,
+          categoryName: catSel.value ? catSel.options[catSel.selectedIndex].text : '',
+          file: _proofFile, previewUrl: _proofPreviewUrl,
+        });
+      }
+
+      resetForm();
+      renderQueue();
     });
-    document.getElementById('removePreview').addEventListener('click', () => {
-      document.getElementById('proofImage').value = '';
-      document.getElementById('previewWrap').classList.remove('show');
+
+    function editItem(idx) {
+      const item = _queue[idx];
+      _editIdx = idx;
+      document.getElementById('inpUser').value = item.userId;
+      document.getElementById('inpName').value = item.name;
+      document.getElementById('inpAmount').value = item.amount.toLocaleString('id-ID');
+      fpDate.setDate(item.date, true);
+      document.getElementById('inpCategory').value = item.categoryId || '';
+      document.getElementById('inpNote').value = item.note || '';
+      if (item.previewUrl) {
+        _proofFile = item.file; _proofPreviewUrl = item.previewUrl;
+        document.getElementById('proofPreviewImg').src = item.previewUrl;
+        document.getElementById('proofPreview').style.display = 'flex';
+      } else { clearProof(); }
+      document.getElementById('formTitle').textContent = '✏️ Edit Pengeluaran';
+      document.getElementById('btnAddToQueue').textContent = 'Update';
+      document.getElementById('btnCancelEdit').style.display = '';
+      document.getElementById('inpName').focus();
+      document.querySelector('.card.no-print').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function removeItem(idx) {
+      _queue.splice(idx, 1);
+      if (_editIdx === idx) { _editIdx = null; resetForm(); }
+      renderQueue();
+    }
+
+    document.getElementById('btnCancelEdit').addEventListener('click', () => {
+      _editIdx = null; resetForm();
     });
 
-    // ─── Submit ───────────────────────────────
-    document.getElementById('txForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!window.getDbOk()) return showAlert('formAlert', 'Database tidak terhubung');
-      hideAlert('formAlert'); hideAlert('formSuccess');
+    function resetForm() {
+      document.getElementById('inpUser').value = '';
+      document.getElementById('inpName').value = '';
+      document.getElementById('inpAmount').value = '';
+      fpDate.setDate(new Date(), true);
+      document.getElementById('inpCategory').value = '';
+      document.getElementById('inpNote').value = '';
+      clearProof();
+      document.getElementById('formTitle').textContent = '➕ Tambah Pengeluaran';
+      document.getElementById('btnAddToQueue').textContent = '+ Tambah ke Daftar';
+      document.getElementById('btnCancelEdit').style.display = 'none';
+      hideAlert('formAlert');
+    }
 
-      // Confirm before submit
-      const empName = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text.split(' (')[0];
-      const amtTxt = fmt.format(parseAmount(document.getElementById('amount').value));
-      const catSel = document.getElementById('categoryId');
-      const catTxt = catSel.value ? catSel.options[catSel.selectedIndex].text : '–';
-      const details = `Karyawan: <strong>${empName}</strong><br>Nama: <strong>${document.getElementById('name').value}</strong><br>Nominal: <strong>${amtTxt}</strong><br>Kategori: <strong>${catTxt}</strong>`;
+    function renderQueue() {
+      const list = document.getElementById('queueList');
+      const empty = document.getElementById('queueEmpty');
+      const countBadge = document.getElementById('queueCount');
+      const saveBar = document.getElementById('saveBar');
+      const total = _queue.reduce((s, i) => s + i.amount, 0);
 
-      const ok = await showConfirm('Simpan Transaksi?', details);
+      if (_queue.length === 0) {
+        list.innerHTML = ''; empty.style.display = ''; countBadge.style.display = 'none';
+        saveBar.classList.remove('visible');
+        return;
+      }
+
+      empty.style.display = 'none';
+      countBadge.textContent = _queue.length; countBadge.style.display = '';
+      saveBar.classList.add('visible');
+      document.getElementById('saveBarCount').textContent = `${_queue.length} pengeluaran`;
+      document.getElementById('saveBarTotal').textContent = fmt.format(total);
+
+      list.innerHTML = _queue.map((item, idx) => `
+        <div class="queue-item">
+          ${item.previewUrl ? `<img class="queue-item-thumb" src="${item.previewUrl}" onclick="openLightbox('${item.previewUrl}')" />` : ''}
+          <div class="queue-item-body">
+            <div class="queue-item-name">${item.name}</div>
+            <div class="queue-item-meta">
+              <span>👤 ${item.userLabel}</span>${item.categoryName ? ` · <span>${item.categoryName}</span>` : ''} · <span>${item.date}</span>${item.note ? ` · <span>${item.note}</span>` : ''}
+            </div>
+            <div class="queue-item-actions">
+              <button class="btn btn-ghost btn-sm" onclick="editItem(${idx})">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="removeItem(${idx})">✕ Hapus</button>
+            </div>
+          </div>
+          <div class="queue-item-amount">${fmt.format(item.amount)}</div>
+        </div>`).join('');
+    }
+
+    // ── Save all ──
+    document.getElementById('btnSaveAll').addEventListener('click', async () => {
+      if (!_queue.length) return;
+      if (!window.getDbOk()) return modalAlert('Database tidak terhubung');
+
+      const n = _queue.length;
+      const total = fmt.format(_queue.reduce((s, i) => s + i.amount, 0));
+      const ok = await modalConfirm(
+        'Simpan Semua?',
+        `<strong>${n} pengeluaran</strong> senilai total <strong>${total}</strong> akan disimpan.`,
+        { okText: `Simpan ${n} Item` }
+      );
       if (!ok) return;
 
-      const btn = document.getElementById('submitBtn');
+      const btn = document.getElementById('btnSaveAll');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-      const parsedDate = parseDateDMY(document.getElementById('date').value);
-      if (!parsedDate) { showAlert('formAlert', 'Format tanggal tidak valid (DD/MM/YYYY)'); btn.disabled = false; btn.textContent = 'Simpan Transaksi'; return; }
+      let success = 0, failed = [];
+      for (const item of [..._queue]) {
+        const fd = new FormData();
+        fd.append('userId', item.userId);
+        fd.append('type', 'keluar');
+        fd.append('name', item.name);
+        fd.append('amount', item.amount);
+        fd.append('date', item.dateISO);
+        fd.append('note', item.note || '');
+        fd.append('category_id', item.categoryId || '');
+        if (item.file) fd.append('proof_image', item.file);
 
-      const fd = new FormData();
-      fd.append('userId', document.getElementById('userId').value);
-      fd.append('type', 'keluar');
-      fd.append('name', document.getElementById('name').value);
-      fd.append('amount', parseAmount(document.getElementById('amount').value));
-      fd.append('date', parsedDate);
-      fd.append('note', document.getElementById('note').value);
-      fd.append('category_id', document.getElementById('categoryId').value || '');
-      const file = document.getElementById('proofImage').files[0];
-      if (file) fd.append('proof_image', file);
+        try {
+          const res = await fetch('/api/finance/input-employee', { method: 'POST', body: fd });
+          if (res.ok) {
+            success++;
+            _queue = _queue.filter(q => q.id !== item.id);
+          } else {
+            const d = await res.json();
+            failed.push(`"${item.name}" (${item.userLabel}): ${d.error || 'gagal'}`);
+          }
+        } catch {
+          failed.push(`"${item.name}" (${item.userLabel}): gagal menghubungi server`);
+        }
+      }
 
-      try {
-        const res = await fetch('/api/finance/input-employee', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) { showAlert('formAlert', data.error); return; }
+      await loadToday();
+      renderQueue();
+      btn.disabled = false;
+      btn.textContent = 'Simpan Semua';
 
-        const empNameFull = document.getElementById('userId').options[document.getElementById('userId').selectedIndex].text;
-        showAlert('formSuccess', `✅ Transaksi untuk ${empNameFull.split(' (')[0]} berhasil disimpan!`);
-        document.getElementById('txForm').reset();
-        fpDate.setDate(new Date(), true);
-        document.getElementById('previewWrap').classList.remove('show');
-        await loadToday();
-        setTimeout(() => hideAlert('formSuccess'), 4000);
-      } catch { showAlert('formAlert', 'Gagal menyimpan transaksi'); }
-      finally { btn.disabled = false; btn.textContent = 'Simpan Transaksi'; }
+      if (failed.length === 0) {
+        await modalAlert(`✅ ${success} pengeluaran berhasil disimpan!`);
+      } else {
+        await modalAlert(`${success} berhasil disimpan.\n\nGagal:\n${failed.join('\n')}`);
+      }
     });
 
-    // ─── Lightbox ─────────────────────────────
+    // ── Lightbox ──
     function openLightbox(src) {
       document.getElementById('lightboxImg').src = src;
       document.getElementById('lightbox').classList.add('open');
     }
     document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
-    document.getElementById('lightbox').addEventListener('click', (e) => {
+    document.getElementById('lightbox').addEventListener('click', e => {
       if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
     });
 
     function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
-    function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+    function hideAlert(id) { document.getElementById(id)?.classList.remove('show'); }
   </script>
 </body>
 </html>
