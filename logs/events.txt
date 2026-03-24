@@ -370,3 +370,35 @@
 [2026-03-24T09:18:06.488Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
 [2026-03-24T09:18:08.641Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
 [2026-03-24T09:18:11.554Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T10:05:22.378Z] [EMPLOYEE:ayas] (::ffff:192.168.18.108) | LOGIN | Pengguna employee berhasil login
+[2026-03-24T10:09:17.748Z] [SUPER_ADMIN:admin] (::1) | INV_BORROW | Super Admin meminjam 1x item ID 2
+[2026-03-24T10:43:13.886Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 6)
+[2026-03-24T10:46:29.033Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T10:47:35.415Z] [SYSTEM:System] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T10:47:39.815Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-24T10:47:57.347Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T10:49:33.493Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T10:49:46.044Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T10:50:07.807Z] [SUPER_ADMIN:admin] (::1) | CREATE_PROJECT | Membuat proyek "Meratus Kapal Satu" (SO: SO.2026.01.009)
+[2026-03-24T10:50:11.247Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Tim Finance" ke proyek ID 3
+[2026-03-24T10:50:13.635Z] [SUPER_ADMIN:admin] (::1) | ADD_PROJECT_APPROVER | Menambah approver "Super Admin" ke proyek ID 3
+[2026-03-24T10:50:41.998Z] [SUPER_ADMIN:admin] (::1) | CREATE_CA | Finance mengajukan CA "Pasang Panel Meratus" sebesar 1800000 (2 approver)
+[2026-03-24T10:51:03.793Z] [SUPER_ADMIN:admin] (::1) | APPROVE_CA | admin menyetujui CA "Pasang Panel Meratus"
+[2026-03-24T10:51:18.329Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T10:51:23.177Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T10:51:31.934Z] [FINANCE:finance] (::1) | APPROVE_CA | finance menyetujui CA "Pasang Panel Meratus"
+[2026-03-24T10:51:44.264Z] [FINANCE:finance] (::1) | MARK_PAID_CA | Finance menandai pembayaran CA "Pasang Panel Meratus"
+[2026-03-24T10:53:02.176Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T10:53:14.866Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "Pasang Panel Meratus" (id=4)
+[2026-03-24T10:53:34.020Z] [SUPER_ADMIN:admin] (::1) | CREATE_CA | Finance mengajukan CA "CA Beli Panel Meratus" sebesar 1900000 (2 approver)
+[2026-03-24T10:53:40.510Z] [SUPER_ADMIN:admin] (::1) | APPROVE_CA | admin menyetujui CA "CA Beli Panel Meratus"
+[2026-03-24T10:53:44.799Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T10:53:49.807Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T10:53:56.486Z] [FINANCE:finance] (::1) | APPROVE_CA | finance menyetujui CA "CA Beli Panel Meratus"
+[2026-03-24T10:53:58.968Z] [FINANCE:finance] (::1) | MARK_PAID_CA | Finance menandai pembayaran CA "CA Beli Panel Meratus" sebesar 1900000
+[2026-03-24T11:34:10.630Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T11:38:05.371Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T11:48:26.551Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T11:54:14.573Z] [SUPER_ADMIN:admin] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Beli Panel Meratus": "Bensin" sebesar 100000
+[2026-03-24T11:54:14.590Z] [SUPER_ADMIN:admin] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Beli Panel Meratus": "Tol" sebesar 50000
+[2026-03-24T11:54:14.608Z] [SUPER_ADMIN:admin] (::1) | ADD_CA_TX | Input transaksi keluar CA "CA Beli Panel Meratus": "Allowance" sebesar 1000000

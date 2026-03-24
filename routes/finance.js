@@ -13,24 +13,25 @@ router.get('/summary', async (req, res) => {
   const { month } = req.query;
   try {
     let rows;
+    const baseSelect = `
+      SELECT t.*, u.username, u.full_name,
+        pr.name as project_name, pr.po_number as project_po_number,
+        c.name as category_name,
+        ca.title as ca_title, ca.id as ca_id_ref
+      FROM transactions t
+      JOIN users u ON t.user_id = u.id
+      LEFT JOIN projects pr ON t.project_id = pr.id
+      LEFT JOIN categories c ON t.category_id = c.id
+      LEFT JOIN cash_advances ca ON t.ca_id = ca.id`;
+
     if (month && /^\d{4}-\d{2}$/.test(month)) {
       rows = await db.allAsync(
-        `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name FROM transactions t
-         JOIN users u ON t.user_id = u.id
-         LEFT JOIN projects pr ON t.project_id = pr.id
-         LEFT JOIN categories c ON t.category_id = c.id
-         WHERE t.status = 'approved' AND DATE_FORMAT(t.date, '%Y-%m') = ?
-         ORDER BY u.full_name, t.date DESC`,
-        [month]
+        `${baseSelect} WHERE t.status = 'approved' AND t.ca_id IS NULL AND DATE_FORMAT(t.date, '%Y-%m') = ?
+         ORDER BY u.full_name, t.date DESC`, [month]
       );
     } else {
       rows = await db.allAsync(
-        `SELECT t.*, u.username, u.full_name, pr.name as project_name, c.name as category_name FROM transactions t
-         JOIN users u ON t.user_id = u.id
-         LEFT JOIN projects pr ON t.project_id = pr.id
-         LEFT JOIN categories c ON t.category_id = c.id
-         WHERE t.status = 'approved'
-         ORDER BY u.full_name, t.date DESC`
+        `${baseSelect} WHERE t.status = 'approved' AND t.ca_id IS NULL ORDER BY u.full_name, t.date DESC`
       );
     }
     res.json(groupByEmployee(rows));
@@ -299,8 +300,9 @@ function groupByEmployee(rows) {
     grouped[row.user_id].transactions.push({
       id: row.id, type: row.type, name: row.name, amount: row.amount,
       date: row.date, note: row.note, proof_image: row.proof_image, created_at: row.created_at,
-      project_name: row.project_name, category_name: row.category_name, ca_title: row.ca_title,
-      ca_id: row.ca_id,
+      project_name: row.project_name, project_po_number: row.project_po_number,
+      category_name: row.category_name,
+      ca_title: row.ca_title, ca_id: row.ca_id,
     });
     if (row.type === 'masuk') grouped[row.user_id].totalMasuk += row.amount;
     else grouped[row.user_id].totalKeluar += row.amount;

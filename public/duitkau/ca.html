@@ -48,6 +48,12 @@
             <div class="empty"><div class="empty-icon">✅</div>Tidak ada pengembalian dana</div>
           </div>
         </div>
+        <div class="card" style="border-left:4px solid #f59e0b; margin-top:1rem">
+          <div class="card-title" style="color:#b45309">💰 Dana CA Belum Dibayar</div>
+          <div id="pendingPaymentList">
+            <div class="empty"><div class="empty-icon">✅</div>Semua CA sudah dibayar</div>
+          </div>
+        </div>
       </div>
 
       <!-- All CA list -->
@@ -336,41 +342,16 @@
   </div>
 
   <div class="modal-overlay" id="addCaTxOverlay" style="z-index: 210;">
-    <div class="modal" style="max-width:480px">
+    <div class="modal" style="max-width:540px">
       <div class="modal-header">
         <span class="modal-title">Tambah Realisasi CA</span>
         <button class="modal-close" id="addCaTxClose">✕</button>
       </div>
       <div class="modal-body">
         <div id="addCaTxAlert" class="alert alert-error"></div>
-        <p style="margin-bottom:.75rem; font-size:.875rem; color:var(--gray-600)" id="addCaTxDesc"></p>
-        <div class="form-group" id="addCaTxTypeGroup">
-          <label for="caTxType">Jenis Transaksi <span style="color:var(--red)">*</span></label>
-          <select id="caTxType">
-            <option value="keluar">Pengeluaran (Keluar)</option>
-            <option value="masuk">Dana Diterima (Masuk)</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="caTxName">Nama Transaksi <span style="color:var(--red)">*</span></label>
-          <input type="text" id="caTxName" placeholder="Contoh: Beli material, Dana CA..." />
-        </div>
-        <div class="form-group">
-          <label for="caTxAmount">Nominal (Rp) <span style="color:var(--red)">*</span></label>
-          <input type="text" id="caTxAmount" inputmode="numeric" placeholder="Contoh: 150.000" autocomplete="off" />
-        </div>
-        <div class="form-group">
-          <label for="caTxDate">Tanggal <span style="color:var(--red)">*</span></label>
-          <input type="date" id="caTxDate" />
-        </div>
-        <div class="form-group">
-          <label for="caTxNote">Catatan (opsional)</label>
-          <textarea id="caTxNote" placeholder="Keterangan tambahan..."></textarea>
-        </div>
-        <div class="form-group">
-          <label for="caTxProof">Bukti (Foto/Struk)</label>
-          <input type="file" id="caTxProof" accept="image/*" />
-        </div>
+        <p style="margin-bottom:1rem; font-size:.875rem; color:var(--gray-600)" id="addCaTxDesc"></p>
+        <div id="caTxItems"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="caTxAddItem" style="width:100%;margin-top:.25rem;border:1px dashed var(--gray-300)">+ Tambah Item</button>
       </div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="addCaTxCancel">Batal</button>
@@ -466,6 +447,14 @@
       return new Date(d.replace(' ', 'T')).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     };
 
+    function renderProofThumbs(proof) {
+      if (!proof) return '–';
+      let paths;
+      try { paths = proof.startsWith('[') ? JSON.parse(proof) : [proof]; }
+      catch { paths = [proof]; }
+      return paths.map(p => `<img class="proof-thumb" src="${p}" onclick="openLightbox('${p}')" style="margin-right:.2rem" />`).join('');
+    }
+
     let openDetailId = null;
 
     const STATUS_LABEL = {
@@ -543,9 +532,11 @@
               <td style="font-weight:600">${ca.title}</td>
               ${window.currentUser.role === 'finance' ? `<td class="text-muted">${ca.request_by_name || '–'}</td>` : ''}
               <td>${fmt.format(ca.initial_amount)}</td>
-              <td class="text-muted">${ca.project_name || '–'}</td>
+              <td class="text-muted">${ca.project_name || '–'}${ca.project_po_number ? `<span style="display:block;font-size:.75rem;color:var(--gray-400)">${ca.project_po_number}</span>` : ''}</td>
               <td style="cursor:pointer" onclick="openApprovalPopover(${ca.id})" title="Lihat detail approval">
                 ${STATUS_LABEL[ca.status] || ca.status}
+                ${ca.status === 'open' && ca.payment_status === 'unpaid' ? '<span class="badge" style="background:#fef3c7;color:#92400e;display:block;margin-top:.2rem;font-size:.7rem">💰 Belum Dibayar</span>' : ''}
+                ${ca.status === 'open' && ca.payment_status === 'paid' ? '<span class="badge badge-masuk" style="display:block;margin-top:.2rem;font-size:.7rem">✅ Sudah Dibayar</span>' : ''}
                 ${ca.total_open_approvals > 0 ? `<span style="font-size:.7rem;color:var(--gray-400);display:block;margin-top:.15rem">${ca.total_open_approvals - ca.pending_open_approvals}/${ca.total_open_approvals} setuju</span>` : ''}
                 ${ca.close_reject_reason && ca.status === 'open' ? '<span style="color:var(--red,#ef4444);font-size:.72rem;display:block">⚠️ Close ditolak</span>' : ''}
               </td>
@@ -587,6 +578,7 @@
       const pendClose = cas.filter(ca => ca.status === 'pending_close');
       const pendReimburse = cas.filter(ca => ca.reimbursement_status === 'pending');
       const pendRefund = cas.filter(ca => ca.refund_status === 'pending');
+      const pendPayment = cas.filter(ca => ca.status === 'open' && ca.payment_status === 'unpaid');
 
       const pendEl = document.getElementById('pendingList');
       if (pending.length === 0) {
@@ -650,6 +642,18 @@
           return renderPendingRow(ca, actions, sub);
         }).join('');
       }
+
+      const paymentEl = document.getElementById('pendingPaymentList');
+      if (pendPayment.length === 0) {
+        paymentEl.innerHTML = `<div class="empty"><div class="empty-icon">✅</div>Semua CA sudah dibayar</div>`;
+      } else {
+        paymentEl.innerHTML = pendPayment.map(ca => {
+          const sub = `Total: ${fmt.format(ca.initial_amount)}${ca.project_name ? ' · ' + ca.project_name : ''}`;
+          const actions = `<button class="btn btn-primary btn-sm" onclick="markCaPaid(${ca.id})">💰 Tandai Sudah Dibayar</button>
+               <button class="btn btn-ghost btn-sm" onclick="openDetail(${ca.id})">Detail</button>`;
+          return renderPendingRow(ca, actions, sub);
+        }).join('');
+      }
     }
 
     // ─── CA Actions (finance) ─────────────────
@@ -669,6 +673,16 @@
         if (!res.ok) { const d = await res.json(); modalAlert(d.error); return; }
         await loadCAs();
       } catch { modalAlert('Gagal menolak CA'); }
+    }
+
+    async function markCaPaid(id) {
+      if (!await modalConfirm('Tandai Sudah Dibayar', 'Konfirmasi bahwa dana CA ini sudah dicairkan ke karyawan. Lanjutkan?', { okText: 'Sudah Dibayar' })) return;
+      try {
+        const res = await fetch(`/api/ca/${id}/mark-paid`, { method: 'PATCH' });
+        if (!res.ok) { const d = await res.json(); modalAlert(d.error); return; }
+        await loadCAs();
+        if (openDetailId === id) await refreshDetail(id);
+      } catch { modalAlert('Gagal menandai pembayaran CA'); }
     }
 
     async function approveClose(id) {
@@ -769,6 +783,14 @@
         }
         infoRows += row('Diajukan oleh', `${ca.request_by_name || '–'} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.request_at)}</span>`);
         if (ca.open_by_name) infoRows += row('Disetujui oleh', `${ca.open_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.open_at)}</span>`);
+        if (ca.status === 'open' || ca.payment_status) {
+          if (ca.payment_status === 'unpaid') {
+            infoRows += row('Pembayaran Dana', `<span class="badge" style="background:#fef3c7;color:#92400e">💰 Belum Dibayar</span>`);
+          } else if (ca.payment_status === 'paid') {
+            infoRows += row('Pembayaran Dana', `<span class="badge badge-masuk">✅ Sudah Dibayar</span>`);
+            if (ca.paid_by_name) infoRows += row('Dibayar oleh', `${ca.paid_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.paid_at)}</span>`);
+          }
+        }
         if (ca.close_requested_by_name) infoRows += row('Request close oleh', `${ca.close_requested_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.close_requested_at)}</span>${ca.close_request_note ? `<div style="font-size:.8rem;color:var(--gray-500);margin-top:.15rem">"${ca.close_request_note}"</div>` : ''}`);
         if (ca.close_reject_reason && ca.status === 'open') infoRows += row('Tolak penutupan', `<span style="color:var(--red,#ef4444)">${ca.close_reject_reason}</span>`);
         if (ca.closed_by_name) infoRows += row('Ditutup oleh', `${ca.closed_by_name} <span style="color:var(--gray-400);font-size:.8rem">· ${fmtDateTime(ca.closed_at)}</span>`);
@@ -868,6 +890,9 @@
                   <button class="btn btn-ghost btn-sm" onclick="openRejectReimburse(${id})">Tolak Reimburse</button>`;
               }
             }
+          }
+          if (ca.status === 'open' && ca.payment_status === 'unpaid') {
+            html += `<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="markCaPaid(${id})">💰 Tandai Sudah Dibayar</button>`;
           }
           actionsEl.innerHTML = html;
           if (isOwner && ca.status === 'open') appendOwnerCloseActions();
@@ -1067,7 +1092,7 @@
           const btnTx = document.createElement('button');
           btnTx.className = 'btn btn-primary btn-sm';
           btnTx.textContent = '➕ Tambah Realisasi';
-          btnTx.addEventListener('click', () => openAddCaTx(id, ca.title, isFinance, ca.project_name, ca.project_po_number));
+          btnTx.addEventListener('click', () => openAddCaTx(id, ca.title, isFinance, ca.project_name, ca.project_po_number, ca));
           actionsEl.appendChild(btnTx);
         }
 
@@ -1081,7 +1106,7 @@
               <td>${tx.name}${tx.note ? `<div class="text-muted" style="font-size:.75rem">${tx.note}</div>` : ''}</td>
               <td class="text-muted">${tx.category_name || '–'}</td>
               <td class="text-right amount-${tx.type}">${fmt.format(tx.amount)}</td>
-              <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
+              <td>${renderProofThumbs(tx.proof_image)}</td>
             </tr>
           `).join('');
         }
@@ -1555,70 +1580,295 @@
 
     // ─── Add CA Transaction Modal ─────────────
     let addCaTxTargetId = null;
+    let addCaTxCaData   = null;
+    let caTxItemCount   = 0;
 
+    const CA_TX_TYPES = [
+      { value: 'Allowance',     label: '💵 Allowance / Uang Saku' },
+      { value: 'Transport',     label: '🚗 Transport' },
+      { value: 'Akomodasi',     label: '🏨 Akomodasi' },
+      { value: 'Biaya Lainnya', label: '📋 Biaya Lainnya' },
+    ];
 
-    function openAddCaTx(id, title, isFinance, projectName, poNumber) {
+    function bindTxAmtInput(input) {
+      input.addEventListener('input', function () {
+        const pos = this.selectionStart, before = this.value.length;
+        this.value = formatThousands(this.value);
+        const diff = this.value.length - before;
+        this.setSelectionRange(pos + diff, pos + diff);
+      });
+    }
+
+    function onCaTxTypeChange(sel, idx) {
+      const type = sel.value;
+      const row = document.querySelector(`#caTxItems [data-idx="${idx}"]`);
+      row.querySelector('[data-section="normal-amount"]').style.display  = type === 'Transport' ? 'none' : '';
+      row.querySelector('[data-section="transport"]').style.display      = type === 'Transport' ? '' : 'none';
+      const proofZone = row.querySelector('[data-section="proof-zone"]');
+      const reqSpan   = row.querySelector('[data-proof-required]');
+      if (type === 'Allowance') {
+        proofZone.style.display = 'none';
+        reqSpan.textContent = '';
+      } else {
+        proofZone.style.display = '';
+        reqSpan.textContent = ' *';
+      }
+    }
+
+    function addCaTxItem(defaultType = '') {
+      const idx = ++caTxItemCount;
+      const today = new Date().toISOString().slice(0, 10);
+      const typeOptions = CA_TX_TYPES.map(t =>
+        `<option value="${t.value}"${t.value === defaultType ? ' selected' : ''}>${t.label}</option>`
+      ).join('');
+      const isTransport = defaultType === 'Transport';
+
+      const el = document.createElement('div');
+      el.dataset.idx = idx;
+      el.style.cssText = 'border:1px solid var(--gray-200);border-radius:8px;padding:.875rem;margin-bottom:.6rem;position:relative';
+      el.innerHTML = `
+        <button type="button" onclick="removeCaTxItem(${idx})" title="Hapus"
+          style="position:absolute;top:.5rem;right:.5rem;background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:1rem;line-height:1;padding:.2rem">✕</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem;margin-bottom:.5rem">
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.8rem">Tipe <span style="color:var(--red)">*</span></label>
+            <select data-field="type" onchange="onCaTxTypeChange(this, ${idx})">${typeOptions}</select>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label style="font-size:.8rem">Tanggal <span style="color:var(--red)">*</span></label>
+            <input type="date" data-field="date" value="${today}" />
+          </div>
+        </div>
+
+        <!-- Normal amount (non-transport) -->
+        <div data-section="normal-amount" style="${isTransport ? 'display:none' : ''}">
+          <div class="form-group" style="margin-bottom:.5rem">
+            <label style="font-size:.8rem">Nominal (Rp) <span style="color:var(--red)">*</span></label>
+            <input type="text" data-field="amount" inputmode="numeric" placeholder="0" autocomplete="off" />
+          </div>
+        </div>
+
+        <!-- Transport sub-fields -->
+        <div data-section="transport" style="${isTransport ? '' : 'display:none'}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem;margin-bottom:.5rem">
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.8rem">Bensin (Rp)</label>
+              <input type="text" data-field="bensin" inputmode="numeric" placeholder="0" autocomplete="off" />
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label style="font-size:.8rem">Tol (Rp)</label>
+              <input type="text" data-field="tol" inputmode="numeric" placeholder="0" autocomplete="off" />
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:.5rem">
+            <label style="font-size:.8rem">Lainnya (Rp) — taksi, ojek, dll</label>
+            <input type="text" data-field="transport-other" inputmode="numeric" placeholder="0" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:.5rem">
+          <label style="font-size:.8rem">Keterangan</label>
+          <input type="text" data-field="note" placeholder="Contoh: Hotel Santika 2 malam, PP Jakarta–Bandung..." />
+        </div>
+        <div data-section="proof-zone" style="${isTransport || defaultType !== 'Allowance' ? '' : 'display:none'}">
+          <label style="font-size:.8rem;display:block;margin-bottom:.3rem">
+            Bukti (foto/struk)
+            <span data-proof-required style="color:var(--red,#ef4444)">${defaultType !== 'Allowance' ? ' *' : ''}</span>
+          </label>
+          <div data-field="dropzone"
+            style="border:2px dashed var(--gray-300,#d1d5db);border-radius:8px;padding:.65rem .75rem;cursor:pointer;transition:border-color .15s,background .15s;min-height:56px">
+            <input type="file" data-field="proof" accept="image/*,application/pdf" multiple style="display:none" />
+            <div data-field="dz-label" style="font-size:.8rem;color:var(--gray-400);text-align:center;pointer-events:none">
+              📎 Drag file ke sini atau <span style="color:var(--primary,#6366f1)">klik untuk pilih</span>
+            </div>
+            <div data-field="file-list" style="margin-top:.35rem"></div>
+          </div>
+        </div>`;
+
+      el.querySelectorAll('[data-field="amount"],[data-field="bensin"],[data-field="tol"],[data-field="transport-other"]')
+        .forEach(bindTxAmtInput);
+
+      document.getElementById('caTxItems').appendChild(el);
+      setupTxDropzone(el);
+      onCaTxTypeChange(el.querySelector('[data-field="type"]'), idx);
+      // clear error highlight on any interaction
+      el.addEventListener('input',  () => { el.style.borderColor = ''; el.querySelector('[data-item-err]')?.remove(); }, true);
+      el.addEventListener('change', () => { el.style.borderColor = ''; el.querySelector('[data-item-err]')?.remove(); }, true);
+    }
+
+    function setupTxDropzone(rowEl) {
+      const dz    = rowEl.querySelector('[data-field="dropzone"]');
+      if (!dz) return;
+      const input = dz.querySelector('[data-field="proof"]');
+      const list  = dz.querySelector('[data-field="file-list"]');
+      dz._files   = [];
+
+      function renderFiles() {
+        if (!dz._files.length) { list.innerHTML = ''; return; }
+        list.innerHTML = dz._files.map((f, i) =>
+          `<div style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--gray-700);padding:.15rem 0">
+            <span>📄 ${f.name}</span>
+            <button type="button" data-rm="${i}"
+              style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:.8rem;padding:0 .2rem;line-height:1">✕</button>
+          </div>`
+        ).join('');
+      }
+
+      dz.addEventListener('click', e => {
+        if (!e.target.dataset.rm) input.click();
+      });
+      list.addEventListener('click', e => {
+        const btn = e.target.closest('[data-rm]');
+        if (!btn) return;
+        dz._files.splice(parseInt(btn.dataset.rm), 1);
+        renderFiles();
+      });
+      input.addEventListener('change', () => {
+        dz._files.push(...Array.from(input.files));
+        input.value = '';
+        renderFiles();
+      });
+      dz.addEventListener('dragover',  e => { e.preventDefault(); dz.style.borderColor = 'var(--primary,#6366f1)'; dz.style.background = 'var(--indigo-50,#eef2ff)'; });
+      dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; dz.style.background = ''; });
+      dz.addEventListener('drop', e => {
+        e.preventDefault();
+        dz.style.borderColor = '';
+        dz.style.background  = '';
+        const added = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
+        dz._files.push(...added);
+        renderFiles();
+      });
+    }
+
+    function removeCaTxItem(idx) {
+      const el = document.querySelector(`#caTxItems [data-idx="${idx}"]`);
+      if (el) el.remove();
+    }
+
+    function openAddCaTx(id, title, isFinance, projectName, poNumber, caData) {
       addCaTxTargetId = id;
+      addCaTxCaData   = caData || null;
       let desc = `CA: ${title}`;
-      if (projectName) desc += `\nProyek: ${projectName}${poNumber ? ` · SO: ${poNumber}` : ''}`;
-      document.getElementById('addCaTxDesc').style.whiteSpace = 'pre-line';
+      if (projectName) desc += `  ·  ${projectName}${poNumber ? ` (${poNumber})` : ''}`;
       document.getElementById('addCaTxDesc').textContent = desc;
-      document.getElementById('caTxName').value = '';
-      document.getElementById('caTxAmount').value = '';
-      document.getElementById('caTxDate').value = new Date().toISOString().slice(0, 10);
-      document.getElementById('caTxNote').value = '';
-      document.getElementById('caTxProof').value = '';
+      document.getElementById('caTxItems').innerHTML = '';
+      caTxItemCount = 0;
+      addCaTxItem('Transport');
       hideAlert('addCaTxAlert');
-      // Finance sees both masuk/keluar, employee sees keluar only
-      const typeGroup = document.getElementById('addCaTxTypeGroup');
-      typeGroup.style.display = isFinance ? '' : 'none';
-      document.getElementById('caTxType').value = 'keluar';
       document.getElementById('addCaTxOverlay').classList.add('open');
     }
 
-    document.getElementById('caTxAmount').addEventListener('input', function () {
-      const pos = this.selectionStart;
-      const before = this.value.length;
-      this.value = formatThousands(this.value);
-      const diff = this.value.length - before;
-      this.setSelectionRange(pos + diff, pos + diff);
-    });
+    document.getElementById('caTxAddItem').addEventListener('click', () => addCaTxItem());
 
     function closeAddCaTxModal() { document.getElementById('addCaTxOverlay').classList.remove('open'); }
     document.getElementById('addCaTxClose').addEventListener('click', closeAddCaTxModal);
     document.getElementById('addCaTxCancel').addEventListener('click', closeAddCaTxModal);
     document.getElementById('addCaTxOverlay').addEventListener('click', (e) => { if (e.target === document.getElementById('addCaTxOverlay')) closeAddCaTxModal(); });
 
+    function caTxItemError(rowEl, msg) {
+      // clear previous errors
+      document.querySelectorAll('#caTxItems [data-item-err]').forEach(e => e.remove());
+      document.querySelectorAll('#caTxItems [data-idx]').forEach(r => r.style.borderColor = '');
+      // highlight row
+      rowEl.style.borderColor = 'var(--red,#ef4444)';
+      const errEl = document.createElement('div');
+      errEl.dataset.itemErr = '1';
+      errEl.style.cssText = 'font-size:.8rem;color:var(--red,#ef4444);margin-top:.4rem';
+      errEl.textContent = '⚠️ ' + msg;
+      rowEl.appendChild(errEl);
+      rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     document.getElementById('addCaTxSubmit').addEventListener('click', async () => {
       hideAlert('addCaTxAlert');
-      const type = document.getElementById('caTxType').value;
-      const name = document.getElementById('caTxName').value.trim();
-      const amountRaw = document.getElementById('caTxAmount').value.replace(/\./g, '').replace(',', '.');
-      const amount = parseFloat(amountRaw);
-      const date = document.getElementById('caTxDate').value;
-      const note = document.getElementById('caTxNote').value.trim();
-      const proofFile = document.getElementById('caTxProof').files[0];
+      document.querySelectorAll('#caTxItems [data-item-err]').forEach(e => e.remove());
+      document.querySelectorAll('#caTxItems [data-idx]').forEach(r => r.style.borderColor = '');
 
-      if (!name) { showAlert('addCaTxAlert', 'Nama transaksi wajib diisi'); return; }
-      if (isNaN(amount) || amount <= 0) { showAlert('addCaTxAlert', 'Nominal harus berupa angka positif'); return; }
-      if (!date) { showAlert('addCaTxAlert', 'Tanggal wajib diisi'); return; }
+      const rows = [...document.querySelectorAll('#caTxItems [data-idx]')];
+      if (rows.length === 0) { showAlert('addCaTxAlert', 'Tambahkan minimal satu item'); return; }
+
+      const parseAmt = input => parseFloat((input?.value || '0').replace(/\./g, '').replace(',', '.')) || 0;
+
+      // Build flat list of transactions to save
+      const toSave = [];
+      for (const row of rows) {
+        const type = row.querySelector('[data-field="type"]').value;
+        const date = row.querySelector('[data-field="date"]').value;
+        const note = row.querySelector('[data-field="note"]').value.trim();
+        if (!date) { caTxItemError(row, `Tanggal wajib diisi`); return; }
+
+        const dz    = row.querySelector('[data-field="dropzone"]');
+        const files = dz?._files || [];
+
+        if (type !== 'Allowance' && files.length === 0) {
+          caTxItemError(row, `Bukti wajib dilampirkan`); return;
+        }
+
+        if (type === 'Transport') {
+          const bensin = parseAmt(row.querySelector('[data-field="bensin"]'));
+          const tol    = parseAmt(row.querySelector('[data-field="tol"]'));
+          const other  = parseAmt(row.querySelector('[data-field="transport-other"]'));
+          if (bensin + tol + other === 0) { caTxItemError(row, 'Isi minimal satu nominal (Bensin, Tol, atau Lainnya)'); return; }
+          const subItems = [];
+          if (bensin > 0) subItems.push({ name: 'Bensin',            amount: bensin });
+          if (tol    > 0) subItems.push({ name: 'Tol',               amount: tol });
+          if (other  > 0) subItems.push({ name: 'Transport Lainnya', amount: other });
+          subItems.forEach((s, si) => {
+            toSave.push({ name: s.name, amount: s.amount, date, note: note || null, proofFiles: si === 0 ? files : [] });
+          });
+        } else {
+          const amount = parseAmt(row.querySelector('[data-field="amount"]'));
+          if (amount <= 0) { caTxItemError(row, `Nominal harus diisi`); return; }
+          toSave.push({ name: type, amount, date, note: note || null, proofFiles: files });
+        }
+      }
+
+      // ── Konfirmasi selisih sebelum simpan ──
+      if (addCaTxCaData) {
+        const caTotal    = addCaTxCaData.initial_amount || 0;
+        const sudahKeluar = addCaTxCaData.total_keluar_ca || 0;
+        const newTotal   = toSave.reduce((s, i) => s + i.amount, 0);
+        const totalAfter = sudahKeluar + newTotal;
+        const selisih    = caTotal - totalAfter;
+        const fmtRp      = v => new Intl.NumberFormat('id-ID', { style:'currency', currency:'IDR', minimumFractionDigits:0 }).format(Math.abs(v));
+
+        const detail = `
+          <table style="width:100%;font-size:.875rem;border-collapse:collapse">
+            <tr><td style="padding:.3rem 0;color:var(--gray-500)">Total CA diajukan</td><td style="text-align:right;font-weight:600">${fmtRp(caTotal)}</td></tr>
+            <tr><td style="padding:.3rem 0;color:var(--gray-500)">Pengeluaran sebelumnya</td><td style="text-align:right">${fmtRp(sudahKeluar)}</td></tr>
+            <tr><td style="padding:.3rem 0;color:var(--gray-500)">Realisasi yang akan disimpan</td><td style="text-align:right;color:var(--red,#ef4444)">−${fmtRp(newTotal)}</td></tr>
+            <tr style="border-top:1px solid var(--gray-200)">
+              <td style="padding:.4rem 0;font-weight:600">Total pengeluaran setelah simpan</td>
+              <td style="text-align:right;font-weight:700;color:${totalAfter > caTotal ? 'var(--red,#ef4444)' : 'var(--gray-700)'}">${fmtRp(totalAfter)}</td>
+            </tr>
+            <tr>
+              <td style="padding:.2rem 0;font-weight:600">${selisih >= 0 ? 'Sisa dana' : 'Melebihi CA'}</td>
+              <td style="text-align:right;font-weight:700;color:${selisih >= 0 ? 'var(--green,#16a34a)' : 'var(--red,#ef4444)'}">
+                ${selisih >= 0 ? '' : '−'}${fmtRp(selisih)}
+              </td>
+            </tr>
+          </table>`;
+
+        const ok = await modalConfirm('Konfirmasi Simpan Realisasi', detail, { okText: 'Ya, Simpan' });
+        if (!ok) return;
+      }
 
       const btn = document.getElementById('addCaTxSubmit');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
       try {
-        const fd = new FormData();
-        fd.append('type', type);
-        fd.append('name', name);
-        fd.append('amount', amount);
-        fd.append('date', date);
-        if (note) fd.append('note', note);
-        if (proofFile) fd.append('proof_image', proofFile);
-
-        const res = await fetch(`/api/ca/${addCaTxTargetId}/transactions`, { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) { showAlert('addCaTxAlert', data.error); return; }
+        for (const item of toSave) {
+          const fd = new FormData();
+          fd.append('type', 'keluar');
+          fd.append('name', item.name);
+          fd.append('amount', item.amount);
+          fd.append('date', item.date);
+          if (item.note) fd.append('note', item.note);
+          (item.proofFiles || []).forEach(f => fd.append('proof_image', f));
+          const res = await fetch(`/api/ca/${addCaTxTargetId}/transactions`, { method: 'POST', body: fd });
+          if (!res.ok) { const d = await res.json(); showAlert('addCaTxAlert', d.error); return; }
+        }
         closeAddCaTxModal();
-        showAlert('detailSuccess', 'Transaksi berhasil ditambahkan');
+        showAlert('detailSuccess', `${toSave.length} transaksi berhasil ditambahkan`);
         await refreshDetail(addCaTxTargetId);
         await loadCAs();
         setTimeout(() => hideAlert('detailSuccess'), 3000);

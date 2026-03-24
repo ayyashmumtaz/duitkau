@@ -89,6 +89,16 @@
       flex-wrap: wrap;
       gap: .75rem;
     }
+
+    /* ── Tabs ── */
+    .dash-tab {
+      background: none; border: none; cursor: pointer;
+      padding: .55rem 1.1rem; font-size: .9rem; font-weight: 600;
+      color: var(--gray-500); border-bottom: 2px solid transparent;
+      margin-bottom: -2px; border-radius: 0; transition: color .15s;
+    }
+    .dash-tab:hover { color: var(--gray-700); }
+    .dash-tab.active { color: var(--primary, #6366f1); border-bottom-color: var(--primary, #6366f1); }
   </style>
 </head>
 <body data-page="finance">
@@ -98,40 +108,83 @@
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
-      <div class="dash-header">
-        <h2 style="font-size:1rem;font-weight:700">📊 Laporan Keuangan</h2>
-        <div class="filter-bar" style="margin-bottom:0">
-          <label>Periode:</label>
-          <input type="month" id="filterMonth" />
-          <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
-        </div>
-      </div>
-
-      <div class="summary-grid-4">
-        <div class="summary-card masuk">
-          <div class="summary-label">Total Pemasukan</div>
-          <div class="summary-value green" id="grandMasuk">Rp 0</div>
-        </div>
-        <div class="summary-card keluar">
-          <div class="summary-label">Total Pengeluaran</div>
-          <div class="summary-value red" id="grandKeluar">Rp 0</div>
-        </div>
-        <div class="summary-card net-positive">
-          <div class="summary-label">Total Sisa Dana</div>
-          <div class="summary-value blue" id="grandSisa">Rp 0</div>
-        </div>
-        <div class="summary-card net-negative">
-          <div class="summary-label">Total Klaim</div>
-          <div class="summary-value orange" id="grandKlaim">Rp 0</div>
-        </div>
-      </div>
-
-<div id="mainAlert" class="alert alert-error"></div>
+      <div id="mainAlert" class="alert alert-error"></div>
       <div id="mainSuccess" class="alert alert-success"></div>
 
-      <div id="employeeList">
-        <div class="card" style="text-align:center; padding:2rem; color:var(--gray-400)">
-          🔄 Memuat data...
+      <!-- Tab switcher -->
+      <div style="display:flex;gap:.5rem;margin-bottom:1.25rem;border-bottom:2px solid var(--gray-200);padding-bottom:0">
+        <button class="dash-tab active" id="tabCa" onclick="switchTab('ca')">💳 Dashboard CA</button>
+        <button class="dash-tab" id="tabReimburse" onclick="switchTab('reimburse')">📊 Laporan Reimburse Umum</button>
+      </div>
+
+      <!-- ═══ Dashboard CA ═══ -->
+      <div id="sectionCa">
+        <div class="dash-header">
+          <h2 style="font-size:1rem;font-weight:700;margin:0">💳 Cash Advance</h2>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input type="text" id="caSearchSo" placeholder="Cari nomor SO..." style="padding:.4rem .75rem;border:1px solid var(--gray-300);border-radius:6px;font-size:.875rem;width:180px" />
+            <button class="btn btn-ghost btn-sm" id="caClearSearch">✕ Reset</button>
+          </div>
+        </div>
+
+        <div class="summary-grid-4" id="caSummaryGrid">
+          <div class="summary-card masuk">
+            <div class="summary-label">CA Open</div>
+            <div class="summary-value green" id="caStatOpen">0</div>
+          </div>
+          <div class="summary-card keluar">
+            <div class="summary-label">Belum Dibayar</div>
+            <div class="summary-value red" id="caStatUnpaid">0</div>
+          </div>
+          <div class="summary-card net-positive">
+            <div class="summary-label">Total Dana CA Open</div>
+            <div class="summary-value blue" id="caStatTotal">Rp 0</div>
+          </div>
+          <div class="summary-card net-negative">
+            <div class="summary-label">CA Closed</div>
+            <div class="summary-value orange" id="caStatClosed">0</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div id="caList"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></div>
+        </div>
+      </div>
+
+      <!-- ═══ Laporan Reimburse ═══ -->
+      <div id="sectionReimburse" style="display:none">
+        <div class="dash-header">
+          <h2 style="font-size:1rem;font-weight:700;margin:0">📊 Laporan Reimburse Umum</h2>
+          <div class="filter-bar" style="margin-bottom:0">
+            <label>Periode:</label>
+            <input type="month" id="filterMonth" />
+            <button class="btn btn-ghost btn-sm" id="clearFilter">Semua</button>
+          </div>
+        </div>
+
+        <div class="summary-grid-4">
+          <div class="summary-card masuk">
+            <div class="summary-label">Total Pemasukan</div>
+            <div class="summary-value green" id="grandMasuk">Rp 0</div>
+          </div>
+          <div class="summary-card keluar">
+            <div class="summary-label">Total Pengeluaran</div>
+            <div class="summary-value red" id="grandKeluar">Rp 0</div>
+          </div>
+          <div class="summary-card net-positive">
+            <div class="summary-label">Total Sisa Dana</div>
+            <div class="summary-value blue" id="grandSisa">Rp 0</div>
+          </div>
+          <div class="summary-card net-negative">
+            <div class="summary-label">Total Klaim</div>
+            <div class="summary-value orange" id="grandKlaim">Rp 0</div>
+          </div>
+        </div>
+
+        <div id="employeeList">
+          <div class="card" style="text-align:center; padding:2rem; color:var(--gray-400)">
+            🔄 Memuat data...
+          </div>
         </div>
       </div>
     </main>
@@ -165,11 +218,114 @@
 
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
-    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fmtDate = (d) => {
+      if (!d) return '–';
+      const iso = String(d).replace(' ', 'T');
+      return new Date(iso.includes('T') ? iso : iso + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
+    let _caData = [];
+    let _activeTab = 'ca';
 
     window.onLayoutReady = async function(user) {
-      await loadSummary(null);
+      await loadCaDashboard();
     };
+
+    // ─── Tab switching ─────────────────────────
+    function switchTab(tab) {
+      _activeTab = tab;
+      document.getElementById('sectionCa').style.display        = tab === 'ca' ? '' : 'none';
+      document.getElementById('sectionReimburse').style.display = tab === 'reimburse' ? '' : 'none';
+      document.getElementById('tabCa').classList.toggle('active',        tab === 'ca');
+      document.getElementById('tabReimburse').classList.toggle('active', tab === 'reimburse');
+      if (tab === 'reimburse' && !_reimburseLoaded) {
+        _reimburseLoaded = true;
+        loadSummary(null);
+      }
+    }
+
+    // ─── Dashboard CA ──────────────────────────
+    async function loadCaDashboard() {
+      try {
+        _caData = await fetch('/api/ca').then(r => r.json());
+        renderCaDashboard(_caData, '');
+      } catch {
+        document.getElementById('caList').innerHTML = `<div class="empty">Gagal memuat data CA</div>`;
+      }
+    }
+
+    function renderCaDashboard(cas, soQuery) {
+      const q = (soQuery || '').toLowerCase().trim();
+      const filtered = q
+        ? cas.filter(ca => (ca.project_po_number || '').toLowerCase().includes(q)
+            || (ca.project_name || '').toLowerCase().includes(q)
+            || (ca.title || '').toLowerCase().includes(q)
+            || (ca.request_by_name || '').toLowerCase().includes(q))
+        : cas;
+
+      // Summary
+      const open   = filtered.filter(ca => ca.status === 'open');
+      const unpaid = open.filter(ca => ca.payment_status === 'unpaid');
+      const closed = filtered.filter(ca => ca.status === 'closed');
+      document.getElementById('caStatOpen').textContent   = open.length;
+      document.getElementById('caStatUnpaid').textContent = unpaid.length;
+      document.getElementById('caStatTotal').textContent  = fmt.format(open.reduce((s, ca) => s + (ca.initial_amount || 0), 0));
+      document.getElementById('caStatClosed').textContent = closed.length;
+
+      const el = document.getElementById('caList');
+      if (filtered.length === 0) {
+        el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>${q ? 'Tidak ada CA dengan SO tersebut' : 'Belum ada Cash Advance'}</div>`;
+        return;
+      }
+
+      const STATUS_LABEL = {
+        pending:       '<span class="badge" style="background:#fef3c7;color:#7c2d12">Menunggu</span>',
+        open:          '<span class="badge badge-masuk">Open</span>',
+        pending_close: '<span class="badge" style="background:#3b82f6;color:#fff">Request Close</span>',
+        closed:        '<span class="badge" style="background:var(--gray-400);color:#fff">Closed</span>',
+        rejected:      '<span class="badge badge-keluar">Ditolak</span>',
+      };
+
+      el.innerHTML = `<div class="table-wrapper"><table class="tx-responsive-table">
+        <thead><tr>
+          <th>Nomor SO</th>
+          <th>Judul CA</th>
+          <th>Karyawan</th>
+          <th class="text-right">Total</th>
+          <th>Status</th>
+          <th>Pembayaran</th>
+          <th>Dibuat</th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          ${filtered.map(ca => `
+            <tr>
+              <td data-label="Nomor SO" style="font-family:monospace;font-size:.82rem">${ca.project_po_number || '<span class="text-muted">–</span>'}</td>
+              <td data-label="Judul" style="font-weight:600">${ca.title}</td>
+              <td data-label="Karyawan" class="text-muted">${ca.request_by_name || '–'}</td>
+              <td data-label="Total" class="text-right">${fmt.format(ca.initial_amount)}</td>
+              <td data-label="Status">${STATUS_LABEL[ca.status] || ca.status}</td>
+              <td data-label="Pembayaran">
+                ${ca.status === 'open' && ca.payment_status === 'unpaid'
+                  ? '<span class="badge" style="background:#fef3c7;color:#92400e">💰 Belum Dibayar</span>'
+                  : ca.payment_status === 'paid'
+                    ? '<span class="badge badge-masuk">✅ Dibayar</span>'
+                    : '<span class="text-muted">–</span>'}
+              </td>
+              <td data-label="Dibuat" class="text-muted" style="font-size:.8rem">${fmtDate(ca.request_at)}</td>
+              <td><a href="/duitkau/ca?id=${ca.id}" class="btn btn-ghost btn-sm">Detail</a></td>
+            </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+    }
+
+    document.getElementById('caSearchSo').addEventListener('input', function () {
+      renderCaDashboard(_caData, this.value);
+    });
+    document.getElementById('caClearSearch').addEventListener('click', () => {
+      document.getElementById('caSearchSo').value = '';
+      renderCaDashboard(_caData, '');
+    });
 
     // ─── Laporan ──────────────────────────────
     async function loadSummary(month) {
@@ -278,6 +434,7 @@
     });
 
     // ─── Filter ───────────────────────────────
+    let _reimburseLoaded = false;
     document.getElementById('filterMonth').addEventListener('change', (e) => loadSummary(e.target.value || null));
     document.getElementById('clearFilter').addEventListener('click', () => {
       document.getElementById('filterMonth').value = ''; loadSummary(null);

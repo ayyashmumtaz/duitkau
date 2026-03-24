@@ -18,6 +18,7 @@ const caSelect = `
     rmb.full_name  AS reimbursement_by_name,
     rfb.full_name  AS refund_requested_by_name,
     rfc.full_name  AS refund_confirmed_by_name,
+    pby.full_name  AS paid_by_name,
     pr.name        AS project_name,
     pr.po_number   AS project_po_number,
     COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.ca_id=ca.id AND t.type='masuk'  AND t.status='approved'),0) AS total_masuk_ca,
@@ -34,6 +35,7 @@ const caSelect = `
   LEFT JOIN users rmb ON ca.reimbursement_by   = rmb.id
   LEFT JOIN users rfb ON ca.refund_requested_by = rfb.id
   LEFT JOIN users rfc ON ca.refund_confirmed_by = rfc.id
+  LEFT JOIN users pby ON ca.paid_by = pby.id
   LEFT JOIN projects pr ON ca.project_id = pr.id
 `;
 
@@ -295,7 +297,7 @@ router.patch('/:id/approve', async (req, res) => {
         return res.status(403).json({ error: 'Hanya finance yang bisa menyetujui CA ini' });
 
       await db.runAsync(
-        `UPDATE cash_advances SET status='open', open_by=?, open_at=NOW() WHERE id=?`,
+        `UPDATE cash_advances SET status='open', payment_status='unpaid', open_by=?, open_at=NOW() WHERE id=?`,
         [req.session.userId, req.params.id]
       );
     } else {
@@ -315,7 +317,7 @@ router.patch('/:id/approve', async (req, res) => {
       const { allApproved } = await checkApprovalStatus(req.params.id, 'open');
       if (allApproved) {
         await db.runAsync(
-          `UPDATE cash_advances SET status='open', open_by=?, open_at=NOW() WHERE id=?`,
+          `UPDATE cash_advances SET status='open', payment_status='unpaid', open_by=?, open_at=NOW() WHERE id=?`,
           [req.session.userId, req.params.id]
         );
       }
@@ -464,8 +466,39 @@ router.patch('/:id/approve-close', async (req, res) => {
   }
 });
 
+// ─── PATCH /:id/mark-paid — finance marks CA funds as disbursed ──
+router.patch('/:id/mark-paid', async (req, res) => {
+  if (!isFinanceRole(req.session.role))
+    return res.status(403).json({ error: 'Hanya finance yang bisa menandai pembayaran CA' });
+  try {
+    const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
+    if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
+    if (ca.status !== 'open')
+      return res.status(400).json({ error: 'CA harus berstatus open' });
+    if (ca.payment_status === 'paid')
+      return res.status(400).json({ error: 'CA sudah ditandai dibayar' });
+
+    await db.runAsync(
+      `UPDATE cash_advances SET payment_status='paid', paid_at=NOW(), paid_by=? WHERE id=?`,
+      [req.session.userId, req.params.id]
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    await db.runAsync(
+      `INSERT INTO transactions (user_id, type, name, amount, date, note, status, input_by, project_id, ca_id)
+       VALUES (?, 'masuk', 'Dana CA Dicairkan', ?, ?, 'Pencairan dana CA oleh finance', 'approved', ?, ?, ?)`,
+      [ca.request_by, ca.initial_amount, today, req.session.userId, ca.project_id, ca.id]
+    );
+    const row = await db.getAsync(`${caSelect} WHERE ca.id = ?`, [req.params.id]);
+    logEvent(req, 'MARK_PAID_CA', `Finance menandai pembayaran CA "${row.title}" sebesar ${ca.initial_amount}`);
+    res.json(row);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal menandai pembayaran CA' });
+  }
+});
+
 // ─── POST /:id/transactions — add transaction to CA ───────────
-router.post('/:id/transactions', upload.single('proof_image'), async (req, res) => {
+router.post('/:id/transactions', upload.array('proof_image', 10), async (req, res) => {
   try {
     const ca = await db.getAsync('SELECT * FROM cash_advances WHERE id = ?', [req.params.id]);
     if (!ca) return res.status(404).json({ error: 'CA tidak ditemukan' });
@@ -487,7 +520,10 @@ router.post('/:id/transactions', upload.single('proof_image'), async (req, res) 
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date))
       return res.status(400).json({ error: 'Format tanggal tidak valid' });
 
-    const proofImage = req.file ? `/uploads/${req.file.filename}` : null;
+    const files = req.files || [];
+    const proofImage = files.length === 0 ? null
+      : files.length === 1 ? `/uploads/${files[0].filename}`
+      : JSON.stringify(files.map(f => `/uploads/${f.filename}`));
     const result = await db.runAsync(
       `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, ca_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)`,

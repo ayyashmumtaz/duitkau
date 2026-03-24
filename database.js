@@ -328,6 +328,19 @@ async function initSchema(p) {
     await p.query(`ALTER TABLE transactions ADD COLUMN batch_id INT AFTER ca_id`);
   }
 
+  // Migration: add payment_status, paid_at, paid_by to cash_advances
+  const [paymentStatusCol] = await p.query(
+    `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'cash_advances' AND COLUMN_NAME = 'payment_status'`
+  );
+  if (!paymentStatusCol.length) {
+    await p.query(`ALTER TABLE cash_advances ADD COLUMN payment_status ENUM('unpaid','paid') DEFAULT NULL AFTER status`);
+    await p.query(`ALTER TABLE cash_advances ADD COLUMN paid_at DATETIME DEFAULT NULL AFTER payment_status`);
+    await p.query(`ALTER TABLE cash_advances ADD COLUMN paid_by INT DEFAULT NULL AFTER paid_at`);
+    // Backfill: existing open CAs that have no payment_status should be unpaid
+    await p.query(`UPDATE cash_advances SET payment_status = 'unpaid' WHERE status = 'open' AND payment_status IS NULL`);
+  }
+
   // Ensure super_admin exists
   const [[sa]] = await p.query("SELECT id FROM users WHERE role = 'super_admin' LIMIT 1");
   if (!sa) {
