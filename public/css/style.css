@@ -249,6 +249,17 @@ body {
   box-shadow: var(--shadow-lg); z-index: 200;
   overflow: hidden; max-height: 400px; overflow-y: auto;
 }
+@media (max-width: 767px) {
+  .notif-popup {
+    position: fixed;
+    top: var(--navbar-h, 56px);
+    left: 0; right: 0;
+    width: 100%;
+    max-height: 60vh;
+    border-radius: 0 0 12px 12px;
+    border-left: none; border-right: none; border-top: none;
+  }
+}
 .notif-popup-header {
   padding: .65rem 1rem; font-weight: 700; font-size: .75rem;
   color: var(--gray-500); border-bottom: 1px solid var(--gray-100);
