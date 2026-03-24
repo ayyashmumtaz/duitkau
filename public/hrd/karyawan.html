@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HRD - Data Karyawan</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/hrd/js/layout.js"></script>
+  <script src="/js/utils.js"></script>
+  <style>
+    .filter-bar {
+      display: flex; gap: .6rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: .4rem .7rem; border: 1px solid var(--gray-300); border-radius: 6px;
+      font-size: .875rem; background: #fff; flex: 1; min-width: 160px;
+    }
+    .stat-cards {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .75rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: #fff; border: 1.5px solid var(--gray-200); border-radius: 10px;
+      padding: .85rem 1rem; text-align: center;
+    }
+    .stat-card .stat-num { font-size: 1.6rem; font-weight: 800; color: var(--gray-800); line-height: 1; }
+    .stat-card .stat-label { font-size: .72rem; color: var(--gray-500); margin-top: .25rem; }
+    .stat-card.aktif .stat-num { color: #16a34a; }
+    .stat-card.nonaktif .stat-num { color: var(--gray-400); }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem .75rem; }
+    .detail-grid .full { grid-column: 1 / -1; }
+    @media (max-width: 480px) {
+      .detail-grid { grid-template-columns: 1fr; }
+      .detail-grid .full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body data-page="hrd-karyawan">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+
+    <main class="main-content">
+      <div class="flex items-center justify-between" style="margin-bottom:1.25rem">
+        <h1 class="page-title" style="margin-bottom:0">Data Karyawan</h1>
+        <button class="btn btn-primary" id="btnAdd">+ Tambah Karyawan</button>
+      </div>
+
+      <div id="mainAlert" class="alert alert-error"></div>
+      <div id="mainSuccess" class="alert alert-success"></div>
+
+      <!-- Stat Cards -->
+      <div class="stat-cards" id="statCards"></div>
+
+      <!-- Filter & Search -->
+      <div class="filter-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Cari nama, jabatan, departemen..." />
+        <select id="filterStatus">
+          <option value="">Semua Status</option>
+          <option value="aktif">Aktif</option>
+          <option value="nonaktif">Nonaktif</option>
+        </select>
+        <select id="filterDept">
+          <option value="">Semua Departemen</option>
+        </select>
+      </div>
+
+      <div class="card">
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Nama</th>
+                <th>Jabatan</th>
+                <th>Departemen</th>
+                <th>No. HP</th>
+                <th>Bergabung</th>
+                <th>Status</th>
+                <th class="text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="karBody">
+              <tr><td colspan="8"><div class="empty"><div class="empty-icon">🔄</div>Memuat data...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="bottom-nav-placeholder"></div>
+
+  <!-- ── Modal Tambah/Edit ─────────────────────── -->
+  <div class="modal-overlay" id="formOverlay">
+    <div class="modal" style="max-width:540px">
+      <div class="modal-header">
+        <span class="modal-title" id="formTitle">Tambah Karyawan</span>
+        <button class="modal-close" id="formClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="formAlert" class="alert alert-error"></div>
+        <input type="hidden" id="karId" />
+        <div class="detail-grid">
+          <div class="form-group full">
+            <label>Nama Lengkap <span style="color:var(--red)">*</span></label>
+            <input type="text" id="karNama" placeholder="Contoh: Budi Santoso" autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Jabatan</label>
+            <input type="text" id="karJabatan" placeholder="Contoh: Staff IT, Manager..." autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Departemen</label>
+            <input type="text" id="karDepartemen" list="deptSuggestions" placeholder="Contoh: Teknik, Finance..." autocomplete="off" />
+            <datalist id="deptSuggestions"></datalist>
+          </div>
+          <div class="form-group">
+            <label>No. KTP</label>
+            <input type="text" id="karKtp" inputmode="numeric" placeholder="16 digit NIK" autocomplete="off" maxlength="16" />
+          </div>
+          <div class="form-group">
+            <label>No. HP</label>
+            <input type="text" id="karHp" inputmode="tel" placeholder="Contoh: 0812..." autocomplete="off" />
+          </div>
+          <div class="form-group">
+            <label>Tanggal Bergabung</label>
+            <input type="date" id="karTglMasuk" />
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="karStatus">
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Nonaktif</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Alamat</label>
+            <textarea id="karAlamat" placeholder="Alamat lengkap..." rows="2" style="resize:vertical"></textarea>
+          </div>
+          <!-- Akun login -->
+          <div id="loginSection" class="full" style="border-top:1px solid var(--gray-100);padding-top:.75rem;margin-top:.25rem">
+            <div style="font-size:.8rem;font-weight:600;color:var(--gray-500);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.05em">Akun Login</div>
+            <div class="detail-grid">
+              <div class="form-group">
+                <label>Username <span id="usernameRequired" style="color:var(--red)">*</span></label>
+                <input type="text" id="karUsername" placeholder="Contoh: budi.santoso" autocomplete="off" />
+              </div>
+              <div class="form-group">
+                <label id="passwordLabel">Password <span id="passwordRequired" style="color:var(--red)">*</span></label>
+                <input type="password" id="karPassword" placeholder="Minimal 6 karakter" autocomplete="new-password" />
+                <small id="passwordHint" class="text-muted" style="display:none;margin-top:.2rem">Kosongkan jika tidak ingin ubah password</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="formCancel">Batal</button>
+        <button class="btn btn-primary" id="formSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal Hapus ─────────────────────────── -->
+  <div class="modal-overlay" id="deleteOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Hapus Karyawan</span>
+        <button class="modal-close" id="deleteClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Hapus data karyawan <strong id="deleteName"></strong>?</p>
+        <p class="text-muted" style="font-size:.85rem;margin-top:.5rem">Data HRD dan akun login karyawan ini akan dihapus permanen.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="deleteCancel">Batal</button>
+        <button class="btn btn-danger" id="deleteConfirm">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modals-placeholder"></div>
+
+  <script>
+    const fmtDate = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '–';
+
+    let _allData = [];
+    let _deleteId = null;
+    let _isSuperAdmin = false;
+    let _editMode = false;
+
+    window.onLayoutReady = async function(user) {
+      _isSuperAdmin = user.role === 'super_admin';
+      if (!_isSuperAdmin) document.getElementById('btnAdd').style.display = 'none';
+      await loadKaryawan();
+    };
+
+    async function loadKaryawan() {
+      try {
+        _allData = await fetch('/api/karyawan').then(r => r.json());
+        renderStats();
+        populateDeptFilter();
+        renderTable();
+      } catch { showAlert('mainAlert', 'Gagal memuat data karyawan'); }
+    }
+
+    function renderStats() {
+      const aktif = _allData.filter(k => k.status === 'aktif').length;
+      const nonaktif = _allData.filter(k => k.status === 'nonaktif').length;
+      const depts = new Set(_allData.filter(k => k.departemen).map(k => k.departemen)).size;
+      document.getElementById('statCards').innerHTML = `
+        <div class="stat-card">
+          <div class="stat-num">${_allData.length}</div>
+          <div class="stat-label">Total Karyawan</div>
+        </div>
+        <div class="stat-card aktif">
+          <div class="stat-num">${aktif}</div>
+          <div class="stat-label">Aktif</div>
+        </div>
+        <div class="stat-card nonaktif">
+          <div class="stat-num">${nonaktif}</div>
+          <div class="stat-label">Nonaktif</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">${depts}</div>
+          <div class="stat-label">Departemen</div>
+        </div>`;
+    }
+
+    function populateDeptFilter() {
+      const depts = [...new Set(_allData.filter(k => k.departemen).map(k => k.departemen))].sort();
+      const sel = document.getElementById('filterDept');
+      sel.innerHTML = '<option value="">Semua Departemen</option>';
+      depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
+      const dl = document.getElementById('deptSuggestions');
+      dl.innerHTML = '';
+      depts.forEach(d => { const o = document.createElement('option'); o.value = d; dl.appendChild(o); });
+    }
+
+    function renderTable() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const fs = document.getElementById('filterStatus').value;
+      const fd = document.getElementById('filterDept').value;
+
+      const filtered = _allData.filter(k => {
+        const matchQ = !q || k.nama.toLowerCase().includes(q)
+          || (k.jabatan || '').toLowerCase().includes(q)
+          || (k.departemen || '').toLowerCase().includes(q);
+        return matchQ && (!fs || k.status === fs) && (!fd || k.departemen === fd);
+      });
+
+      const tbody = document.getElementById('karBody');
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div>Tidak ada data yang cocok</div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = filtered.map((k, i) => `
+        <tr class="${k.status === 'nonaktif' ? 'text-muted' : ''}">
+          <td class="text-muted">${i + 1}</td>
+          <td>
+            <strong>${k.nama}</strong>
+            ${k.username ? `<div style="font-size:.72rem;color:var(--gray-400);margin-top:.1rem">@${k.username}</div>` : ''}
+          </td>
+          <td>${k.jabatan || '<span class="text-muted">–</span>'}</td>
+          <td>${k.departemen ? `<span class="badge badge-masuk" style="font-size:.72rem">${k.departemen}</span>` : '<span class="text-muted">–</span>'}</td>
+          <td>${k.no_hp || '<span class="text-muted">–</span>'}</td>
+          <td class="text-muted">${fmtDate(k.tanggal_masuk)}</td>
+          <td>
+            <span class="badge ${k.status === 'aktif' ? 'badge-masuk' : ''}" style="${k.status !== 'aktif' ? 'background:var(--gray-100);color:var(--gray-500)' : ''}">
+              ${k.status === 'aktif' ? '✓ Aktif' : '✗ Nonaktif'}
+            </span>
+          </td>
+          <td class="text-right">
+            ${_isSuperAdmin ? `
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(${k.id})">Edit</button>
+              <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="openDelete(${k.id}, '${k.nama.replace(/'/g,"\\'")}')">Hapus</button>
+            ` : '–'}
+          </td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', renderTable);
+    document.getElementById('filterStatus').addEventListener('change', renderTable);
+    document.getElementById('filterDept').addEventListener('change', renderTable);
+
+    // ── Form ──
+    function resetForm(isEdit = false) {
+      _editMode = isEdit;
+      ['karId','karNama','karJabatan','karDepartemen','karKtp','karHp','karAlamat','karUsername','karPassword'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('karTglMasuk').value = '';
+      document.getElementById('karStatus').value = 'aktif';
+      hideAlert('formAlert');
+      document.getElementById('usernameRequired').style.display = isEdit ? 'none' : '';
+      document.getElementById('passwordRequired').style.display = isEdit ? 'none' : '';
+      document.getElementById('passwordHint').style.display = isEdit ? '' : 'none';
+      document.getElementById('passwordLabel').childNodes[0].textContent = isEdit ? 'Reset Password ' : 'Password ';
+    }
+
+    function openAdd() {
+      resetForm(false);
+      document.getElementById('formTitle').textContent = 'Tambah Karyawan';
+      document.getElementById('formOverlay').classList.add('open');
+      document.getElementById('karNama').focus();
+    }
+
+    async function openEdit(id) {
+      try {
+        const k = await fetch(`/api/karyawan/${id}`).then(r => r.json());
+        resetForm(true);
+        document.getElementById('karId').value = k.id;
+        document.getElementById('karNama').value = k.nama;
+        document.getElementById('karJabatan').value = k.jabatan || '';
+        document.getElementById('karDepartemen').value = k.departemen || '';
+        document.getElementById('karKtp').value = k.no_ktp || '';
+        document.getElementById('karHp').value = k.no_hp || '';
+        document.getElementById('karAlamat').value = k.alamat || '';
+        document.getElementById('karTglMasuk').value = k.tanggal_masuk ? k.tanggal_masuk.slice(0, 10) : '';
+        document.getElementById('karStatus').value = k.status;
+        document.getElementById('karUsername').value = k.username || '';
+        document.getElementById('formTitle').textContent = 'Edit Karyawan';
+        document.getElementById('formOverlay').classList.add('open');
+        document.getElementById('karNama').focus();
+      } catch { showAlert('mainAlert', 'Gagal memuat data'); }
+    }
+
+    function closeForm() { document.getElementById('formOverlay').classList.remove('open'); }
+
+    document.getElementById('btnAdd').addEventListener('click', openAdd);
+    document.getElementById('formClose').addEventListener('click', closeForm);
+    document.getElementById('formCancel').addEventListener('click', closeForm);
+    document.getElementById('formOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('formOverlay')) closeForm();
+    });
+
+    document.getElementById('formSave').addEventListener('click', async () => {
+      hideAlert('formAlert');
+      const id = document.getElementById('karId').value;
+      const body = {
+        nama:          document.getElementById('karNama').value.trim(),
+        jabatan:       document.getElementById('karJabatan').value.trim(),
+        departemen:    document.getElementById('karDepartemen').value.trim(),
+        no_ktp:        document.getElementById('karKtp').value.trim(),
+        no_hp:         document.getElementById('karHp').value.trim(),
+        alamat:        document.getElementById('karAlamat').value.trim(),
+        tanggal_masuk: document.getElementById('karTglMasuk').value || null,
+        status:        document.getElementById('karStatus').value,
+        username:      document.getElementById('karUsername').value.trim(),
+        password:      document.getElementById('karPassword').value,
+      };
+      if (!body.nama) { showAlert('formAlert', 'Nama wajib diisi'); return; }
+      if (!_editMode && !body.username) { showAlert('formAlert', 'Username wajib diisi'); return; }
+      if (!_editMode && (!body.password || body.password.length < 6)) { showAlert('formAlert', 'Password minimal 6 karakter'); return; }
+
+      const btn = document.getElementById('formSave');
+      btn.disabled = true; btn.textContent = 'Menyimpan...';
+      try {
+        const res = await fetch(id ? `/api/karyawan/${id}` : '/api/karyawan', {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert('formAlert', data.error); return; }
+        closeForm();
+        showAlert('mainSuccess', id ? 'Data karyawan berhasil diperbarui!' : 'Karyawan berhasil ditambahkan!');
+        await loadKaryawan();
+        setTimeout(() => hideAlert('mainSuccess'), 3000);
+      } catch { showAlert('formAlert', 'Gagal menyimpan'); }
+      finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+    });
+
+    // ── Delete ──
+    function openDelete(id, nama) {
+      _deleteId = id;
+      document.getElementById('deleteName').textContent = nama;
+      document.getElementById('deleteOverlay').classList.add('open');
+    }
+    function closeDelete() { document.getElementById('deleteOverlay').classList.remove('open'); _deleteId = null; }
+
+    document.getElementById('deleteClose').addEventListener('click', closeDelete);
+    document.getElementById('deleteCancel').addEventListener('click', closeDelete);
+    document.getElementById('deleteOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('deleteOverlay')) closeDelete();
+    });
+    document.getElementById('deleteConfirm').addEventListener('click', async () => {
+      if (!_deleteId) return;
+      const btn = document.getElementById('deleteConfirm');
+      btn.disabled = true; btn.textContent = 'Menghapus...';
+      try {
+        const res = await fetch(`/api/karyawan/${_deleteId}`, { method: 'DELETE' });
+        if (!res.ok) { const d = await res.json(); await modalAlert(d.error || 'Gagal menghapus'); return; }
+        closeDelete();
+        showAlert('mainSuccess', 'Karyawan berhasil dihapus');
+        await loadKaryawan();
+        setTimeout(() => hideAlert('mainSuccess'), 3000);
+      } catch { await modalAlert('Terjadi kesalahan'); }
+      finally { btn.disabled = false; btn.textContent = 'Hapus'; }
+    });
+
+    function showAlert(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+    function hideAlert(id) { document.getElementById(id)?.classList.remove('show'); }
+  </script>
+</body>
+</html>

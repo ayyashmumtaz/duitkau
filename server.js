@@ -31,6 +31,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Disable caching for HTML files so browsers always get latest version
+app.use((req, res, next) => {
+  if (!req.path.includes('.') || req.path.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
 // ─── Health check (tidak diblokir oleh DB guard) ─────────────
@@ -66,6 +73,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/ca', require('./routes/ca'));
 app.use('/api/logs', require('./routes/logs'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/karyawan', require('./routes/karyawan'));
 
 app.get('/', (req, res) => {
   res.redirect('/login');

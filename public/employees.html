@@ -20,6 +20,7 @@
         <h1 class="page-title" style="margin-bottom:0">Kelola Pengguna</h1>
         <button class="btn btn-primary" id="btnAdd">+ Tambah Pengguna</button>
       </div>
+      <p class="text-muted" style="font-size:.875rem;margin-bottom:1rem">Pengguna sistem untuk akses Finance dan Super Admin. Untuk menambah karyawan, gunakan aplikasi <a href="/karyawan" style="color:var(--blue)">HRD</a>.</p>
 
       <div id="mainAlert" class="alert alert-error"></div>
       <div id="mainSuccess" class="alert alert-success"></div>
@@ -81,7 +82,6 @@
           <div class="form-group" id="roleGroup">
             <label for="empRole">Role</label>
             <select id="empRole">
-              <option value="employee">Karyawan</option>
               <option value="finance">Finance</option>
               <option value="super_admin">Super Admin</option>
             </select>
@@ -192,14 +192,11 @@
       document.getElementById('fullName').value = '';
       document.getElementById('username').value = '';
       document.getElementById('password').value = '';
-      document.getElementById('empRole').value = 'employee';
+      document.getElementById('empRole').value = 'finance';
       document.getElementById('password').required = true;
       document.getElementById('passwordHint').style.display = 'none';
       document.getElementById('passwordLabel').textContent = 'Password';
       document.getElementById('roleGroup').style.display = '';
-      // Hide super_admin option for non-super_admin users
-      const isSuperAdmin = window.currentUser && window.currentUser.role === 'super_admin';
-      document.querySelector('#empRole option[value="super_admin"]').style.display = isSuperAdmin ? '' : 'none';
       hideAlert('modalAlert');
       document.getElementById('modalOverlay').classList.add('open');
       document.getElementById('fullName').focus();
@@ -210,7 +207,7 @@
       document.getElementById('empId').value = id;
       document.getElementById('fullName').value = fullName;
       document.getElementById('username').value = username;
-      document.getElementById('empRole').value = role || 'employee';
+      document.getElementById('empRole').value = role || 'finance';
       document.getElementById('password').value = '';
       document.getElementById('password').required = false;
       document.getElementById('passwordHint').style.display = 'block';

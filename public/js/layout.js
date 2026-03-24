@@ -457,7 +457,7 @@
     if ((user.role === 'finance' || user.role === 'super_admin') && (page === 'dashboard' || page === 'history')) {
       window.location.href = '/finance'; return;
     }
-    if (user.role === 'employee' && ['finance','input-employee','input-personal','employees','projects','categories','reports'].includes(page)) {
+    if (user.role === 'employee' && ['finance','input-employee','input-personal','employees','projects','categories','reports','logs'].includes(page)) {
       window.location.href = '/dashboard'; return;
     }
 

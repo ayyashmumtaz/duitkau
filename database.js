@@ -172,6 +172,23 @@ const TABLES = [
     details   TEXT         NOT NULL,
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS karyawan (
+    id            INT          NOT NULL AUTO_INCREMENT,
+    nama          VARCHAR(255) NOT NULL,
+    jabatan       VARCHAR(255),
+    departemen    VARCHAR(255),
+    no_ktp        VARCHAR(50),
+    no_hp         VARCHAR(50),
+    alamat        TEXT,
+    tanggal_masuk DATE,
+    status        ENUM('aktif','nonaktif') NOT NULL DEFAULT 'aktif',
+    user_id       INT,
+    created_at    DATETIME DEFAULT NOW(),
+    PRIMARY KEY (id),
+    KEY idx_status (status),
+    KEY idx_user_id (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 async function initSchema(p) {

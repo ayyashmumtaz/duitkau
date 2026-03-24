@@ -8,11 +8,11 @@ const router = express.Router();
 
 router.use(requireLogin, requireFinanceOrSuperAdmin);
 
-// GET all users (employee + finance + super_admin)
+// GET finance + super_admin users only (karyawan/employee accounts managed via HRD)
 router.get('/', async (req, res) => {
   try {
     const users = await db.allAsync(
-      "SELECT id, username, full_name, role, created_at FROM users ORDER BY role, full_name"
+      "SELECT id, username, full_name, role, created_at FROM users WHERE role IN ('finance','super_admin') ORDER BY role, full_name"
     );
     res.json(users);
   } catch (err) {
@@ -39,8 +39,9 @@ router.get('/:id', async (req, res) => {
 router.post('/', requireSuperAdmin, async (req, res) => {
   const { username, full_name, password, role } = req.body;
 
-  const allowedRoles = ['employee', 'finance', 'super_admin'];
-  const userRole = allowedRoles.includes(role) ? role : 'employee';
+  const allowedRoles = ['finance', 'super_admin'];
+  if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Role tidak valid. Gunakan HRD untuk menambah karyawan.' });
+  const userRole = role;
 
   if (!username?.trim()) return res.status(400).json({ error: 'Username wajib diisi' });
   if (!full_name?.trim()) return res.status(400).json({ error: 'Nama lengkap wajib diisi' });
@@ -95,7 +96,7 @@ router.put('/:id', requireSuperAdmin, async (req, res) => {
     // Determine new role
     let newRole = user.role;
     if (role && req.session.role === 'super_admin') {
-      const allowedRoles = ['employee', 'finance', 'super_admin'];
+      const allowedRoles = ['finance', 'super_admin'];
       if (allowedRoles.includes(role)) newRole = role;
     }
 
@@ -141,6 +142,7 @@ router.delete('/:id', requireSuperAdmin, async (req, res) => {
   try {
     const user = await db.getAsync('SELECT * FROM users WHERE id = ?', [req.params.id]);
     if (!user) return res.status(404).json({ error: 'Pengguna tidak ditemukan' });
+    if (user.role === 'employee') return res.status(400).json({ error: 'Akun karyawan harus dihapus melalui aplikasi HRD' });
 
     await db.runAsync('DELETE FROM transactions WHERE user_id = ?', [req.params.id]);
     await db.runAsync('DELETE FROM users WHERE id = ?', [req.params.id]);

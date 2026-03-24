@@ -399,12 +399,12 @@
         <div class="app-desc">Keuangan, reimburse & cash advance</div>
       </a>
 
-      <div class="app-card app-card--soon">
-        <div class="app-badge badge-soon">Segera</div>
+      <a class="app-card app-card--active" id="cardHrd" href="/hrd/karyawan" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-hrd">👥</div>
         <div class="app-name">HRD</div>
-        <div class="app-desc">SDM, absensi & penggajian</div>
-      </div>
+        <div class="app-desc">Data karyawan & jabatan</div>
+      </a>
 
       <div class="app-card app-card--soon">
         <div class="app-badge badge-soon">Segera</div>
@@ -472,6 +472,9 @@
 
       if (user.role === 'super_admin') {
         document.getElementById('cardSettings').style.display = '';
+      }
+      if (user.role === 'finance' || user.role === 'super_admin') {
+        document.getElementById('cardHrd').style.display = '';
       }
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
