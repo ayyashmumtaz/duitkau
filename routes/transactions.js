@@ -62,9 +62,7 @@ router.post('/', upload.single('proof_image'), async (req, res) => {
       [req.session.userId, name.trim(), parsedAmount, date, note || null, proofImage, req.session.userId, projectId, categoryId]
     );
     const inserted = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
-    
-    logEvent(req, 'CREATE_TRANSACTION', `Menambahkan transaksi ${inserted.type}: "${inserted.name}" sejumlah ${inserted.amount}`);
-    
+    logEvent(req, 'CREATE_TRANSACTION', `Menambahkan transaksi "${inserted.name}" sejumlah ${inserted.amount}`);
     res.status(201).json(inserted);
   } catch (err) {
     console.error(err);
@@ -72,7 +70,7 @@ router.post('/', upload.single('proof_image'), async (req, res) => {
   }
 });
 
-// Batch insert — accepts multipart: items (JSON string) + proof_0, proof_1, ... files
+// Batch insert — employee submission creates a reimburse_batch group
 router.post('/batch', upload.any(), async (req, res) => {
   let items;
   try { items = JSON.parse(req.body.items); } catch {
@@ -84,7 +82,6 @@ router.post('/batch', upload.any(), async (req, res) => {
   const fileMap = {};
   for (const file of (req.files || [])) fileMap[file.fieldname] = `/uploads/${file.filename}`;
 
-  // Validate all items before opening transaction
   for (let i = 0; i < items.length; i++) {
     const { name, amount, date, category_id } = items[i];
     const parsedAmount = parseFloat(amount);
@@ -96,20 +93,32 @@ router.post('/batch', upload.any(), async (req, res) => {
       return res.status(400).json({ error: `Item ${i + 1}: bukti foto wajib disertakan` });
   }
 
+  const isEmployee = req.session.role === 'employee';
+
   try {
     const insertedList = await db.transaction(async (tx) => {
+      // Create a batch group if submitted by employee
+      let batchId = null;
+      if (isEmployee) {
+        const br = await tx.runAsync(
+          `INSERT INTO reimburse_batches (user_id, status) VALUES (?, 'pending')`,
+          [req.session.userId]
+        );
+        batchId = br.lastID;
+      }
+
       const list = [];
       for (let i = 0; i < items.length; i++) {
         const { name, amount, date, note, project_id, category_id, ca_id } = items[i];
-        const proofImage  = fileMap[`proof_${i}`];
-        const projectId   = project_id  ? parseInt(project_id)  || null : null;
-        const categoryId  = parseInt(category_id);
-        const caId        = ca_id        ? parseInt(ca_id)       || null : null;
-        const txStatus = req.session.role === 'employee' ? 'pending' : 'approved';
+        const proofImage = fileMap[`proof_${i}`];
+        const projectId  = project_id ? parseInt(project_id) || null : null;
+        const categoryId = parseInt(category_id);
+        const caId       = ca_id ? parseInt(ca_id) || null : null;
+        const txStatus   = isEmployee ? 'pending' : 'approved';
         const result = await tx.runAsync(
-          `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
-           VALUES (?, 'keluar', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [req.session.userId, name.trim(), parseFloat(amount), date, note || null, proofImage, txStatus, req.session.userId, projectId, categoryId, caId]
+          `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id, batch_id)
+           VALUES (?, 'keluar', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [req.session.userId, name.trim(), parseFloat(amount), date, note || null, proofImage, txStatus, req.session.userId, projectId, categoryId, caId, batchId]
         );
         const inserted = await tx.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
         list.push(inserted);
@@ -125,37 +134,73 @@ router.post('/batch', upload.any(), async (req, res) => {
   }
 });
 
-// Finance: list pending reimburse submissions from employees
-router.get('/pending', async (req, res) => {
+// Finance: count pending reimburse batches (for sidebar badge)
+router.get('/reimburse-count', async (req, res) => {
+  if (req.session.role !== 'finance' && req.session.role !== 'super_admin')
+    return res.json({ count: 0 });
+  try {
+    const r = await db.getAsync(
+      `SELECT COUNT(*) as n FROM reimburse_batches rb
+       WHERE rb.status = 'pending'
+       AND EXISTS (SELECT 1 FROM transactions t WHERE t.batch_id = rb.id)`
+    );
+    res.json({ count: r.n });
+  } catch { res.json({ count: 0 }); }
+});
+
+// Finance: list reimburse batches with their transactions
+router.get('/pending-batches', async (req, res) => {
   if (req.session.role !== 'finance' && req.session.role !== 'super_admin')
     return res.status(403).json({ error: 'Akses ditolak' });
+  const status = req.query.status === 'approved' ? 'approved' : 'pending';
   try {
-    const rows = await db.allAsync(
-      `SELECT t.*, u.full_name, u.username, c.name as category_name, pr.name as project_name
-       FROM transactions t
-       JOIN users u ON t.user_id = u.id
-       LEFT JOIN categories c ON t.category_id = c.id
-       LEFT JOIN projects pr ON t.project_id = pr.id
-       WHERE t.status = 'pending' AND t.ca_id IS NULL
-       ORDER BY t.date ASC, t.created_at ASC`
+    const batches = await db.allAsync(
+      `SELECT rb.*, u.full_name, u.username
+       FROM reimburse_batches rb
+       JOIN users u ON rb.user_id = u.id
+       WHERE rb.status = ?
+       AND EXISTS (SELECT 1 FROM transactions t WHERE t.batch_id = rb.id)
+       ORDER BY rb.submitted_at ${status === 'approved' ? 'DESC' : 'ASC'}`,
+      [status]
     );
-    res.json(rows);
+    for (const b of batches) {
+      b.transactions = await db.allAsync(
+        `SELECT t.*, c.name as category_name, pr.name as project_name
+         FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         LEFT JOIN projects pr ON t.project_id = pr.id
+         WHERE t.batch_id = ?
+         ORDER BY t.date ASC`,
+        [b.id]
+      );
+      b.total = b.transactions.reduce((s, t) => s + t.amount, 0);
+    }
+    res.json(batches);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal mengambil data' });
   }
 });
 
-// Finance: mark reimburse as paid
-router.put('/:id/pay', async (req, res) => {
+// Finance: approve entire batch (mark as paid)
+router.put('/batches/:id/pay', async (req, res) => {
   if (req.session.role !== 'finance' && req.session.role !== 'super_admin')
     return res.status(403).json({ error: 'Akses ditolak' });
   try {
-    const tx = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
-    if (!tx) return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
-    if (tx.status !== 'pending') return res.status(400).json({ error: 'Transaksi bukan dalam status menunggu' });
-    await db.runAsync("UPDATE transactions SET status = 'approved' WHERE id = ?", [req.params.id]);
-    logEvent(req, 'PAY_REIMBURSE', `Menandai reimburse #${req.params.id} sebagai sudah dibayar`);
+    const batch = await db.getAsync('SELECT * FROM reimburse_batches WHERE id = ?', [req.params.id]);
+    if (!batch) return res.status(404).json({ error: 'Batch tidak ditemukan' });
+    if (batch.status !== 'pending') return res.status(400).json({ error: 'Batch sudah diproses' });
+    await db.transaction(async (tx) => {
+      await tx.runAsync(
+        `UPDATE reimburse_batches SET status='approved', approved_by=?, approved_at=NOW() WHERE id=?`,
+        [req.session.userId, req.params.id]
+      );
+      await tx.runAsync(
+        `UPDATE transactions SET status='approved' WHERE batch_id=?`,
+        [req.params.id]
+      );
+    });
+    logEvent(req, 'PAY_REIMBURSE_BATCH', `Menyetujui batch reimburse #${req.params.id} (${batch.user_id})`);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

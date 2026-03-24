@@ -173,6 +173,18 @@ const TABLES = [
     PRIMARY KEY (id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS reimburse_batches (
+    id           INT      NOT NULL AUTO_INCREMENT,
+    user_id      INT      NOT NULL,
+    submitted_at DATETIME DEFAULT NOW(),
+    status       ENUM('pending','approved') NOT NULL DEFAULT 'pending',
+    approved_by  INT,
+    approved_at  DATETIME,
+    PRIMARY KEY (id),
+    KEY idx_status  (status),
+    KEY idx_user_id (user_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS karyawan (
     id            INT          NOT NULL AUTO_INCREMENT,
     nama          VARCHAR(255) NOT NULL,
@@ -194,6 +206,15 @@ const TABLES = [
 async function initSchema(p) {
   for (const sql of TABLES) {
     await p.query(sql);
+  }
+
+  // Add batch_id to transactions if missing (migration)
+  const [batchIdCols] = await p.query(
+    `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'transactions' AND COLUMN_NAME = 'batch_id'`
+  );
+  if (!batchIdCols.length) {
+    await p.query(`ALTER TABLE transactions ADD COLUMN batch_id INT AFTER ca_id`);
   }
 
   // Ensure super_admin exists

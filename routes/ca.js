@@ -103,11 +103,6 @@ router.get('/notify', async (req, res) => {
             OR ca.refund_status = 'pending'`
       );
       count = r.n;
-      // Also count pending employee reimburse submissions
-      const rr = await db.getAsync(
-        `SELECT COUNT(*) as n FROM transactions WHERE status = 'pending' AND ca_id IS NULL`
-      );
-      count += rr.n;
     } else {
       const r = await db.getAsync(
         `SELECT COUNT(*) as n FROM cash_advances

@@ -43,15 +43,7 @@
         </div>
       </div>
 
-      <!-- ── Reimburse Menunggu ────────────── -->
-      <div id="pendingSection" style="display:none; margin-bottom:1.5rem">
-        <div class="flex items-center justify-between" style="margin-bottom:.75rem; flex-wrap:wrap; gap:.5rem">
-          <h2 style="font-size:1rem; font-weight:700">💸 Reimburse Menunggu Pembayaran <span id="pendingCount" class="badge" style="background:var(--orange-100,#ffedd5);color:var(--orange-600,#ea580c);margin-left:.4rem"></span></h2>
-        </div>
-        <div id="pendingList"></div>
-      </div>
-
-      <div id="mainAlert" class="alert alert-error"></div>
+<div id="mainAlert" class="alert alert-error"></div>
       <div id="mainSuccess" class="alert alert-success"></div>
 
       <div id="employeeList">
@@ -93,84 +85,8 @@
     const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
     window.onLayoutReady = async function(user) {
-      loadPending();
       await loadSummary(null);
-
-      // scroll to pending section if hash
-      if (location.hash === '#reimburse') {
-        document.getElementById('pendingSection')?.scrollIntoView({ behavior: 'smooth' });
-      }
     };
-
-    // ─── Pending Reimburse ─────────────────────
-    async function loadPending() {
-      try {
-        const rows = await fetch('/api/transactions/pending').then(r => r.json());
-        const section = document.getElementById('pendingSection');
-        const list = document.getElementById('pendingList');
-        const cnt = document.getElementById('pendingCount');
-        if (!rows.length) { section.style.display = 'none'; return; }
-        section.style.display = '';
-        cnt.textContent = rows.length;
-
-        // group by user
-        const byUser = {};
-        for (const t of rows) {
-          if (!byUser[t.user_id]) byUser[t.user_id] = { name: t.full_name, items: [] };
-          byUser[t.user_id].items.push(t);
-        }
-
-        list.innerHTML = Object.values(byUser).map(u => {
-          const total = u.items.reduce((s, t) => s + t.amount, 0);
-          const rows = u.items.map(t => `
-            <tr>
-              <td>${fmtDate(t.date)}</td>
-              <td>${t.name}</td>
-              <td>${t.category_name || '-'}</td>
-              <td style="text-align:right">${fmt.format(t.amount)}</td>
-              <td style="text-align:center">
-                ${t.proof_image ? `<a href="${t.proof_image}" target="_blank" class="btn btn-ghost btn-sm">📷</a>` : '-'}
-              </td>
-              <td style="text-align:center">
-                <button class="btn btn-primary btn-sm" onclick="payReimburse(${t.id}, this)">Sudah Dibayar</button>
-              </td>
-            </tr>`).join('');
-          return `
-            <div class="card" style="margin-bottom:.75rem;overflow-x:auto">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
-                <div style="font-weight:700;font-size:.95rem">👤 ${u.name}</div>
-                <div style="font-size:.85rem;color:var(--gray-500)">${u.items.length} klaim · <strong>${fmt.format(total)}</strong></div>
-              </div>
-              <table style="width:100%;border-collapse:collapse;font-size:.83rem">
-                <thead><tr style="color:var(--gray-500);border-bottom:1px solid var(--gray-200)">
-                  <th style="text-align:left;padding:.4rem .5rem">Tanggal</th>
-                  <th style="text-align:left;padding:.4rem .5rem">Keterangan</th>
-                  <th style="text-align:left;padding:.4rem .5rem">Kategori</th>
-                  <th style="text-align:right;padding:.4rem .5rem">Nominal</th>
-                  <th style="text-align:center;padding:.4rem .5rem">Bukti</th>
-                  <th style="text-align:center;padding:.4rem .5rem">Aksi</th>
-                </tr></thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </div>`;
-        }).join('');
-      } catch {
-        // silently fail — not critical
-      }
-    }
-
-    async function payReimburse(id, btn) {
-      btn.disabled = true; btn.textContent = 'Memproses...';
-      try {
-        const res = await fetch(`/api/transactions/${id}/pay`, { method: 'PUT' });
-        if (!res.ok) { const d = await res.json(); alert(d.error); btn.disabled = false; btn.textContent = 'Sudah Dibayar'; return; }
-        // reload pending section
-        await loadPending();
-        // reload summary
-        const m = document.getElementById('filterMonth').value || null;
-        await loadSummary(m);
-      } catch { btn.disabled = false; btn.textContent = 'Sudah Dibayar'; }
-    }
 
     // ─── Laporan ──────────────────────────────
     async function loadSummary(month) {

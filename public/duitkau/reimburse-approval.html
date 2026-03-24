@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Persetujuan Reimburse</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/duitkau/js/layout.js"></script>
+  <style>
+    .batch-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: .85rem;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    .batch-action {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      flex-shrink: 0;
+    }
+    .tx-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .tx-table thead th {
+      text-align: left; padding: .4rem .6rem;
+      font-weight: 600; color: var(--gray-500);
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .tx-table thead th:nth-child(4) { text-align: right; }
+    .tx-table thead th:nth-child(5) { text-align: center; }
+    .tx-table tbody td { padding: .45rem .6rem; }
+    .tx-table tbody td:nth-child(4) { text-align: right; }
+    .tx-table tbody td:nth-child(5) { text-align: center; }
+    .tx-table tfoot td {
+      padding: .5rem .6rem; font-weight: 700;
+      border-top: 1px solid var(--gray-200);
+    }
+    .tx-table tfoot td:nth-child(2) { text-align: right; }
+
+    @media (max-width: 640px) {
+      .batch-action { width: 100%; justify-content: space-between; }
+
+      .tx-table thead { display: none; }
+      .tx-table tfoot { display: none; }
+      .tx-table tbody tr {
+        display: block;
+        border-bottom: 1px solid var(--gray-100);
+        padding: .6rem 0;
+      }
+      .tx-table tbody tr:last-child { border-bottom: none; }
+      .tx-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: .2rem .25rem;
+        font-size: .82rem;
+      }
+      .tx-table tbody td::before {
+        content: attr(data-label);
+        color: var(--gray-500);
+        font-size: .75rem;
+        flex-shrink: 0;
+        margin-right: .5rem;
+      }
+      .tx-table tbody td:nth-child(4) { text-align: right; font-weight: 600; }
+      .tx-table tbody td:nth-child(5) { justify-content: flex-end; }
+      .tx-table tbody td:nth-child(5)::before { display: none; }
+    }
+  </style>
+</head>
+<body data-page="reimburse-approval">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div class="flex items-center justify-between" style="margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+        <h2 style="font-size:1rem;font-weight:700">💸 Persetujuan Reimburse</h2>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <label style="font-size:.82rem;color:var(--gray-500)">Filter:</label>
+          <select id="filterStatus" class="form-control" style="width:auto;font-size:.83rem">
+            <option value="pending">Menunggu</option>
+            <option value="approved">Sudah Dibayar</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="pageAlert" class="alert alert-error"></div>
+      <div id="pageSuccess" class="alert alert-success"></div>
+      <div id="batchList">
+        <div class="card" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat data...</div>
+      </div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+  <div id="modals-placeholder"></div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti transaksi" />
+  </div>
+
+  <script src="/js/utils.js"></script>
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fmtDt   = d => new Date(d).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    window.onLayoutReady = () => loadBatches();
+
+    document.getElementById('filterStatus').addEventListener('change', loadBatches);
+
+    async function loadBatches() {
+      const status = document.getElementById('filterStatus').value;
+      const list   = document.getElementById('batchList');
+      list.innerHTML = '<div class="card" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</div>';
+      try {
+        const batches = await fetch(`/api/transactions/pending-batches?status=${status}`).then(r => r.json());
+        if (!batches.length) {
+          list.innerHTML = `<div class="card" style="text-align:center;padding:2rem;color:var(--gray-400)">
+            ${status === 'pending' ? '✅ Tidak ada reimburse menunggu pembayaran' : 'Belum ada reimburse yang sudah dibayar'}
+          </div>`;
+          return;
+        }
+        list.innerHTML = batches.map(b => renderBatch(b, status)).join('');
+      } catch {
+        list.innerHTML = '<div class="card" style="text-align:center;padding:2rem;color:var(--red)">Gagal memuat data</div>';
+      }
+    }
+
+    function renderBatch(b, status) {
+      const tRows = b.transactions.map(t => `
+        <tr>
+          <td data-label="Tanggal">${fmtDate(t.date)}</td>
+          <td data-label="Keterangan">${t.name}</td>
+          <td data-label="Kategori">${t.category_name || '-'}</td>
+          <td data-label="Nominal">${fmt.format(t.amount)}</td>
+          <td>
+            ${t.proof_image
+              ? `<button class="btn btn-ghost btn-sm" style="font-size:.75rem" onclick="openLightbox('${t.proof_image}')">📷 Lihat</button>`
+              : '<span style="color:var(--gray-400);font-size:.8rem">—</span>'}
+          </td>
+        </tr>`).join('');
+
+      const approvedInfo = status === 'approved' && b.approved_at
+        ? `<div style="font-size:.75rem;color:var(--gray-400);margin-top:.2rem">Dibayar ${fmtDt(b.approved_at)}</div>`
+        : '';
+
+      const action = status === 'pending'
+        ? `<button class="btn btn-primary btn-sm" onclick="payBatch(${b.id}, this)">✓ Sudah Dibayar</button>`
+        : `<span class="badge" style="background:var(--green-100,#dcfce7);color:var(--green-700,#15803d);padding:.3rem .75rem">✓ Sudah Dibayar</span>`;
+
+      return `
+        <div class="card" style="margin-bottom:1rem">
+          <div class="batch-header">
+            <div>
+              <div style="font-weight:700;font-size:.95rem">👤 ${b.full_name}</div>
+              <div style="font-size:.75rem;color:var(--gray-400);margin-top:.2rem">Dikirim ${fmtDt(b.submitted_at)}</div>
+              ${approvedInfo}
+            </div>
+            <div class="batch-action">
+              <div>
+                <div style="font-size:.8rem;color:var(--gray-500)">${b.transactions.length} klaim</div>
+                <div style="font-weight:700;font-size:1rem">${fmt.format(b.total)}</div>
+              </div>
+              ${action}
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="tx-table">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Keterangan</th>
+                  <th>Kategori</th>
+                  <th>Nominal</th>
+                  <th>Bukti</th>
+                </tr>
+              </thead>
+              <tbody>${tRows}</tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td>${fmt.format(b.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', e => {
+      if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+    });
+
+    async function payBatch(batchId, btn) {
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      try {
+        const res = await fetch(`/api/transactions/batches/${batchId}/pay`, { method: 'PUT' });
+        if (!res.ok) {
+          const d = await res.json();
+          document.getElementById('pageAlert').textContent = d.error;
+          document.getElementById('pageAlert').classList.add('show');
+          btn.disabled = false; btn.textContent = '✓ Sudah Dibayar';
+          return;
+        }
+        await loadBatches();
+      } catch {
+        btn.disabled = false; btn.textContent = '✓ Sudah Dibayar';
+      }
+    }
+  </script>
+</body>
+</html>

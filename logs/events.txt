@@ -297,3 +297,25 @@
 [2026-03-24T03:58:09.176Z] [SUPER_ADMIN:admin] (::1) | UPDATE_KARYAWAN | Memperbarui karyawan "Dian Rahayu" (ID: 1)
 [2026-03-24T04:18:45.007Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "CA Pasang Panel Meratus" (id=3)
 [2026-03-24T04:18:51.982Z] [SUPER_ADMIN:admin] (::1) | DELETE_PROJECT | Menghapus proyek "Proyek Kapal Gibran" (ID: 2)
+[2026-03-24T04:47:38.885Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T04:47:44.974Z] [SUPER_ADMIN:admin] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 1)
+[2026-03-24T04:48:11.577Z] [SUPER_ADMIN:admin] (::1) | FINANCE_INPUT_TX | Finance input transaksi "Parkir APV" untuk karyawan ID 1 (keluar)
+[2026-03-24T04:48:11.589Z] [SUPER_ADMIN:admin] (::1) | FINANCE_INPUT_TX | Finance input transaksi "Makan Aziz" untuk karyawan ID 1 (keluar)
+[2026-03-24T04:48:28.021Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T04:48:35.534Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T04:48:46.050Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T04:48:51.303Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T04:52:14.093Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T04:52:34.393Z] [FINANCE:finance] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 2)
+[2026-03-24T04:52:36.400Z] [FINANCE:finance] (::1) | DELETE_TX | Finance menghapus transaksi (ID: 3)
+[2026-03-24T04:54:20.021Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
+[2026-03-24T04:57:44.439Z] [SUPER_ADMIN:admin] (::1) | DELETE_KARYAWAN | Menghapus karyawan "Dian Rahayu" (ID: 1)
+[2026-03-24T04:58:03.110Z] [SUPER_ADMIN:admin] (::1) | CREATE_KARYAWAN | Menambah karyawan "ayas" (@ayas)
+[2026-03-24T04:58:05.383Z] [SUPER_ADMIN:admin] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T04:58:09.692Z] [EMPLOYEE:ayas] (::1) | LOGIN | Pengguna employee berhasil login
+[2026-03-24T04:58:47.192Z] [EMPLOYEE:ayas] (::1) | CREATE_BATCH_TRANSACTION | Menambahkan 2 transaksi sekaligus
+[2026-03-24T04:58:56.484Z] [EMPLOYEE:ayas] (::1) | LOGOUT | Pengguna melakukan logout
+[2026-03-24T04:59:02.442Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T05:00:33.020Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T05:01:20.487Z] [FINANCE:finance] (::1) | PAY_REIMBURSE_BATCH | Menyetujui batch reimburse #1 (8)
+[2026-03-24T05:04:37.438Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login

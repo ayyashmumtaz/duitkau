@@ -14,9 +14,10 @@
     {
       type: 'group', label: 'Transaksi', icon: '💳',
       items: [
-        { href: '/duitkau/input-personal',  icon: '👤', label: 'Reimburse Pribadi', page: 'input-personal'  },
-        { href: '/duitkau/input-employee',  icon: '👥', label: 'Input Karyawan',    page: 'input-employee'  },
-        { href: '/duitkau/ca',              icon: '💰', label: 'Cash Advance',      page: 'ca', notif: true },
+        { href: '/duitkau/input-personal',      icon: '👤', label: 'Reimburse Pribadi',    page: 'input-personal'      },
+        { href: '/duitkau/input-employee',      icon: '👥', label: 'Input Karyawan',        page: 'input-employee'      },
+        { href: '/duitkau/reimburse-approval',  icon: '💸', label: 'Persetujuan Reimburse', page: 'reimburse-approval', reimburseNotif: true },
+        { href: '/duitkau/ca',                  icon: '💰', label: 'Cash Advance',          page: 'ca', notif: true     },
       ]
     },
     {
@@ -48,11 +49,14 @@
   function getActivePage() { return document.body.dataset.page || ''; }
 
   function renderNavItem(item, activeClass = '') {
+    let badge = '';
+    if (item.notif)          badge = '<span class="sidebar-notif ca-notif-sidebar" style="display:none">0</span>';
+    if (item.reimburseNotif) badge = '<span class="sidebar-notif reimburse-notif-sidebar" style="display:none">0</span>';
     return `
       <a href="${item.href}" class="sidebar-item${activeClass}">
         <span class="icon">${item.icon}</span>
         <span class="label">${item.label}</span>
-        ${item.notif ? '<span class="sidebar-notif ca-notif-sidebar" style="display:none">0</span>' : ''}
+        ${badge}
       </a>`;
   }
 
@@ -254,14 +258,28 @@
   // ─── Notifications ────────────────────────
   async function checkNotifications() {
     try {
-      const data = await fetch('/api/ca/notify').then(r => r.json());
-      const count = data.count || 0;
-      const label = count > 9 ? '9+' : String(count);
-      const show = count > 0;
+      const [caData, rdData] = await Promise.all([
+        fetch('/api/ca/notify').then(r => r.json()).catch(() => ({ count: 0 })),
+        fetch('/api/transactions/reimburse-count').then(r => r.json()).catch(() => ({ count: 0 })),
+      ]);
+      const caCount = caData.count || 0;
+      const rcCount = rdData.count || 0;
+      const total   = caCount + rcCount;
+      const label   = total > 9 ? '9+' : String(total);
+      const show    = total > 0;
+
+      // Bell badge (total)
       const badge = document.getElementById('notifBadge');
       if (badge) { badge.textContent = label; badge.style.display = show ? '' : 'none'; }
-      document.querySelectorAll('.ca-notif-sidebar').forEach(el => { el.textContent = label; el.style.display = show ? '' : 'none'; });
-      document.querySelectorAll('.ca-notif-bottom').forEach(el => { el.textContent = label; el.style.display = show ? '' : 'none'; });
+
+      // CA sidebar/bottom badges
+      const caLabel = caCount > 9 ? '9+' : String(caCount);
+      document.querySelectorAll('.ca-notif-sidebar').forEach(el => { el.textContent = caLabel; el.style.display = caCount > 0 ? '' : 'none'; });
+      document.querySelectorAll('.ca-notif-bottom').forEach(el => { el.textContent = caLabel; el.style.display = caCount > 0 ? '' : 'none'; });
+
+      // Reimburse sidebar badge
+      const rcLabel = rcCount > 9 ? '9+' : String(rcCount);
+      document.querySelectorAll('.reimburse-notif-sidebar').forEach(el => { el.textContent = rcLabel; el.style.display = rcCount > 0 ? '' : 'none'; });
     } catch {}
   }
 
@@ -275,7 +293,8 @@
       let items = [];
       if (user.role === 'finance' || user.role === 'super_admin') {
         items = cas.filter(ca =>
-          ca.status === 'pending' || ca.status === 'pending_close' || ca.reimbursement_status === 'pending'
+          ca.status === 'pending' || ca.status === 'pending_close' ||
+          ca.reimbursement_status === 'pending' || ca.refund_status === 'pending'
         );
       } else {
         items = cas.filter(ca =>
@@ -297,10 +316,10 @@
       // Pending votes for current user
       const myVotes = await fetch('/api/ca/my-pending-votes').then(r => r.json()).catch(() => []);
 
-      // Pending reimburse submissions from employees (finance only)
+      // Pending reimburse batches from employees (finance only)
       let pendingReimburse = [];
       if (user.role === 'finance' || user.role === 'super_admin') {
-        pendingReimburse = await fetch('/api/transactions/pending').then(r => r.json()).catch(() => []);
+        pendingReimburse = await fetch('/api/transactions/pending-batches').then(r => r.ok ? r.json() : []).catch(() => []);
       }
 
       let html = '<div class="notif-popup-header">Notifikasi</div>';
@@ -317,17 +336,10 @@
 
       if (pendingReimburse.length > 0) {
         html += `<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Reimburse Menunggu Pembayaran</div>`;
-        // group by user
-        const byUser = {};
-        for (const t of pendingReimburse) {
-          if (!byUser[t.user_id]) byUser[t.user_id] = { name: t.full_name, count: 0, total: 0 };
-          byUser[t.user_id].count++;
-          byUser[t.user_id].total += t.amount;
-        }
-        html += Object.values(byUser).map(u => `
-          <div class="notif-popup-item" onclick="window.location.href='/duitkau/finance#reimburse'">
-            <div style="font-weight:600;font-size:.82rem">${u.name}</div>
-            <div style="font-size:.75rem;color:var(--gray-500)">💸 ${u.count} klaim · ${fmt.format(u.total)}</div>
+        html += pendingReimburse.map(b => `
+          <div class="notif-popup-item" onclick="window.location.href='/duitkau/reimburse-approval'">
+            <div style="font-weight:600;font-size:.82rem">${b.full_name}</div>
+            <div style="font-size:.75rem;color:var(--gray-500)">💸 ${b.transactions.length} klaim · ${fmt.format(b.total)}</div>
           </div>`).join('');
       }
 
@@ -337,7 +349,9 @@
         if (myVotes.length > 0) html += '<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Informasi CA</div>';
         html += items.map(ca => {
           let desc = STATUS_DESC[ca.status] || ca.status;
-          if (ca.status === 'open' && ca.close_reject_reason) {
+          if (ca.refund_status === 'pending') {
+            desc = '↩️ Pengembalian dana menunggu konfirmasi';
+          } else if (ca.status === 'open' && ca.close_reject_reason) {
             desc = `⚠️ Close ditolak: "${ca.close_reject_reason}"`;
           } else if (ca.reimbursement_status === 'pending') {
             desc = ca.pending_reimburse_approvals > 0 ? `💸 Reimburse menunggu ${ca.pending_reimburse_approvals} approver` : '💸 Reimburse menunggu diproses';
@@ -354,7 +368,12 @@
           </div>`;
         }).join('');
       }
-      html += '<a href="/duitkau/ca" class="notif-popup-footer">Lihat semua CA →</a>';
+      if (items.length > 0 || myVotes.length > 0) {
+        html += '<a href="/duitkau/ca" class="notif-popup-footer">Lihat semua CA →</a>';
+      }
+      if (pendingReimburse.length > 0) {
+        html += '<a href="/duitkau/reimburse-approval" class="notif-popup-footer">Lihat semua reimburse →</a>';
+      }
       popup.innerHTML = html;
     } catch {
       popup.innerHTML = '<div class="notif-popup-empty" style="color:var(--red)">Gagal memuat notifikasi</div>';
