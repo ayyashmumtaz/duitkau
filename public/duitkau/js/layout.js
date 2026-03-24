@@ -32,11 +32,11 @@
 
   // Finance bottom-nav (mobile)
   const FINANCE_BOTTOM = [
-    { href: '/duitkau/finance',         icon: '📊', label: 'Dashboard',  page: 'finance'         },
-    { href: '/duitkau/input-personal',  icon: '👤', label: 'Pribadi',    page: 'input-personal'  },
-    { href: '/duitkau/input-employee',  icon: '👥', label: 'Karyawan',   page: 'input-employee'  },
-    { href: '/duitkau/ca',              icon: '💰', label: 'Cash Adv.',  page: 'ca', notif: true },
-    { href: '/duitkau/reports',         icon: '📊', label: 'Laporan',    page: 'reports'         },
+    { href: '/duitkau/finance',              icon: '📊', label: 'Dashboard', page: 'finance'              },
+    { href: '/duitkau/input-personal',       icon: '👤', label: 'Pribadi',   page: 'input-personal'       },
+    { href: '/duitkau/input-employee',       icon: '👥', label: 'Karyawan',  page: 'input-employee'       },
+    { href: '/duitkau/reimburse-approval',   icon: '💸', label: 'Reimburse', page: 'reimburse-approval',  reimburseNotif: true },
+    { href: '/duitkau/ca',                   icon: '💰', label: 'Cash Adv.', page: 'ca', notif: true      },
   ];
 
   let _dbOk = true;
@@ -84,14 +84,19 @@
 
   function renderBottomNavItems(items) {
     const active = getActivePage();
-    return items.map(item => `
-      <a href="${item.href}" class="bottom-nav-item${item.page === active ? ' active' : ''}">
-        <span class="bottom-nav-icon" ${item.notif ? 'style="position:relative"' : ''}>
-          ${item.icon}
-          ${item.notif ? '<span class="bottom-notif ca-notif-bottom" style="display:none">0</span>' : ''}
-        </span>
-        ${item.label.split(' ')[0]}
-      </a>`).join('');
+    return items.map(item => {
+      const needsPos = item.notif || item.reimburseNotif;
+      let badge = '';
+      if (item.notif)          badge = '<span class="bottom-notif ca-notif-bottom" style="display:none">0</span>';
+      if (item.reimburseNotif) badge = '<span class="bottom-notif reimburse-notif-sidebar" style="display:none">0</span>';
+      return `
+        <a href="${item.href}" class="bottom-nav-item${item.page === active ? ' active' : ''}">
+          <span class="bottom-nav-icon" ${needsPos ? 'style="position:relative"' : ''}>
+            ${item.icon}${badge}
+          </span>
+          ${item.label.split(' ')[0]}
+        </a>`;
+    }).join('');
   }
 
   // ─── Inject navbar ────────────────────────
