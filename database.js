@@ -201,6 +201,93 @@ const TABLES = [
     KEY idx_status (status),
     KEY idx_user_id (user_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // ── Inventory Workshop ──────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS inv_locations (
+    id         INT          NOT NULL AUTO_INCREMENT,
+    name       VARCHAR(100) NOT NULL,
+    type       ENUM('warehouse','vehicle','workbench','area') NOT NULL DEFAULT 'warehouse',
+    qr_code    VARCHAR(100),
+    notes      TEXT,
+    created_at DATETIME DEFAULT NOW(),
+    PRIMARY KEY (id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_racks (
+    id          INT         NOT NULL AUTO_INCREMENT,
+    location_id INT         NOT NULL,
+    name        VARCHAR(50) NOT NULL,
+    notes       TEXT,
+    created_at  DATETIME    DEFAULT NOW(),
+    PRIMARY KEY (id),
+    KEY idx_location_id (location_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_items (
+    id          INT          NOT NULL AUTO_INCREMENT,
+    code        VARCHAR(50)  NOT NULL,
+    name        VARCHAR(200) NOT NULL,
+    category    ENUM('tools','consumable') NOT NULL,
+    unit        VARCHAR(20)  NOT NULL DEFAULT 'pcs',
+    min_stock   INT          NOT NULL DEFAULT 0,
+    description TEXT,
+    created_at  DATETIME DEFAULT NOW(),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_code (code)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_stock (
+    id           INT            NOT NULL AUTO_INCREMENT,
+    item_id      INT            NOT NULL,
+    rack_id      INT            NOT NULL,
+    qty          DECIMAL(10,2)  NOT NULL DEFAULT 0,
+    qty_borrowed INT            NOT NULL DEFAULT 0,
+    qty_damaged  INT            NOT NULL DEFAULT 0,
+    qty_lost     INT            NOT NULL DEFAULT 0,
+    updated_at   DATETIME DEFAULT NOW() ON UPDATE NOW(),
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_item_rack (item_id, rack_id),
+    KEY idx_item_id (item_id),
+    KEY idx_rack_id (rack_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_borrows (
+    id               INT          NOT NULL AUTO_INCREMENT,
+    item_id          INT          NOT NULL,
+    from_rack_id     INT          NOT NULL,
+    qty              INT          NOT NULL DEFAULT 1,
+    borrower_name    VARCHAR(100) NOT NULL,
+    borrower_user_id INT,
+    borrowed_at      DATETIME     DEFAULT NOW(),
+    expected_return  DATE,
+    returned_at      DATETIME,
+    return_rack_id   INT,
+    notes            TEXT,
+    status           ENUM('active','returned') NOT NULL DEFAULT 'active',
+    created_by       INT,
+    PRIMARY KEY (id),
+    KEY idx_item_id (item_id),
+    KEY idx_status  (status)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_transactions (
+    id          INT            NOT NULL AUTO_INCREMENT,
+    type        ENUM('in','out','borrow','return','transfer','adjustment') NOT NULL,
+    item_id     INT            NOT NULL,
+    rack_id     INT,
+    to_rack_id  INT,
+    qty         DECIMAL(10,2)  NOT NULL,
+    qty_before  DECIMAL(10,2),
+    qty_after   DECIMAL(10,2),
+    ref_id      INT,
+    notes       TEXT,
+    created_by  INT,
+    created_at  DATETIME DEFAULT NOW(),
+    PRIMARY KEY (id),
+    KEY idx_item_id    (item_id),
+    KEY idx_type       (type),
+    KEY idx_created_at (created_at)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 async function initSchema(p) {

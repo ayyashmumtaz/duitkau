@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — Master Barang</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/inventory/js/layout.js"></script>
+  <style>
+    .toolbar { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .toolbar .search-box { flex:1; min-width:180px; }
+
+    .items-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+    .items-table th { text-align:left; padding:.45rem .75rem; font-weight:600; color:var(--gray-500); border-bottom:1px solid var(--gray-200); white-space:nowrap; }
+    .items-table th.r { text-align:right; }
+    .items-table td { padding:.45rem .75rem; vertical-align:middle; }
+    .items-table tr:hover { background:var(--gray-50); }
+    .items-table td.r { text-align:right; }
+    @media (max-width:767px) {
+      .items-table thead { display:none; }
+      .items-table tbody tr { display:block; border-bottom:1px solid var(--gray-100); padding:.55rem 0; }
+      .items-table tbody td { display:flex; justify-content:space-between; align-items:center; padding:.2rem .5rem; font-size:.82rem; }
+      .items-table tbody td::before { content:attr(data-label); color:var(--gray-500); font-size:.75rem; flex-shrink:0; margin-right:.5rem; }
+      .items-table tbody td[data-label="Deskripsi"] { display:none; }
+    }
+
+    .cat-badge { display:inline-block; padding:.15rem .5rem; border-radius:6px; font-size:.72rem; font-weight:700; }
+    .cat-tools      { background:#dbeafe; color:#1e40af; }
+    .cat-consumable { background:#dcfce7; color:#166534; }
+
+    .low-tag { font-size:.7rem; background:#fef9c3; color:#854d0e; padding:.1rem .4rem; border-radius:4px; font-weight:700; }
+
+    /* Stock detail panel */
+    .stock-locs { margin-top:.35rem; }
+    .stock-loc-row { display:flex; align-items:center; justify-content:space-between; padding:.25rem .5rem; background:var(--gray-50); border-radius:6px; margin-bottom:.2rem; font-size:.78rem; }
+
+    /* Modal form */
+    .form-2col { display:grid; grid-template-columns:1fr 1fr; gap:.65rem; }
+    .form-2col .full { grid-column:1/-1; }
+    @media (max-width:600px) { .form-2col { grid-template-columns:1fr; } .form-2col .full { grid-column:1; } }
+  </style>
+</head>
+<body data-page="items">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div class="toolbar">
+        <input type="text" id="searchInput" class="form-control search-box" placeholder="🔍 Cari nama atau kode..." />
+        <select id="filterCat" class="form-control" style="width:auto">
+          <option value="">Semua Kategori</option>
+          <option value="tools">Tools</option>
+          <option value="consumable">Consumable</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btnNew">+ Tambah Barang</button>
+      </div>
+
+      <div id="pageAlert" class="alert alert-error"></div>
+      <div id="pageSuccess" class="alert alert-success"></div>
+
+      <div class="card" style="padding:0">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Kode</th><th>Nama</th><th>Kategori</th><th>Satuan</th>
+              <th class="r">Stok Total</th><th class="r">Min Stok</th><th>Lokasi</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Stock Detail (bawah tabel) -->
+      <div id="stockDetail" style="display:none;margin-top:1rem"></div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+
+  <!-- Modal: Tambah/Edit Barang -->
+  <div class="modal-overlay" id="itemModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modalTitle">Tambah Barang</span>
+      </div>
+      <div class="modal-body">
+        <div id="modalAlert" class="alert alert-error"></div>
+        <div class="form-2col">
+          <div class="form-group">
+            <label>Kode <span style="color:var(--red)">*</span></label>
+            <input type="text" id="fCode" placeholder="mis. TOOL-001" style="text-transform:uppercase" />
+          </div>
+          <div class="form-group">
+            <label>Kategori <span style="color:var(--red)">*</span></label>
+            <select id="fCategory">
+              <option value="tools">Tools</option>
+              <option value="consumable">Consumable</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Nama Barang <span style="color:var(--red)">*</span></label>
+            <input type="text" id="fName" placeholder="mis. Obeng Phillips #2" />
+          </div>
+          <div class="form-group">
+            <label>Satuan</label>
+            <input type="text" id="fUnit" value="pcs" placeholder="pcs, m, kg..." />
+          </div>
+          <div class="form-group">
+            <label>Minimum Stok</label>
+            <input type="number" id="fMinStock" value="0" min="0" />
+          </div>
+          <div class="form-group full">
+            <label>Deskripsi</label>
+            <textarea id="fDesc" rows="2" placeholder="Keterangan tambahan..." style="resize:vertical"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="modalCancel">Batal</button>
+        <button class="btn btn-primary" id="modalSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Stock In -->
+  <div class="modal-overlay" id="stockInModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">📥 Barang Masuk</span></div>
+      <div class="modal-body">
+        <div id="stockInAlert" class="alert alert-error"></div>
+        <div id="stockInItemName" style="font-weight:700;margin-bottom:.75rem"></div>
+        <div class="form-group">
+          <label>Lokasi / Rak <span style="color:var(--red)">*</span></label>
+          <select id="siRack" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah <span style="color:var(--red)">*</span></label>
+          <input type="number" id="siQty" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="siNotes" placeholder="Opsional" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="siCancel">Batal</button>
+        <button class="btn btn-primary" id="siSave">Masukkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Stock Out -->
+  <div class="modal-overlay" id="stockOutModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">📤 Barang Keluar</span></div>
+      <div class="modal-body">
+        <div id="stockOutAlert" class="alert alert-error"></div>
+        <div id="stockOutItemName" style="font-weight:700;margin-bottom:.75rem"></div>
+        <div class="form-group">
+          <label>Lokasi / Rak <span style="color:var(--red)">*</span></label>
+          <select id="soRack" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah <span style="color:var(--red)">*</span></label>
+          <input type="number" id="soQty" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="soNotes" placeholder="Opsional" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="soCancel">Batal</button>
+        <button class="btn btn-danger" id="soSave">Keluarkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Transfer -->
+  <div class="modal-overlay" id="transferModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">🔄 Transfer Antar Lokasi</span></div>
+      <div class="modal-body">
+        <div id="trAlert" class="alert alert-error"></div>
+        <div id="trItemName" style="font-weight:700;margin-bottom:.75rem"></div>
+        <div class="form-group">
+          <label>Dari Rak <span style="color:var(--red)">*</span></label>
+          <select id="trFrom" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Ke Rak <span style="color:var(--red)">*</span></label>
+          <select id="trTo" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah <span style="color:var(--red)">*</span></label>
+          <input type="number" id="trQty" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="trNotes" placeholder="Opsional" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="trCancel">Batal</button>
+        <button class="btn btn-primary" id="trSave">Transfer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Adjustment -->
+  <div class="modal-overlay" id="adjModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">⚖️ Koreksi Stok</span></div>
+      <div class="modal-body">
+        <div id="adjAlert" class="alert alert-error"></div>
+        <div id="adjItemName" style="font-weight:700;margin-bottom:.75rem"></div>
+        <div class="form-group">
+          <label>Lokasi / Rak <span style="color:var(--red)">*</span></label>
+          <select id="adjRack" class="form-control"></select>
+        </div>
+        <div class="form-group">
+          <label>Stok Baru (qty aktual di lapangan) <span style="color:var(--red)">*</span></label>
+          <input type="number" id="adjQty" min="0" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Alasan Koreksi <span style="color:var(--red)">*</span></label>
+          <input type="text" id="adjNotes" placeholder="mis. Hasil stock opname..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="adjCancel">Batal</button>
+        <button class="btn btn-primary" id="adjSave">Simpan Koreksi</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmt = new Intl.NumberFormat('id-ID');
+    let _items = [];
+    let _racks  = [];
+    let _editId = null;
+    let _activeItemId = null;
+
+    window.onLayoutReady = async () => {
+      await Promise.all([loadItems(), loadRacks()]);
+    };
+
+    async function loadItems() {
+      const q   = document.getElementById('searchInput').value;
+      const cat = document.getElementById('filterCat').value;
+      const params = new URLSearchParams();
+      if (q)   params.set('q', q);
+      if (cat) params.set('category', cat);
+      const data = await fetch(`/api/inventory/items?${params}`).then(r => r.json()).catch(() => []);
+      _items = data;
+      renderTable();
+    }
+
+    async function loadRacks() {
+      _racks = await fetch('/api/inventory/racks').then(r => r.json()).catch(() => []);
+    }
+
+    function renderTable() {
+      const body = document.getElementById('tableBody');
+      if (!_items.length) {
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--gray-400)">Tidak ada barang</td></tr>';
+        return;
+      }
+      body.innerHTML = _items.map(item => {
+        const avail = item.category === 'tools'
+          ? item.total_qty - item.total_borrowed - item.total_damaged - item.total_lost
+          : item.total_qty;
+        const isLow = item.min_stock > 0 && item.total_qty < item.min_stock;
+        return `
+          <tr>
+            <td data-label="Kode"><code style="font-size:.78rem">${item.code}</code></td>
+            <td data-label="Nama" style="font-weight:600">${item.name}${isLow ? ' <span class="low-tag">Low</span>' : ''}</td>
+            <td data-label="Kategori"><span class="cat-badge cat-${item.category}">${item.category === 'tools' ? '🔧 Tools' : '🔩 Consumable'}</span></td>
+            <td data-label="Satuan">${item.unit}</td>
+            <td data-label="Stok Total" class="r">
+              <span style="font-weight:700">${fmt.format(avail)}</span>
+              ${item.category==='tools' && item.total_borrowed > 0 ? `<div style="font-size:.72rem;color:var(--gray-400)">${item.total_borrowed} dipinjam</div>` : ''}
+            </td>
+            <td data-label="Min Stok" class="r">${item.min_stock > 0 ? fmt.format(item.min_stock) : '–'}</td>
+            <td data-label="Lokasi">
+              <button class="btn btn-ghost btn-sm" style="font-size:.75rem" onclick="showStockDetail(${item.id})">📍 Lokasi</button>
+            </td>
+            <td>
+              <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="openStockIn(${item.id})">📥</button>
+                ${item.category==='consumable' ? `<button class="btn btn-ghost btn-sm" onclick="openStockOut(${item.id})">📤</button>` : ''}
+                <button class="btn btn-ghost btn-sm" onclick="openTransfer(${item.id})">🔄</button>
+                <button class="btn btn-ghost btn-sm" onclick="openAdj(${item.id})">⚖️</button>
+                <button class="btn btn-ghost btn-sm" onclick="openEdit(${item.id})">✏️</button>
+                <button class="btn btn-ghost btn-sm text-red" onclick="deleteItem(${item.id},'${item.name.replace(/'/g,"\\'")}')">🗑️</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function showStockDetail(itemId) {
+      const panel = document.getElementById('stockDetail');
+      if (_activeItemId === itemId) { panel.style.display = 'none'; _activeItemId = null; return; }
+      _activeItemId = itemId;
+      panel.style.display = '';
+      panel.innerHTML = '<div class="card" style="padding:1rem;color:var(--gray-400)">🔄 Memuat...</div>';
+
+      const data = await fetch(`/api/inventory/items/${itemId}`).then(r => r.json()).catch(() => null);
+      if (!data) { panel.innerHTML = '<div class="card" style="padding:1rem;color:var(--red)">Gagal memuat</div>'; return; }
+
+      const item = data.item;
+      panel.innerHTML = `
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:.75rem">📍 Lokasi Stok: ${item.name}</div>
+          ${!data.stock.length
+            ? '<div style="color:var(--gray-400);font-size:.85rem">Belum ada stok di lokasi manapun</div>'
+            : data.stock.map(s => {
+                const avail = item.category==='tools'
+                  ? s.qty - s.qty_borrowed - s.qty_damaged - s.qty_lost
+                  : s.qty;
+                return `<div class="stock-loc-row">
+                  <div>
+                    <span style="font-weight:600">${s.location_name}</span>
+                    <span style="color:var(--gray-400)"> / ${s.rack_name}</span>
+                  </div>
+                  <div style="text-align:right">
+                    <span style="font-weight:700">${fmt.format(avail)} ${item.unit}</span>
+                    ${item.category==='tools' && (s.qty_borrowed||s.qty_damaged||s.qty_lost) ? `
+                      <div style="font-size:.72rem;color:var(--gray-400)">
+                        ${s.qty_borrowed?`${s.qty_borrowed} pinjam `:''}${s.qty_damaged?`${s.qty_damaged} rusak `:''}${s.qty_lost?`${s.qty_lost} hilang`:''}
+                      </div>` : ''}
+                  </div>
+                </div>`;
+              }).join('')}
+        </div>`;
+      panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+
+    // ── CRUD Barang ─────────────────────────────────────────
+    document.getElementById('btnNew').addEventListener('click', () => openModal());
+    document.getElementById('modalCancel').addEventListener('click', () => closeModal('itemModal'));
+    document.getElementById('modalSave').addEventListener('click', saveItem);
+
+    function openModal(item) {
+      _editId = item?.id || null;
+      document.getElementById('modalTitle').textContent = item ? 'Edit Barang' : 'Tambah Barang';
+      document.getElementById('fCode').value     = item?.code || '';
+      document.getElementById('fName').value     = item?.name || '';
+      document.getElementById('fCategory').value = item?.category || 'tools';
+      document.getElementById('fUnit').value     = item?.unit || 'pcs';
+      document.getElementById('fMinStock').value = item?.min_stock || 0;
+      document.getElementById('fDesc').value     = item?.description || '';
+      hideAlert('modalAlert');
+      document.getElementById('itemModal').classList.add('open');
+    }
+
+    function openEdit(id) { openModal(_items.find(i => i.id === id)); }
+
+    async function saveItem() {
+      const body = {
+        code:     document.getElementById('fCode').value.trim(),
+        name:     document.getElementById('fName').value.trim(),
+        category: document.getElementById('fCategory').value,
+        unit:     document.getElementById('fUnit').value.trim() || 'pcs',
+        min_stock: document.getElementById('fMinStock').value,
+        description: document.getElementById('fDesc').value.trim(),
+      };
+      if (!body.code || !body.name) return showAlert('modalAlert', 'Kode dan nama wajib diisi');
+
+      const url    = _editId ? `/api/inventory/items/${_editId}` : '/api/inventory/items';
+      const method = _editId ? 'PUT' : 'POST';
+      const res = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) return showAlert('modalAlert', data.error);
+      closeModal('itemModal');
+      showSuccess('pageSuccess', `Barang "${data.name}" berhasil ${_editId ? 'diperbarui' : 'ditambahkan'}`);
+      await loadItems();
+    }
+
+    async function deleteItem(id, name) {
+      if (!confirm(`Hapus barang "${name}"?`)) return;
+      const res = await fetch(`/api/inventory/items/${id}`, { method:'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { showAlert('pageAlert', data.error); return; }
+      showSuccess('pageSuccess', `Barang "${name}" dihapus`);
+      await loadItems();
+    }
+
+    // ── Stock Operations ─────────────────────────────────────
+    function fillRackSelect(selId, filter) {
+      const sel = document.getElementById(selId);
+      const racks = filter ? _racks.filter(filter) : _racks;
+      sel.innerHTML = '<option value="">-- Pilih lokasi / rak --</option>' +
+        racks.map(r => `<option value="${r.id}">${r.location_name} / ${r.name}</option>`).join('');
+    }
+
+    function openStockIn(id) {
+      _activeItemId = id;
+      const item = _items.find(i => i.id === id);
+      document.getElementById('stockInItemName').textContent = `📦 ${item.name} [${item.code}]`;
+      fillRackSelect('siRack');
+      document.getElementById('siQty').value = 1;
+      document.getElementById('siNotes').value = '';
+      hideAlert('stockInAlert');
+      document.getElementById('stockInModal').classList.add('open');
+    }
+    document.getElementById('siCancel').addEventListener('click', () => closeModal('stockInModal'));
+    document.getElementById('siSave').addEventListener('click', async () => {
+      const rack_id = document.getElementById('siRack').value;
+      const qty     = document.getElementById('siQty').value;
+      const notes   = document.getElementById('siNotes').value;
+      if (!rack_id) return showAlert('stockInAlert', 'Pilih rak tujuan');
+      const res = await fetch('/api/inventory/stock/in', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ item_id: _activeItemId, rack_id, qty, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('stockInAlert', data.error);
+      closeModal('stockInModal');
+      showSuccess('pageSuccess', `Barang masuk berhasil dicatat`);
+      await loadItems();
+    });
+
+    function openStockOut(id) {
+      _activeItemId = id;
+      const item = _items.find(i => i.id === id);
+      document.getElementById('stockOutItemName').textContent = `📦 ${item.name} [${item.code}]`;
+      fillRackSelect('soRack');
+      document.getElementById('soQty').value = 1;
+      document.getElementById('soNotes').value = '';
+      hideAlert('stockOutAlert');
+      document.getElementById('stockOutModal').classList.add('open');
+    }
+    document.getElementById('soCancel').addEventListener('click', () => closeModal('stockOutModal'));
+    document.getElementById('soSave').addEventListener('click', async () => {
+      const rack_id = document.getElementById('soRack').value;
+      const qty     = document.getElementById('soQty').value;
+      const notes   = document.getElementById('soNotes').value;
+      if (!rack_id) return showAlert('stockOutAlert', 'Pilih rak asal');
+      const res = await fetch('/api/inventory/stock/out', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ item_id: _activeItemId, rack_id, qty, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('stockOutAlert', data.error);
+      closeModal('stockOutModal');
+      showSuccess('pageSuccess', `Barang keluar berhasil dicatat`);
+      await loadItems();
+    });
+
+    function openTransfer(id) {
+      _activeItemId = id;
+      const item = _items.find(i => i.id === id);
+      document.getElementById('trItemName').textContent = `📦 ${item.name} [${item.code}]`;
+      fillRackSelect('trFrom'); fillRackSelect('trTo');
+      document.getElementById('trQty').value = 1;
+      document.getElementById('trNotes').value = '';
+      hideAlert('trAlert');
+      document.getElementById('transferModal').classList.add('open');
+    }
+    document.getElementById('trCancel').addEventListener('click', () => closeModal('transferModal'));
+    document.getElementById('trSave').addEventListener('click', async () => {
+      const from_rack_id = document.getElementById('trFrom').value;
+      const to_rack_id   = document.getElementById('trTo').value;
+      const qty          = document.getElementById('trQty').value;
+      const notes        = document.getElementById('trNotes').value;
+      if (!from_rack_id || !to_rack_id) return showAlert('trAlert', 'Pilih rak asal dan tujuan');
+      const res = await fetch('/api/inventory/stock/transfer', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ item_id: _activeItemId, from_rack_id, to_rack_id, qty, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('trAlert', data.error);
+      closeModal('transferModal');
+      showSuccess('pageSuccess', `Transfer berhasil`);
+      await loadItems();
+    });
+
+    function openAdj(id) {
+      _activeItemId = id;
+      const item = _items.find(i => i.id === id);
+      document.getElementById('adjItemName').textContent = `📦 ${item.name} [${item.code}]`;
+      fillRackSelect('adjRack');
+      document.getElementById('adjQty').value = 0;
+      document.getElementById('adjNotes').value = '';
+      hideAlert('adjAlert');
+      document.getElementById('adjModal').classList.add('open');
+    }
+    document.getElementById('adjCancel').addEventListener('click', () => closeModal('adjModal'));
+    document.getElementById('adjSave').addEventListener('click', async () => {
+      const rack_id = document.getElementById('adjRack').value;
+      const qty_new = document.getElementById('adjQty').value;
+      const notes   = document.getElementById('adjNotes').value.trim();
+      if (!rack_id) return showAlert('adjAlert', 'Pilih rak');
+      if (!notes)   return showAlert('adjAlert', 'Alasan koreksi wajib diisi');
+      const res = await fetch('/api/inventory/stock/adjustment', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ item_id: _activeItemId, rack_id, qty_new, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('adjAlert', data.error);
+      closeModal('adjModal');
+      showSuccess('pageSuccess', `Koreksi stok berhasil disimpan`);
+      await loadItems();
+    });
+
+    // ── Helpers ──────────────────────────────────────────────
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function showAlert(id, msg)   { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+    function hideAlert(id)        { document.getElementById(id)?.classList.remove('show'); }
+    function showSuccess(id, msg) {
+      const el=document.getElementById(id); el.textContent=msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    let _searchTimer;
+    document.getElementById('searchInput').addEventListener('input', () => {
+      clearTimeout(_searchTimer); _searchTimer = setTimeout(loadItems, 350);
+    });
+    document.getElementById('filterCat').addEventListener('change', loadItems);
+  </script>
+</body>
+</html>

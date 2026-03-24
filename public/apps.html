@@ -413,6 +413,13 @@
         <div class="app-desc">Pengadaan barang & vendor</div>
       </a>
 
+      <a class="app-card app-card--active" id="cardInventory" href="/inventory" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
+        <div class="app-icon icon-asset" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🔧</div>
+        <div class="app-name">Inventory</div>
+        <div class="app-desc">Workshop tools & sparepart multi-lokasi</div>
+      </a>
+
       <a class="app-card app-card--active" id="cardAset" href="/aset" style="display:none">
         <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-asset">🏗️</div>
@@ -474,7 +481,7 @@
         document.getElementById('cardSettings').style.display = '';
       }
       if (user.role === 'finance' || user.role === 'super_admin') {
-        ['cardHrd', 'cardProcurement', 'cardAset', 'cardCrm', 'cardDokumen'].forEach(id => {
+        ['cardHrd', 'cardProcurement', 'cardInventory', 'cardAset', 'cardCrm', 'cardDokumen'].forEach(id => {
           document.getElementById(id).style.display = '';
         });
       }

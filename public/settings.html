@@ -183,6 +183,11 @@
         <button class="nav-item" data-section="categories">🏷️ Kategori</button>
       </div>
 
+      <div class="nav-group">
+        <div class="nav-group-title">Sistem</div>
+        <button class="nav-item" data-section="eventlogs" id="navEventLogs">📜 Event Log</button>
+      </div>
+
       <div class="nav-spacer"></div>
 
       <div class="nav-group">
@@ -294,6 +299,47 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- ══ SECTION: Event Log ══ -->
+      <div class="settings-section" id="sec-eventlogs">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+          <div class="settings-section-title" style="margin-bottom:0;border-bottom:none">📜 Event Log</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <input type="text" id="logSearch" placeholder="🔍 Cari action / user..." class="form-control" style="font-size:.82rem;width:200px" />
+            <select id="logApp" class="form-control" style="width:auto;font-size:.82rem">
+              <option value="">Semua App</option>
+              <option value="INV_">Inventory</option>
+              <option value="FINANCE_">DuitKau Finance</option>
+              <option value="UPDATE_TX">DuitKau TX</option>
+              <option value="CA_">Cash Advance</option>
+            </select>
+            <button class="btn-test" id="btnRefreshLogs" style="font-size:.8rem;padding:.35rem .75rem">🔄 Refresh</button>
+            <a id="btnDownloadLog" href="/api/logs/download" class="btn-test" style="font-size:.8rem;padding:.35rem .75rem;text-decoration:none">⬇️ Download</a>
+          </div>
+        </div>
+        <div id="logMeta" style="font-size:.75rem;color:var(--gray-400);margin-bottom:.75rem"></div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table style="width:100%;border-collapse:collapse;font-size:.78rem" id="logTable">
+            <thead>
+              <tr style="background:var(--gray-50)">
+                <th style="padding:.4rem .75rem;text-align:left;font-weight:600;color:var(--gray-500);border-bottom:1px solid var(--gray-200);white-space:nowrap">Waktu</th>
+                <th style="padding:.4rem .75rem;text-align:left;font-weight:600;color:var(--gray-500);border-bottom:1px solid var(--gray-200)">User</th>
+                <th style="padding:.4rem .75rem;text-align:left;font-weight:600;color:var(--gray-500);border-bottom:1px solid var(--gray-200)">Action</th>
+                <th style="padding:.4rem .75rem;text-align:left;font-weight:600;color:var(--gray-500);border-bottom:1px solid var(--gray-200)">Detail</th>
+                <th style="padding:.4rem .75rem;text-align:left;font-weight:600;color:var(--gray-500);border-bottom:1px solid var(--gray-200)">IP</th>
+              </tr>
+            </thead>
+            <tbody id="logBody">
+              <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray-400)">Klik Refresh untuk memuat log</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;flex-wrap:wrap">
+          <button class="btn-test" id="btnLogPrev" style="font-size:.8rem;padding:.35rem .75rem" disabled>← Sebelumnya</button>
+          <span id="logPageInfo" style="font-size:.78rem;color:var(--gray-500)"></span>
+          <button class="btn-test" id="btnLogNext" style="font-size:.8rem;padding:.35rem .75rem" disabled>Berikutnya →</button>
         </div>
       </div>
 
@@ -435,6 +481,7 @@ function activateSection(sectionKey) {
     sectionLoaded[sectionKey] = true;
     if (sectionKey === 'users')      loadEmployees();
     if (sectionKey === 'categories') loadCategories();
+    if (sectionKey === 'eventlogs')  loadLogs();
   }
   // Close mobile sidebar
   document.getElementById('settingsSidebar').classList.remove('mobile-open');
@@ -794,6 +841,70 @@ document.getElementById('btnDeleteAllCA').addEventListener('click', async () => 
     setTimeout(() => hideAlert('dangerSuccess'), 4000);
   } catch { showAlert('dangerAlert', 'Gagal menghapus cash advance'); }
 });
+
+// ── Event Log ─────────────────────────────────────────────────
+const LOG_PAGE_SIZE = 100;
+let _logPage   = 1;
+let _logTotal  = 0;
+let _logSearch = '';
+let _logApp    = '';
+
+async function loadLogs(page = 1) {
+  _logPage   = page;
+  _logSearch = document.getElementById('logSearch')?.value.trim() || '';
+  _logApp    = document.getElementById('logApp')?.value || '';
+
+  const params = new URLSearchParams({ page: _logPage, limit: LOG_PAGE_SIZE });
+  if (_logSearch) params.set('q', _logSearch);
+  if (_logApp)    params.set('action_prefix', _logApp);
+
+  const body = document.getElementById('logBody');
+  body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--gray-400)">🔄 Memuat...</td></tr>';
+
+  const res = await fetch(`/api/logs/db?${params}`).catch(() => null);
+  if (!res || !res.ok) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--red)">Gagal memuat log</td></tr>';
+    return;
+  }
+  const data = await res.json();
+  _logTotal = data.total;
+
+  const fmtDt = d => new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+  document.getElementById('logMeta').textContent =
+    `Menampilkan ${data.rows.length} dari ${data.total.toLocaleString('id-ID')} entri log`;
+
+  const totalPages = Math.ceil(_logTotal / LOG_PAGE_SIZE);
+  document.getElementById('logPageInfo').textContent = `Halaman ${_logPage} / ${totalPages || 1}`;
+  document.getElementById('btnLogPrev').disabled = _logPage <= 1;
+  document.getElementById('btnLogNext').disabled = _logPage >= totalPages;
+
+  if (!data.rows.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--gray-400)">Tidak ada log</td></tr>';
+    return;
+  }
+  body.innerHTML = data.rows.map(r => `
+    <tr style="border-bottom:1px solid var(--gray-100)">
+      <td style="padding:.35rem .75rem;white-space:nowrap;color:var(--gray-500)">${fmtDt(r.timestamp)}</td>
+      <td style="padding:.35rem .75rem">
+        <span style="font-weight:600">${r.username}</span>
+        <span style="font-size:.7rem;color:var(--gray-400);margin-left:.3rem">${r.role}</span>
+      </td>
+      <td style="padding:.35rem .75rem"><code style="font-size:.75rem;background:var(--gray-100);padding:.1rem .35rem;border-radius:4px">${r.action}</code></td>
+      <td style="padding:.35rem .75rem;color:var(--gray-600)">${r.details}</td>
+      <td style="padding:.35rem .75rem;color:var(--gray-400);font-size:.75rem">${r.ip}</td>
+    </tr>`).join('');
+}
+
+document.getElementById('btnRefreshLogs')?.addEventListener('click', () => loadLogs(1));
+document.getElementById('btnLogPrev')?.addEventListener('click',    () => loadLogs(_logPage - 1));
+document.getElementById('btnLogNext')?.addEventListener('click',    () => loadLogs(_logPage + 1));
+
+let _logSearchTimer;
+document.getElementById('logSearch')?.addEventListener('input', () => {
+  clearTimeout(_logSearchTimer); _logSearchTimer = setTimeout(() => loadLogs(1), 400);
+});
+document.getElementById('logApp')?.addEventListener('change', () => loadLogs(1));
 </script>
 </body>
 </html>

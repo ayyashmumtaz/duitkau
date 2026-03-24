@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — Peminjaman Tools</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/inventory/js/layout.js"></script>
+  <style>
+    .tab-bar { display:flex; gap:.25rem; margin-bottom:1rem; border-bottom:1px solid var(--gray-200); }
+    .tab-btn { padding:.55rem 1rem; font-size:.85rem; font-weight:600; border:none; background:none; cursor:pointer; color:var(--gray-500); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .12s,border-color .12s; }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+    .borrow-card { background:#fff; border:1px solid var(--gray-200); border-radius:10px; padding:.85rem 1rem; margin-bottom:.75rem; }
+    .borrow-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem; }
+    .borrow-item-name { font-weight:700; font-size:.95rem; }
+    .borrow-meta { font-size:.78rem; color:var(--gray-500); margin-top:.15rem; }
+
+    .overdue-tag { font-size:.7rem; background:#fee2e2; color:#991b1b; padding:.1rem .45rem; border-radius:4px; font-weight:700; }
+
+    .status-active   { background:#dbeafe; color:#1e40af; }
+    .status-returned { background:#dcfce7; color:#166534; }
+    .status-badge { display:inline-block; padding:.15rem .5rem; border-radius:6px; font-size:.72rem; font-weight:700; }
+
+    /* Table */
+    .borrow-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+    .borrow-table th { text-align:left; padding:.45rem .75rem; font-weight:600; color:var(--gray-500); border-bottom:1px solid var(--gray-200); white-space:nowrap; }
+    .borrow-table td { padding:.45rem .75rem; vertical-align:middle; }
+    .borrow-table tr:hover { background:var(--gray-50); }
+    @media (max-width:767px) {
+      .borrow-table thead { display:none; }
+      .borrow-table tbody tr { display:block; border-bottom:1px solid var(--gray-100); padding:.5rem 0; }
+      .borrow-table tbody td { display:flex; justify-content:space-between; align-items:center; padding:.2rem .5rem; font-size:.82rem; }
+      .borrow-table tbody td::before { content:attr(data-label); color:var(--gray-500); font-size:.75rem; flex-shrink:0; margin-right:.5rem; }
+      .borrow-table tbody td[data-label="Rak Asal"] { display:none; }
+    }
+  </style>
+</head>
+<body data-page="borrow">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="active">🔧 Sedang Dipinjam</button>
+          <button class="tab-btn" data-tab="returned">✅ Sudah Dikembalikan</button>
+        </div>
+        <button class="btn btn-primary btn-sm" id="btnNewBorrow">+ Catat Pinjam</button>
+      </div>
+
+      <div id="pageAlert" class="alert alert-error"></div>
+      <div id="pageSuccess" class="alert alert-success"></div>
+
+      <div class="card" style="padding:0">
+        <table class="borrow-table">
+          <thead>
+            <tr>
+              <th>Barang</th><th>Peminjam</th><th>Rak Asal</th>
+              <th>Tgl Pinjam</th><th>Est. Kembali</th><th>Status</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="borrowBody">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</td></tr>
+          </tbody>
+        </table>
+        <div id="emptyMsg" style="display:none;text-align:center;padding:2rem;color:var(--gray-400)">Tidak ada data peminjaman</div>
+      </div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+
+  <!-- Modal: Catat Pinjam -->
+  <div class="modal-overlay" id="borrowModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">🔧 Catat Peminjaman Tools</span></div>
+      <div class="modal-body">
+        <div id="borrowAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label>Barang (Tools) <span style="color:var(--red)">*</span></label>
+          <select id="bItem" class="form-control">
+            <option value="">-- Pilih tools --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dari Lokasi / Rak <span style="color:var(--red)">*</span></label>
+          <select id="bRack" class="form-control">
+            <option value="">-- Pilih rak --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Jumlah <span style="color:var(--red)">*</span></label>
+          <input type="number" id="bQty" min="1" value="1" />
+        </div>
+        <div class="form-group">
+          <label>Nama Peminjam <span style="color:var(--red)">*</span></label>
+          <input type="text" id="bBorrower" placeholder="Nama teknisi..." />
+        </div>
+        <div class="form-group">
+          <label>Estimasi Kembali</label>
+          <input type="date" id="bExpected" />
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="bNotes" placeholder="Opsional" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="bCancel">Batal</button>
+        <button class="btn btn-primary" id="bSave">Catat Pinjam</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Return -->
+  <div class="modal-overlay" id="returnModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title">✅ Kembalikan Tools</span></div>
+      <div class="modal-body">
+        <div id="retAlert" class="alert alert-error"></div>
+        <div id="retDetail" style="background:var(--gray-50);padding:.75rem;border-radius:8px;margin-bottom:.85rem;font-size:.85rem"></div>
+        <div class="form-group">
+          <label>Kembalikan ke Rak <span style="color:var(--red)">*</span></label>
+          <select id="retRack" class="form-control">
+            <option value="">-- Pilih rak tujuan --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="retNotes" placeholder="Kondisi barang, dll." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="retCancel">Batal</button>
+        <button class="btn btn-primary" id="retSave">Konfirmasi Kembali</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+    const fmtDt   = d => new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+
+    let _curTab    = 'active';
+    let _tools     = [];
+    let _racks     = [];
+    let _curBorrow = null;
+
+    window.onLayoutReady = async () => {
+      await Promise.all([loadTools(), loadRacks()]);
+      await loadBorrows();
+    };
+
+    async function loadTools() {
+      _tools = await fetch('/api/inventory/items?category=tools').then(r => r.json()).catch(() => []);
+      const sel = document.getElementById('bItem');
+      sel.innerHTML = '<option value="">-- Pilih tools --</option>' +
+        _tools.map(t => {
+          const avail = t.total_qty - t.total_borrowed - t.total_damaged - t.total_lost;
+          return `<option value="${t.id}">${t.name} [${t.code}] — ${avail} tersedia</option>`;
+        }).join('');
+    }
+
+    async function loadRacks() {
+      _racks = await fetch('/api/inventory/racks').then(r => r.json()).catch(() => []);
+      const fills = (selId) => {
+        document.getElementById(selId).innerHTML =
+          '<option value="">-- Pilih rak --</option>' +
+          _racks.map(r => `<option value="${r.id}">${r.location_name} / ${r.name}</option>`).join('');
+      };
+      fills('bRack');
+      fills('retRack');
+    }
+
+    async function loadBorrows() {
+      const rows = await fetch(`/api/inventory/borrows?status=${_curTab}`).then(r => r.json()).catch(() => []);
+      const body = document.getElementById('borrowBody');
+      const empty = document.getElementById('emptyMsg');
+      if (!rows.length) {
+        body.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      const today = new Date(); today.setHours(0,0,0,0);
+      body.innerHTML = rows.map(b => {
+        const isOverdue = b.expected_return && b.status === 'active' && new Date(b.expected_return) < today;
+        return `
+          <tr>
+            <td data-label="Barang">
+              <div style="font-weight:600">${b.item_name}</div>
+              <div style="font-size:.75rem;color:var(--gray-400)">${b.item_code} · ${b.qty} ${b.unit}</div>
+            </td>
+            <td data-label="Peminjam" style="font-weight:600">${b.borrower_name}</td>
+            <td data-label="Rak Asal">${b.from_location_name} / ${b.from_rack_name}</td>
+            <td data-label="Tgl Pinjam">${fmtDt(b.borrowed_at)}</td>
+            <td data-label="Est. Kembali">
+              ${b.expected_return ? fmtDate(b.expected_return) : '–'}
+              ${isOverdue ? ' <span class="overdue-tag">Terlambat</span>' : ''}
+            </td>
+            <td data-label="Status">
+              <span class="status-badge status-${b.status}">${b.status === 'active' ? '🔧 Dipinjam' : '✅ Kembali'}</span>
+              ${b.status === 'returned' && b.return_location_name ? `<div style="font-size:.72rem;color:var(--gray-400)">→ ${b.return_location_name}/${b.return_rack_name}</div>` : ''}
+            </td>
+            <td>
+              ${b.status === 'active'
+                ? `<button class="btn btn-primary btn-sm" onclick="openReturn(${b.id})">↩ Return</button>`
+                : `<span style="font-size:.75rem;color:var(--gray-400)">${b.returned_at ? fmtDt(b.returned_at) : ''}</span>`}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── Tabs ────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _curTab = btn.dataset.tab;
+        loadBorrows();
+      });
+    });
+
+    // ── Catat Pinjam ─────────────────────────────────────────
+    document.getElementById('btnNewBorrow').addEventListener('click', () => {
+      document.getElementById('bBorrower').value  = '';
+      document.getElementById('bQty').value       = 1;
+      document.getElementById('bExpected').value  = '';
+      document.getElementById('bNotes').value     = '';
+      document.getElementById('bItem').value      = '';
+      document.getElementById('bRack').value      = '';
+      hideAlert('borrowAlert');
+      document.getElementById('borrowModal').classList.add('open');
+    });
+    document.getElementById('bCancel').addEventListener('click', () => closeModal('borrowModal'));
+    document.getElementById('bSave').addEventListener('click', async () => {
+      const body = {
+        item_id:         document.getElementById('bItem').value,
+        from_rack_id:    document.getElementById('bRack').value,
+        qty:             document.getElementById('bQty').value,
+        borrower_name:   document.getElementById('bBorrower').value.trim(),
+        expected_return: document.getElementById('bExpected').value || null,
+        notes:           document.getElementById('bNotes').value.trim(),
+      };
+      if (!body.item_id)       return showAlert('borrowAlert', 'Pilih tools yang dipinjam');
+      if (!body.from_rack_id)  return showAlert('borrowAlert', 'Pilih rak asal');
+      if (!body.borrower_name) return showAlert('borrowAlert', 'Nama peminjam wajib diisi');
+      const res = await fetch('/api/inventory/borrows', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('borrowAlert', data.error);
+      closeModal('borrowModal');
+      showSuccess('pageSuccess', `Peminjaman oleh ${body.borrower_name} berhasil dicatat`);
+      await loadTools();
+      if (_curTab === 'active') await loadBorrows();
+    });
+
+    // ── Return ───────────────────────────────────────────────
+    function openReturn(borrowId) {
+      const rows = document.querySelectorAll('#borrowBody tr');
+      // find borrow data from DOM (not stored in memory)
+      _curBorrow = borrowId;
+      // just pre-fill detail from table
+      document.getElementById('retDetail').textContent = 'Konfirmasi pengembalian tools';
+      document.getElementById('retRack').value  = '';
+      document.getElementById('retNotes').value = '';
+      hideAlert('retAlert');
+      document.getElementById('returnModal').classList.add('open');
+    }
+    document.getElementById('retCancel').addEventListener('click', () => closeModal('returnModal'));
+    document.getElementById('retSave').addEventListener('click', async () => {
+      const return_rack_id = document.getElementById('retRack').value;
+      const notes          = document.getElementById('retNotes').value.trim();
+      if (!return_rack_id) return showAlert('retAlert', 'Pilih rak tujuan pengembalian');
+      const res = await fetch(`/api/inventory/borrows/${_curBorrow}/return`, {
+        method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ return_rack_id, notes })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAlert('retAlert', data.error);
+      closeModal('returnModal');
+      showSuccess('pageSuccess', 'Tools berhasil dikembalikan');
+      await loadTools();
+      await loadBorrows();
+    });
+
+    // ── Helpers ──────────────────────────────────────────────
+    function closeModal(id)  { document.getElementById(id).classList.remove('open'); }
+    function showAlert(id, msg)   { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+    function hideAlert(id)        { document.getElementById(id)?.classList.remove('show'); }
+    function showSuccess(id, msg) {
+      const el=document.getElementById(id); el.textContent=msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4000);
+    }
+  </script>
+</body>
+</html>

@@ -358,7 +358,8 @@ body {
 
 .form-group input,
 .form-group select,
-.form-group textarea {
+.form-group textarea,
+.form-control {
   width: 100%; padding: .55rem .8rem;
   border: 1.5px solid var(--gray-200); border-radius: 7px;
   font-size: .88rem; color: var(--gray-800); background: #fff;
@@ -366,11 +367,13 @@ body {
 }
 .form-group input:focus,
 .form-group select:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-control:focus {
   outline: none; border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(249,115,22,.12);
 }
 .form-group textarea { resize: vertical; min-height: 64px; }
+.form-control[type=date] { font-family: inherit; }
 
 /* ═══════════════════════════════════════════
    BUTTONS

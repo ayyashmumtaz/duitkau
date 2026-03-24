@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — Lokasi & Rak</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/inventory/js/layout.js"></script>
+  <style>
+    .loc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
+
+    .loc-card { background:#fff; border:1px solid var(--gray-200); border-radius:12px; overflow:hidden; }
+    .loc-card-header { padding:.85rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:.5rem; border-bottom:1px solid var(--gray-100); }
+    .loc-card-body { padding:.75rem 1rem; }
+    .loc-type-icon { font-size:1.4rem; flex-shrink:0; }
+    .loc-info { flex:1; min-width:0; }
+    .loc-name { font-weight:700; font-size:.95rem; }
+    .loc-type-badge { display:inline-block; font-size:.68rem; font-weight:700; padding:.1rem .4rem; border-radius:4px; margin-top:.2rem; }
+    .lt-warehouse { background:#dbeafe; color:#1e40af; }
+    .lt-vehicle   { background:#dcfce7; color:#166534; }
+    .lt-workbench { background:#fef9c3; color:#854d0e; }
+    .lt-area      { background:#f3f4f6; color:#374151; }
+
+    .rack-item { display:flex; align-items:center; justify-content:space-between; padding:.4rem .5rem; border-radius:7px; background:var(--gray-50); margin-bottom:.35rem; font-size:.83rem; }
+    .rack-name { font-weight:600; }
+    .rack-actions { display:flex; gap:.25rem; }
+
+    .qr-placeholder { padding:.75rem; border:1.5px dashed var(--gray-200); border-radius:8px; text-align:center; color:var(--gray-400); font-size:.8rem; cursor:pointer; margin-top:.5rem; }
+    .qr-code-text { font-family:monospace; font-size:.85rem; background:var(--gray-100); padding:.3rem .6rem; border-radius:5px; }
+  </style>
+</head>
+<body data-page="locations">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
+        <h2 style="font-size:1rem;font-weight:700">📍 Lokasi & Rak</h2>
+        <button class="btn btn-primary btn-sm" id="btnNewLoc">+ Tambah Lokasi</button>
+      </div>
+
+      <div id="pageAlert" class="alert alert-error"></div>
+      <div id="pageSuccess" class="alert alert-success"></div>
+
+      <div class="loc-grid" id="locGrid">
+        <div style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</div>
+      </div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+
+  <!-- Modal: Lokasi -->
+  <div class="modal-overlay" id="locModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title" id="locModalTitle">Tambah Lokasi</span></div>
+      <div class="modal-body">
+        <div id="locAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label>Nama Lokasi <span style="color:var(--red)">*</span></label>
+          <input type="text" id="lName" placeholder="mis. Gudang Utama, Mobil Andi..." />
+        </div>
+        <div class="form-group">
+          <label>Tipe <span style="color:var(--red)">*</span></label>
+          <select id="lType">
+            <option value="warehouse">🏭 Gudang</option>
+            <option value="vehicle">🚗 Mobil Teknisi</option>
+            <option value="workbench">🪑 Meja Kerja</option>
+            <option value="area">🏗️ Area Workshop</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Kode QR <span style="color:var(--gray-400);font-size:.78rem">(opsional)</span></label>
+          <input type="text" id="lQR" placeholder="mis. LOC-GDG-01" />
+          <div style="font-size:.75rem;color:var(--gray-400);margin-top:.25rem">Kode ini ditempel di lokasi fisik untuk memudahkan input</div>
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <textarea id="lNotes" rows="2" style="resize:vertical"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="locCancel">Batal</button>
+        <button class="btn btn-primary" id="locSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Rak -->
+  <div class="modal-overlay" id="rackModal">
+    <div class="modal">
+      <div class="modal-header"><span class="modal-title" id="rackModalTitle">Tambah Rak</span></div>
+      <div class="modal-body">
+        <div id="rackAlert" class="alert alert-error"></div>
+        <div id="rackLocName" style="font-weight:700;margin-bottom:.75rem;font-size:.9rem"></div>
+        <div class="form-group">
+          <label>Nama Rak <span style="color:var(--red)">*</span></label>
+          <input type="text" id="rName" placeholder="mis. A1-01, BOX-01, RAK-KIRI..." />
+        </div>
+        <div class="form-group">
+          <label>Catatan</label>
+          <input type="text" id="rNotes" placeholder="Opsional" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="rackCancel">Batal</button>
+        <button class="btn btn-primary" id="rackSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const TYPE_ICON  = { warehouse:'🏭', vehicle:'🚗', workbench:'🪑', area:'🏗️' };
+    const TYPE_LABEL = { warehouse:'Gudang', vehicle:'Mobil', workbench:'Meja Kerja', area:'Area' };
+
+    let _locs  = [];
+    let _racks = {};   // { location_id: [racks] }
+    let _editLocId  = null;
+    let _editRackId = null;
+    let _curLocId   = null;
+
+    window.onLayoutReady = async () => { await loadAll(); };
+
+    async function loadAll() {
+      const [locs, racks] = await Promise.all([
+        fetch('/api/inventory/locations').then(r => r.json()).catch(() => []),
+        fetch('/api/inventory/racks').then(r => r.json()).catch(() => []),
+      ]);
+      _locs = locs;
+      _racks = {};
+      for (const r of racks) {
+        if (!_racks[r.location_id]) _racks[r.location_id] = [];
+        _racks[r.location_id].push(r);
+      }
+      renderGrid();
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('locGrid');
+      if (!_locs.length) {
+        grid.innerHTML = '<div class="card" style="text-align:center;padding:2rem;color:var(--gray-400)">Belum ada lokasi. Tambah lokasi pertama!</div>';
+        return;
+      }
+      grid.innerHTML = _locs.map(loc => {
+        const racks = _racks[loc.id] || [];
+        return `
+          <div class="loc-card">
+            <div class="loc-card-header">
+              <span class="loc-type-icon">${TYPE_ICON[loc.type]||'📍'}</span>
+              <div class="loc-info">
+                <div class="loc-name">${loc.name}</div>
+                <span class="loc-type-badge lt-${loc.type}">${TYPE_LABEL[loc.type]||loc.type}</span>
+                ${loc.qr_code ? `<span class="qr-code-text" style="margin-left:.35rem;font-size:.68rem">QR: ${loc.qr_code}</span>` : ''}
+              </div>
+              <div style="display:flex;gap:.25rem;flex-shrink:0">
+                <button class="btn btn-ghost btn-sm" onclick="openEditLoc(${loc.id})">✏️</button>
+                <button class="btn btn-ghost btn-sm text-red" onclick="deleteLoc(${loc.id},'${loc.name.replace(/'/g,"\\'")}')">🗑️</button>
+              </div>
+            </div>
+            <div class="loc-card-body">
+              ${racks.length
+                ? racks.map(r => `
+                  <div class="rack-item">
+                    <span class="rack-name">🗄️ ${r.name}</span>
+                    <div class="rack-actions">
+                      <button class="btn btn-ghost btn-sm" onclick="openEditRack(${r.id},${loc.id},'${loc.name.replace(/'/g,"\\'")}')">✏️</button>
+                      <button class="btn btn-ghost btn-sm text-red" onclick="deleteRack(${r.id},'${r.name.replace(/'/g,"\\'")}')">🗑️</button>
+                    </div>
+                  </div>`).join('')
+                : '<div style="font-size:.8rem;color:var(--gray-400);padding:.25rem 0">Belum ada rak</div>'}
+              <button class="btn btn-ghost btn-sm" style="margin-top:.5rem;width:100%" onclick="openNewRack(${loc.id},'${loc.name.replace(/'/g,"\\'")}')">+ Tambah Rak</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Lokasi CRUD ──────────────────────────────────────────
+    document.getElementById('btnNewLoc').addEventListener('click', () => openLocModal());
+    document.getElementById('locCancel').addEventListener('click', () => closeModal('locModal'));
+    document.getElementById('locSave').addEventListener('click', saveLoc);
+
+    function openLocModal(loc) {
+      _editLocId = loc?.id || null;
+      document.getElementById('locModalTitle').textContent = loc ? 'Edit Lokasi' : 'Tambah Lokasi';
+      document.getElementById('lName').value  = loc?.name || '';
+      document.getElementById('lType').value  = loc?.type || 'warehouse';
+      document.getElementById('lQR').value    = loc?.qr_code || '';
+      document.getElementById('lNotes').value = loc?.notes || '';
+      hideAlert('locAlert');
+      document.getElementById('locModal').classList.add('open');
+    }
+
+    function openEditLoc(id) { openLocModal(_locs.find(l => l.id === id)); }
+
+    async function saveLoc() {
+      const body = {
+        name:    document.getElementById('lName').value.trim(),
+        type:    document.getElementById('lType').value,
+        qr_code: document.getElementById('lQR').value.trim(),
+        notes:   document.getElementById('lNotes').value.trim(),
+      };
+      if (!body.name) return showAlert('locAlert', 'Nama lokasi wajib diisi');
+      const url    = _editLocId ? `/api/inventory/locations/${_editLocId}` : '/api/inventory/locations';
+      const method = _editLocId ? 'PUT' : 'POST';
+      const res  = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) return showAlert('locAlert', data.error);
+      closeModal('locModal');
+      showSuccess('pageSuccess', `Lokasi "${data.name}" berhasil disimpan`);
+      await loadAll();
+    }
+
+    async function deleteLoc(id, name) {
+      if (!confirm(`Hapus lokasi "${name}"?\nSemua rak di lokasi ini harus kosong.`)) return;
+      const res = await fetch(`/api/inventory/locations/${id}`, { method:'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { showAlert('pageAlert', data.error); return; }
+      showSuccess('pageSuccess', `Lokasi "${name}" dihapus`);
+      await loadAll();
+    }
+
+    // ── Rak CRUD ─────────────────────────────────────────────
+    document.getElementById('rackCancel').addEventListener('click', () => closeModal('rackModal'));
+    document.getElementById('rackSave').addEventListener('click', saveRack);
+
+    function openNewRack(locId, locName) {
+      _editRackId = null; _curLocId = locId;
+      document.getElementById('rackModalTitle').textContent = 'Tambah Rak';
+      document.getElementById('rackLocName').textContent = `📍 ${locName}`;
+      document.getElementById('rName').value  = '';
+      document.getElementById('rNotes').value = '';
+      hideAlert('rackAlert');
+      document.getElementById('rackModal').classList.add('open');
+    }
+
+    function openEditRack(rackId, locId, locName) {
+      const allRacks = Object.values(_racks).flat();
+      const rack = allRacks.find(r => r.id === rackId);
+      _editRackId = rackId; _curLocId = locId;
+      document.getElementById('rackModalTitle').textContent = 'Edit Rak';
+      document.getElementById('rackLocName').textContent = `📍 ${locName}`;
+      document.getElementById('rName').value  = rack?.name || '';
+      document.getElementById('rNotes').value = rack?.notes || '';
+      hideAlert('rackAlert');
+      document.getElementById('rackModal').classList.add('open');
+    }
+
+    async function saveRack() {
+      const body = {
+        location_id: _curLocId,
+        name:  document.getElementById('rName').value.trim(),
+        notes: document.getElementById('rNotes').value.trim(),
+      };
+      if (!body.name) return showAlert('rackAlert', 'Nama rak wajib diisi');
+      const url    = _editRackId ? `/api/inventory/racks/${_editRackId}` : '/api/inventory/racks';
+      const method = _editRackId ? 'PUT' : 'POST';
+      const res  = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) return showAlert('rackAlert', data.error);
+      closeModal('rackModal');
+      showSuccess('pageSuccess', `Rak "${data.name}" berhasil disimpan`);
+      await loadAll();
+    }
+
+    async function deleteRack(id, name) {
+      if (!confirm(`Hapus rak "${name}"?`)) return;
+      const res = await fetch(`/api/inventory/racks/${id}`, { method:'DELETE' });
+      const data = await res.json();
+      if (!res.ok) { showAlert('pageAlert', data.error); return; }
+      showSuccess('pageSuccess', `Rak "${name}" dihapus`);
+      await loadAll();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    function showAlert(id, msg)   { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+    function hideAlert(id)        { document.getElementById(id)?.classList.remove('show'); }
+    function showSuccess(id, msg) {
+      const el=document.getElementById(id); el.textContent=msg; el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4000);
+    }
+  </script>
+</body>
+</html>

@@ -74,6 +74,7 @@ app.use('/api/ca', require('./routes/ca'));
 app.use('/api/logs', require('./routes/logs'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/karyawan', require('./routes/karyawan'));
+app.use('/api/inventory', require('./routes/inventory'));
 
 app.get('/', (req, res) => {
   res.redirect('/login');

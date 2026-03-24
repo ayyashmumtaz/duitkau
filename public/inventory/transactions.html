@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — Riwayat Transaksi</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/inventory/js/layout.js"></script>
+  <style>
+    .filter-row { display:flex; align-items:center; gap:.65rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .filter-row .form-control { width:auto; font-size:.83rem; }
+    .filter-row input[type=date] { font-size:.83rem; }
+
+    .tx-table { width:100%; border-collapse:collapse; font-size:.83rem; }
+    .tx-table th { text-align:left; padding:.45rem .75rem; font-weight:600; color:var(--gray-500); border-bottom:1px solid var(--gray-200); white-space:nowrap; }
+    .tx-table th.r { text-align:right; }
+    .tx-table td { padding:.45rem .75rem; vertical-align:middle; }
+    .tx-table td.r { text-align:right; }
+    .tx-table tr:hover { background:var(--gray-50); }
+    @media (max-width:767px) {
+      .tx-table thead { display:none; }
+      .tx-table tbody tr { display:block; border-bottom:1px solid var(--gray-100); padding:.55rem 0; }
+      .tx-table tbody td { display:flex; justify-content:space-between; align-items:center; padding:.2rem .5rem; font-size:.82rem; }
+      .tx-table tbody td::before { content:attr(data-label); color:var(--gray-500); font-size:.75rem; flex-shrink:0; margin-right:.5rem; }
+      .tx-table tbody td[data-label="Dari"],[data-label="Ke"]  { display:none; }
+      .tx-table tbody td[data-label="Oleh"] { display:none; }
+    }
+
+    .tx-type-badge { display:inline-block; padding:.15rem .5rem; border-radius:6px; font-size:.72rem; font-weight:700; }
+    .tx-in         { background:#dcfce7; color:#166534; }
+    .tx-out        { background:#fee2e2; color:#991b1b; }
+    .tx-borrow     { background:#dbeafe; color:#1e40af; }
+    .tx-return     { background:#e0e7ff; color:#3730a3; }
+    .tx-transfer   { background:#fef3c7; color:#92400e; }
+    .tx-adjustment { background:#f3f4f6; color:#374151; }
+
+    .qty-in  { color:#166534; font-weight:700; }
+    .qty-out { color:#991b1b; font-weight:700; }
+  </style>
+</head>
+<body data-page="transactions">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div class="filter-row">
+        <input type="text" id="fItem" class="form-control" placeholder="🔍 Nama/kode barang..." style="flex:1;min-width:160px" />
+        <select id="fType" class="form-control">
+          <option value="">Semua Tipe</option>
+          <option value="in">Masuk</option>
+          <option value="out">Keluar</option>
+          <option value="borrow">Pinjam</option>
+          <option value="return">Return</option>
+          <option value="transfer">Transfer</option>
+          <option value="adjustment">Koreksi</option>
+        </select>
+        <input type="date" id="fFrom" class="form-control" title="Dari tanggal" />
+        <input type="date" id="fTo"   class="form-control" title="Sampai tanggal" />
+        <button class="btn btn-ghost btn-sm" id="btnReset">Reset</button>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th>Waktu</th><th>Tipe</th><th>Barang</th>
+              <th>Dari</th><th>Ke / Info</th><th class="r">Qty</th><th>Oleh</th>
+            </tr>
+          </thead>
+          <tbody id="txBody">
+            <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</td></tr>
+          </tbody>
+        </table>
+        <div id="emptyMsg" style="display:none;text-align:center;padding:2rem;color:var(--gray-400)">Tidak ada transaksi</div>
+      </div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+
+  <script>
+    const fmt   = new Intl.NumberFormat('id-ID');
+    const fmtDt = d => new Date(d).toLocaleString('id-ID', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const TX_LABEL = { in:'Masuk', out:'Keluar', borrow:'Pinjam', return:'Return', transfer:'Transfer', adjustment:'Koreksi' };
+
+    window.onLayoutReady = () => loadTx();
+
+    async function loadTx() {
+      const q     = document.getElementById('fItem').value.trim();
+      const type  = document.getElementById('fType').value;
+      const from  = document.getElementById('fFrom').value;
+      const to    = document.getElementById('fTo').value;
+      const params = new URLSearchParams({ limit: 200 });
+      if (type) params.set('type', type);
+      if (from) params.set('from', from);
+      if (to)   params.set('to',   to);
+
+      const body  = document.getElementById('txBody');
+      const empty = document.getElementById('emptyMsg');
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--gray-400)">🔄 Memuat...</td></tr>';
+
+      let rows = await fetch(`/api/inventory/transactions?${params}`).then(r => r.json()).catch(() => []);
+
+      // Client-side filter by item name/code (simple, since we don't have a direct endpoint filter)
+      if (q) rows = rows.filter(t => t.item_name.toLowerCase().includes(q.toLowerCase()) || t.item_code.toLowerCase().includes(q.toLowerCase()));
+
+      if (!rows.length) {
+        body.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+
+      body.innerHTML = rows.map(t => {
+        const isPositive = ['in','return'].includes(t.type);
+        const isNegative = ['out'].includes(t.type);
+        const fromLoc = t.location_name ? `${t.location_name} / ${t.rack_name}` : '–';
+        const toLoc   = t.to_location_name ? `${t.to_location_name} / ${t.to_rack_name}` : (t.notes || '–');
+        return `
+          <tr>
+            <td data-label="Waktu">${fmtDt(t.created_at)}</td>
+            <td data-label="Tipe"><span class="tx-type-badge tx-${t.type}">${TX_LABEL[t.type]||t.type}</span></td>
+            <td data-label="Barang">
+              <div style="font-weight:600">${t.item_name}</div>
+              <div style="font-size:.72rem;color:var(--gray-400)">${t.item_code}</div>
+            </td>
+            <td data-label="Dari">${fromLoc}</td>
+            <td data-label="Ke">${toLoc}</td>
+            <td data-label="Qty" class="r ${isPositive?'qty-in':isNegative?'qty-out':''}">
+              ${isPositive?'+':isNegative?'−':''}${fmt.format(Math.abs(t.qty))} ${t.unit}
+            </td>
+            <td data-label="Oleh" style="color:var(--gray-500)">${t.created_by_name||'–'}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    let _timer;
+    document.getElementById('fItem').addEventListener('input',  () => { clearTimeout(_timer); _timer = setTimeout(loadTx, 350); });
+    document.getElementById('fType').addEventListener('change', loadTx);
+    document.getElementById('fFrom').addEventListener('change', loadTx);
+    document.getElementById('fTo').addEventListener('change',   loadTx);
+    document.getElementById('btnReset').addEventListener('click', () => {
+      document.getElementById('fItem').value = '';
+      document.getElementById('fType').value = '';
+      document.getElementById('fFrom').value = '';
+      document.getElementById('fTo').value   = '';
+      loadTx();
+    });
+  </script>
+</body>
+</html>
