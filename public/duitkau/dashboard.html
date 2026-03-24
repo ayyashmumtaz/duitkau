@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DuitKau - Input Reimburse Karyawan</title>
+  <title>DuitKau - Input Reimburse</title>
   <link rel="stylesheet" href="/css/style.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
-  <script src="/js/layout.js"></script>
+  <script src="/duitkau/js/layout.js"></script>
   <script src="/js/utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
@@ -73,15 +73,15 @@
     }
   </style>
 </head>
-<body data-page="input-employee">
+<body data-page="dashboard">
   <div id="navbar-placeholder"></div>
   <div class="app-layout">
     <div id="sidebar-placeholder"></div>
 
     <main class="main-content">
-      <h1 class="page-title">Input Reimburse Karyawan</h1>
+      <h1 class="page-title">Input Reimburse</h1>
       <p class="text-muted" style="margin-bottom:1.25rem;font-size:.875rem">
-        Input pengeluaran atas nama karyawan lain. Tambah satu per satu, lalu simpan sekaligus. Transaksi langsung berstatus <strong>Disetujui</strong>.
+        Input pengeluaran Anda. Tambah satu per satu, lalu kirim sekaligus untuk disetujui.
       </p>
 
       <div class="grid-2" style="align-items:start">
@@ -92,12 +92,6 @@
           <div id="formAlert" class="alert alert-error"></div>
 
           <div class="input-grid">
-            <div class="form-group full">
-              <label>Karyawan <span style="color:var(--red)">*</span></label>
-              <select id="inpUser">
-                <option value="">-- Pilih karyawan --</option>
-              </select>
-            </div>
             <div class="form-group full">
               <label>Nama Pengeluaran <span style="color:var(--red)">*</span></label>
               <input type="text" id="inpName" placeholder="Contoh: Makan klien, Bensin..." autocomplete="off" />
@@ -111,7 +105,7 @@
               <input type="text" id="inpDate" inputmode="numeric" maxlength="10" placeholder="DD/MM/YYYY" autocomplete="off" />
             </div>
             <div class="form-group full">
-              <label>Kategori</label>
+              <label>Kategori <span style="color:var(--red)">*</span></label>
               <select id="inpCategory">
                 <option value="">-- Pilih kategori --</option>
               </select>
@@ -121,8 +115,9 @@
               <input type="text" id="inpNote" placeholder="Keterangan tambahan..." autocomplete="off" />
             </div>
             <div class="form-group full">
-              <label>Bukti Foto <span style="color:var(--gray-400);font-weight:400;font-size:.8rem">(opsional)</span></label>
+              <label>Bukti Foto <span style="color:var(--red)">*</span></label>
               <input type="file" id="inpProof" accept="image/*" />
+              <div style="font-size:.75rem;color:var(--gray-500);margin-top:.25rem">📷 Wajib — pilih dari galeri atau ambil foto langsung</div>
               <div class="proof-preview-mini" id="proofPreview" style="display:none">
                 <img id="proofPreviewImg" src="" alt="preview" onclick="openLightbox(this.src)" />
                 <span class="proof-preview-mini-remove" onclick="clearProof()">✕ Hapus foto</span>
@@ -137,36 +132,18 @@
           </div>
         </div>
 
-        <!-- DAFTAR ANTRIAN + HARI INI -->
-        <div style="display:flex;flex-direction:column;gap:1rem">
-
-          <!-- Antrian -->
-          <div class="card" id="queueCard">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
-              <div class="card-title" style="margin-bottom:0">🗂️ Antrian</div>
-              <span class="badge badge-keluar" id="queueCount" style="display:none">0</span>
-            </div>
-            <div id="queueEmpty" style="text-align:center;padding:1.25rem 0;color:var(--gray-400);font-size:.85rem">
-              Belum ada pengeluaran ditambahkan
-            </div>
-            <div id="queueList"></div>
+        <!-- ANTRIAN -->
+        <div class="card" id="queueCard">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <div class="card-title" style="margin-bottom:0">🗂️ Antrian</div>
+            <span class="badge badge-keluar" id="queueCount" style="display:none">0</span>
           </div>
-
-          <!-- Hari ini -->
-          <div class="card">
-            <div class="card-title">📋 Input Hari Ini</div>
-            <div id="tableAlert" class="alert alert-error"></div>
-            <div class="table-wrapper">
-              <table>
-                <thead><tr><th>Karyawan</th><th>Nama</th><th class="text-right">Nominal</th><th>Bukti</th></tr></thead>
-                <tbody id="todayBody">
-                  <tr><td colspan="4"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
-                </tbody>
-              </table>
-            </div>
+          <div id="queueEmpty" style="text-align:center;padding:1.25rem 0;color:var(--gray-400);font-size:.85rem">
+            Belum ada pengeluaran ditambahkan
           </div>
-
+          <div id="queueList"></div>
         </div>
+
       </div>
     </main>
   </div>
@@ -177,7 +154,7 @@
       <div class="save-bar-count" id="saveBarCount">0 pengeluaran</div>
       <div class="save-bar-total" id="saveBarTotal">Rp 0</div>
     </div>
-    <button class="btn btn-primary" id="btnSaveAll">Simpan Semua</button>
+    <button class="btn btn-primary" id="btnSaveAll">Kirim Semua</button>
   </div>
 
   <div id="bottom-nav-placeholder"></div>
@@ -192,9 +169,8 @@
 
   <script>
     const fmt = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
-    const todayISO = new Date().toISOString().slice(0, 10);
 
-    let _queue = []; // { id, userId, userLabel, name, amount, date, dateISO, note, categoryId, categoryName, file, previewUrl }
+    let _queue = []; // { id, name, amount, date, dateISO, note, categoryId, categoryName, file, previewUrl }
     let _queueCounter = 0;
     let _editIdx = null;
     let _proofFile = null, _proofPreviewUrl = null;
@@ -231,41 +207,9 @@
     }
 
     // ── Init ──
-    window.onLayoutReady = async function (user) {
-      await Promise.all([loadEmployees(user.userId), loadCategories(), loadToday()]);
+    window.onLayoutReady = async function () {
+      await loadCategories();
     };
-
-    async function loadEmployees(myId) {
-      try {
-        const users = await fetch('/api/finance/employees').then(r => r.json());
-        const sel = document.getElementById('inpUser');
-        const employees   = users.filter(u => u.role === 'employee' && u.id !== myId);
-        const financeUsers = users.filter(u => u.role === 'finance' && u.id !== myId);
-
-        if (employees.length > 0) {
-          const grp = document.createElement('optgroup');
-          grp.label = 'Karyawan';
-          employees.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.id;
-            opt.textContent = u.full_name + ' (@' + u.username + ')';
-            grp.appendChild(opt);
-          });
-          sel.appendChild(grp);
-        }
-        if (financeUsers.length > 0) {
-          const grp = document.createElement('optgroup');
-          grp.label = 'Tim Finance';
-          financeUsers.forEach(u => {
-            const opt = document.createElement('option');
-            opt.value = u.id;
-            opt.textContent = u.full_name + ' (@' + u.username + ')';
-            grp.appendChild(opt);
-          });
-          sel.appendChild(grp);
-        }
-      } catch {}
-    }
 
     async function loadCategories() {
       try {
@@ -277,25 +221,6 @@
           sel.appendChild(o);
         });
       } catch {}
-    }
-
-    async function loadToday() {
-      try {
-        const data = await fetch(`/api/finance/report?userId=all&periodType=date&periodValue=${todayISO}`).then(r => r.json());
-        const allTx = data.flatMap(emp => emp.transactions.map(tx => ({ ...tx, fullName: emp.fullName })));
-        const tbody = document.getElementById('todayBody');
-        if (!allTx.length) {
-          tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>Belum ada input hari ini</div></td></tr>`;
-          return;
-        }
-        tbody.innerHTML = allTx.map(tx => `
-          <tr class="keluar">
-            <td>${tx.fullName}</td>
-            <td>${tx.name}</td>
-            <td class="text-right amount-keluar">${fmt.format(tx.amount)}</td>
-            <td>${tx.proof_image ? `<img class="proof-thumb" src="${tx.proof_image}" onclick="openLightbox('${tx.proof_image}')" />` : '–'}</td>
-          </tr>`).join('');
-      } catch { showAlert('tableAlert', 'Gagal memuat riwayat'); }
     }
 
     // ── Queue ──
@@ -311,38 +236,36 @@
 
     document.getElementById('btnAddToQueue').addEventListener('click', () => {
       hideAlert('formAlert');
-      const userSel  = document.getElementById('inpUser');
-      const userId   = userSel.value;
-      const userLabel = userId ? userSel.options[userSel.selectedIndex].text.split(' (@')[0] : '';
-      const name   = document.getElementById('inpName').value.trim();
-      const amount = parseAmount(document.getElementById('inpAmount').value);
+      const name    = document.getElementById('inpName').value.trim();
+      const amount  = parseAmount(document.getElementById('inpAmount').value);
       const dateRaw = document.getElementById('inpDate').value;
       const dateISO = parseDateDMY(dateRaw);
       const catSel  = document.getElementById('inpCategory');
       const note    = document.getElementById('inpNote').value.trim();
 
-      if (!userId)   return showAlert('formAlert', 'Karyawan wajib dipilih');
-      if (!name)     return showAlert('formAlert', 'Nama pengeluaran wajib diisi');
-      if (amount <= 0) return showAlert('formAlert', 'Nominal tidak valid');
-      if (!dateISO)  return showAlert('formAlert', 'Tanggal tidak valid (DD/MM/YYYY)');
+      if (!name)          return showAlert('formAlert', 'Nama pengeluaran wajib diisi');
+      if (amount <= 0)    return showAlert('formAlert', 'Nominal tidak valid');
+      if (!dateISO)       return showAlert('formAlert', 'Tanggal tidak valid (DD/MM/YYYY)');
+      if (!catSel.value)  return showAlert('formAlert', 'Kategori wajib dipilih');
+      if (!_proofFile && _editIdx === null) return showAlert('formAlert', 'Bukti foto wajib disertakan');
+      if (!_proofFile && _editIdx !== null && !_queue[_editIdx].previewUrl)
+        return showAlert('formAlert', 'Bukti foto wajib disertakan');
 
       if (_editIdx !== null) {
         const item = _queue[_editIdx];
-        item.userId = userId; item.userLabel = userLabel;
         item.name = name; item.amount = amount;
         item.date = dateRaw; item.dateISO = dateISO;
         item.note = note;
         item.categoryId = catSel.value;
-        item.categoryName = catSel.value ? catSel.options[catSel.selectedIndex].text : '';
+        item.categoryName = catSel.options[catSel.selectedIndex].text;
         if (_proofFile) { item.file = _proofFile; item.previewUrl = _proofPreviewUrl; }
         _editIdx = null;
       } else {
         _queue.push({
           id: ++_queueCounter,
-          userId, userLabel,
           name, amount, date: dateRaw, dateISO, note,
           categoryId: catSel.value,
-          categoryName: catSel.value ? catSel.options[catSel.selectedIndex].text : '',
+          categoryName: catSel.options[catSel.selectedIndex].text,
           file: _proofFile, previewUrl: _proofPreviewUrl,
         });
       }
@@ -354,7 +277,6 @@
     function editItem(idx) {
       const item = _queue[idx];
       _editIdx = idx;
-      document.getElementById('inpUser').value = item.userId;
       document.getElementById('inpName').value = item.name;
       document.getElementById('inpAmount').value = item.amount.toLocaleString('id-ID');
       fpDate.setDate(item.date, true);
@@ -383,7 +305,6 @@
     });
 
     function resetForm() {
-      document.getElementById('inpUser').value = '';
       document.getElementById('inpName').value = '';
       document.getElementById('inpAmount').value = '';
       fpDate.setDate(new Date(), true);
@@ -417,11 +338,11 @@
 
       list.innerHTML = _queue.map((item, idx) => `
         <div class="queue-item">
-          ${item.previewUrl ? `<img class="queue-item-thumb" src="${item.previewUrl}" onclick="openLightbox('${item.previewUrl}')" />` : ''}
+          <img class="queue-item-thumb" src="${item.previewUrl}" onclick="openLightbox('${item.previewUrl}')" />
           <div class="queue-item-body">
             <div class="queue-item-name">${item.name}</div>
             <div class="queue-item-meta">
-              <span>👤 ${item.userLabel}</span>${item.categoryName ? ` · <span>${item.categoryName}</span>` : ''} · <span>${item.date}</span>${item.note ? ` · <span>${item.note}</span>` : ''}
+              ${item.categoryName ? `<span>${item.categoryName}</span> · ` : ''}<span>${item.date}</span>${item.note ? ` · <span>${item.note}</span>` : ''}
             </div>
             <div class="queue-item-actions">
               <button class="btn btn-ghost btn-sm" onclick="editItem(${idx})">✏️ Edit</button>
@@ -432,7 +353,7 @@
         </div>`).join('');
     }
 
-    // ── Save all ──
+    // ── Save all (batch endpoint) ──
     document.getElementById('btnSaveAll').addEventListener('click', async () => {
       if (!_queue.length) return;
       if (!window.getDbOk()) return modalAlert('Database tidak terhubung');
@@ -440,50 +361,36 @@
       const n = _queue.length;
       const total = fmt.format(_queue.reduce((s, i) => s + i.amount, 0));
       const ok = await modalConfirm(
-        'Simpan Semua?',
-        `<strong>${n} pengeluaran</strong> senilai total <strong>${total}</strong> akan disimpan.`,
-        { okText: `Simpan ${n} Item` }
+        'Kirim Semua?',
+        `<strong>${n} pengeluaran</strong> senilai total <strong>${total}</strong> akan dikirim untuk disetujui.`,
+        { okText: `Kirim ${n} Item` }
       );
       if (!ok) return;
 
       const btn = document.getElementById('btnSaveAll');
       btn.disabled = true; btn.textContent = 'Menyimpan...';
 
-      let success = 0, failed = [];
-      for (const item of [..._queue]) {
+      try {
         const fd = new FormData();
-        fd.append('userId', item.userId);
-        fd.append('type', 'keluar');
-        fd.append('name', item.name);
-        fd.append('amount', item.amount);
-        fd.append('date', item.dateISO);
-        fd.append('note', item.note || '');
-        fd.append('category_id', item.categoryId || '');
-        if (item.file) fd.append('proof_image', item.file);
+        const itemsMeta = _queue.map(({ name, amount, dateISO, note, categoryId }) =>
+          ({ name, amount, date: dateISO, note, category_id: categoryId || null }));
+        fd.append('items', JSON.stringify(itemsMeta));
+        _queue.forEach((item, idx) => fd.append(`proof_${idx}`, item.file));
 
-        try {
-          const res = await fetch('/api/finance/input-employee', { method: 'POST', body: fd });
-          if (res.ok) {
-            success++;
-            _queue = _queue.filter(q => q.id !== item.id);
-          } else {
-            const d = await res.json();
-            failed.push(`"${item.name}" (${item.userLabel}): ${d.error || 'gagal'}`);
-          }
-        } catch {
-          failed.push(`"${item.name}" (${item.userLabel}): gagal menghubungi server`);
+        const res = await fetch('/api/transactions/batch', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          await modalAlert(`Gagal: ${data.error || 'Terjadi kesalahan'}`);
+          return;
         }
-      }
-
-      await loadToday();
-      renderQueue();
-      btn.disabled = false;
-      btn.textContent = 'Simpan Semua';
-
-      if (failed.length === 0) {
-        await modalAlert(`✅ ${success} pengeluaran berhasil disimpan!`);
-      } else {
-        await modalAlert(`${success} berhasil disimpan.\n\nGagal:\n${failed.join('\n')}`);
+        _queue = [];
+        renderQueue();
+        await modalAlert(`✅ ${n} pengeluaran berhasil dikirim!`);
+      } catch {
+        await modalAlert('Gagal menghubungi server');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Kirim Semua';
       }
     });
 

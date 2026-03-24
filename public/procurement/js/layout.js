@@ -1,11 +1,15 @@
 (function () {
   'use strict';
 
-  const HRD_NAV = [
-    { href: '/hrd/karyawan', icon: '🪪', label: 'Data Karyawan', page: 'hrd-karyawan' },
+  const APP_NAME = 'Procurement';
+  const APP_SUB  = 'procurement';
+  const NAV = [
+    { href: '/procurement', icon: '📊', label: 'Dashboard', page: 'procurement-home' },
+    { href: '/procurement/purchase-request', icon: '📋', label: 'Purchase Request', page: 'procurement-pr' },
+    { href: '/procurement/vendor', icon: '🏢', label: 'Vendor', page: 'procurement-vendor' },
+    { href: '/procurement/purchase-order', icon: '📦', label: 'Purchase Order', page: 'procurement-po' },
   ];
 
-  // ─── Helpers ──────────────────────────────
   function getActivePage() { return document.body.dataset.page || ''; }
 
   function renderSidebarItems(nav) {
@@ -26,7 +30,6 @@
       </a>`).join('');
   }
 
-  // ─── Inject navbar ────────────────────────
   function injectNavbar(user) {
     const ph = document.getElementById('navbar-placeholder');
     if (!ph) return;
@@ -37,7 +40,7 @@
           <img src="/assets/logo/logo-CSK.png" alt="Cakra" class="navbar-brand-logo" />
           <div class="navbar-brand-text">
             <div class="brand-name"><span>Cakra</span> ERP</div>
-            <div class="brand-sub">HRD</div>
+            <div class="brand-sub">${APP_NAME}</div>
           </div>
         </a>
         <div class="navbar-body">
@@ -56,16 +59,15 @@
       </nav>`;
   }
 
-  // ─── Inject sidebar ───────────────────────
   function injectSidebar() {
     const ph = document.getElementById('sidebar-placeholder');
     if (!ph) return;
     const active = getActivePage();
-    const activeItem = HRD_NAV.find(i => i.page === active);
+    const activeItem = NAV.find(i => i.page === active);
     ph.outerHTML = `
       <aside class="sidebar">
-        <div class="sidebar-section-label" style="padding:.6rem 1.1rem .3rem;font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-400)">HRD</div>
-        ${renderSidebarItems(HRD_NAV)}
+        <div class="sidebar-section-label" style="padding:.6rem 1.1rem .3rem;font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--gray-400)">${APP_NAME}</div>
+        ${renderSidebarItems(NAV)}
       </aside>`;
     if (activeItem) {
       const el = document.getElementById('navPageTitle');
@@ -73,57 +75,17 @@
     }
   }
 
-  // ─── Inject bottom nav ────────────────────
   function injectBottomNav() {
     const ph = document.getElementById('bottom-nav-placeholder');
     if (!ph) return;
-    ph.outerHTML = `<nav class="bottom-nav">${renderBottomNavItems(HRD_NAV)}</nav>`;
+    ph.outerHTML = `<nav class="bottom-nav">${renderBottomNavItems(NAV.slice(0, 5))}</nav>`;
   }
 
-  // ─── Inject modals ────────────────────────
   function injectModals() {
     const ph = document.getElementById('modals-placeholder');
-    if (!ph) return;
-    ph.outerHTML = `
-      <div class="modal-overlay" id="profileOverlay">
-        <div class="modal">
-          <div class="modal-header">
-            <span class="modal-title">Edit Profil</span>
-            <button class="modal-close" id="profileClose">✕</button>
-          </div>
-          <div class="modal-body">
-            <div id="profileAlert" class="alert alert-error"></div>
-            <div id="profileSuccess" class="alert alert-success"></div>
-            <div class="form-group">
-              <label for="profileName">Nama Lengkap</label>
-              <input type="text" id="profileName" />
-            </div>
-            <div class="form-group">
-              <label for="profileUsername">Username</label>
-              <input type="text" id="profileUsername" />
-            </div>
-            <div class="form-group">
-              <label for="profilePassword">Password Baru</label>
-              <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ingin ubah" />
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn btn-ghost" id="profileCancel">Batal</button>
-            <button class="btn btn-primary" id="profileSave">Simpan</button>
-          </div>
-        </div>
-      </div>`;
+    if (ph) ph.outerHTML = '';
   }
 
-  // ─── Wire logout ──────────────────────────
-  function wireLogout() {
-    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      window.location.href = '/login';
-    });
-  }
-
-  // ─── Main init ────────────────────────────
   async function initLayout() {
     let user;
     try {
@@ -133,17 +95,16 @@
       window.currentUser = me;
     } catch { window.location.href = '/login'; return; }
 
-    // Only finance + super_admin can access HRD
-    if (user.role === 'employee') {
-      window.location.href = '/duitkau/dashboard';
-      return;
-    }
+    if (user.role === 'employee') { window.location.href = '/duitkau/dashboard'; return; }
 
     injectNavbar(user);
     injectSidebar();
     injectBottomNav();
     injectModals();
-    wireLogout();
+    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/login';
+    });
 
     if (window.onLayoutReady) window.onLayoutReady(user);
   }

@@ -295,3 +295,5 @@
 [2026-03-24T03:42:40.297Z] [SUPER_ADMIN:admin] (::1) | CREATE_KARYAWAN | Menambah karyawan "Dian Rahayu" (@dian.rahayu)
 [2026-03-24T03:55:12.206Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login
 [2026-03-24T03:58:09.176Z] [SUPER_ADMIN:admin] (::1) | UPDATE_KARYAWAN | Memperbarui karyawan "Dian Rahayu" (ID: 1)
+[2026-03-24T04:18:45.007Z] [SUPER_ADMIN:admin] (::1) | DELETE_CA | Menghapus CA "CA Pasang Panel Meratus" (id=3)
+[2026-03-24T04:18:51.982Z] [SUPER_ADMIN:admin] (::1) | DELETE_PROJECT | Menghapus proyek "Proyek Kapal Gibran" (ID: 2)

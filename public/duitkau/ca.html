@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DuitKau - Cash Advance</title>
   <link rel="stylesheet" href="/css/style.css" />
-  <script src="/js/layout.js"></script>
+  <script src="/duitkau/js/layout.js"></script>
   <script src="/js/utils.js"></script>
 </head>
 <body data-page="ca">
@@ -721,7 +721,7 @@
       document.getElementById('detailCloseRejectWarning').style.display = 'none';
       document.getElementById('detailTxBody').innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>`;
       document.getElementById('detailOverlay').classList.add('open');
-      history.replaceState({}, '', `/ca.html?id=${id}`);
+      history.replaceState({}, '', `/duitkau/ca?id=${id}`);
       await refreshDetail(id);
     }
 
@@ -1114,7 +1114,7 @@
     function closeDetail() {
       document.getElementById('detailOverlay').classList.remove('open');
       openDetailId = null;
-      history.replaceState({}, '', '/ca');
+      history.replaceState({}, '', '/duitkau/ca');
     }
     document.getElementById('detailClose').addEventListener('click', closeDetail);
     document.getElementById('detailCloseBtn').addEventListener('click', closeDetail);

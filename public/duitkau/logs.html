@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DuitKau - Event Log</title>
   <link rel="stylesheet" href="/css/style.css" />
-  <script src="/js/layout.js"></script>
+  <script src="/duitkau/js/layout.js"></script>
   <style>
     .log-container {
       background: var(--gray-800);
@@ -54,7 +54,7 @@
   <script>
     window.onLayoutReady = async function(user) {
       if (user.role !== 'finance' && user.role !== 'super_admin') {
-        window.location.href = '/dashboard';
+        window.location.href = '/duitkau/dashboard';
         return;
       }
       await fetchLogs();

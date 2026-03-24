@@ -406,33 +406,33 @@
         <div class="app-desc">Data karyawan & jabatan</div>
       </a>
 
-      <div class="app-card app-card--soon">
-        <div class="app-badge badge-soon">Segera</div>
+      <a class="app-card app-card--active" id="cardProcurement" href="/procurement" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-procurement">🛒</div>
         <div class="app-name">Procurement</div>
         <div class="app-desc">Pengadaan barang & vendor</div>
-      </div>
+      </a>
 
-      <div class="app-card app-card--soon">
-        <div class="app-badge badge-soon">Segera</div>
+      <a class="app-card app-card--active" id="cardAset" href="/aset" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-asset">🏗️</div>
         <div class="app-name">Aset</div>
         <div class="app-desc">Inventaris & manajemen aset</div>
-      </div>
+      </a>
 
-      <div class="app-card app-card--soon">
-        <div class="app-badge badge-soon">Segera</div>
+      <a class="app-card app-card--active" id="cardCrm" href="/crm" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-crm">📞</div>
         <div class="app-name">CRM</div>
         <div class="app-desc">Klien & pipeline penjualan</div>
-      </div>
+      </a>
 
-      <div class="app-card app-card--soon">
-        <div class="app-badge badge-soon">Segera</div>
+      <a class="app-card app-card--active" id="cardDokumen" href="/dokumen" style="display:none">
+        <div class="app-badge badge-active">Aktif</div>
         <div class="app-icon icon-dokumen">📄</div>
         <div class="app-name">Dokumen</div>
         <div class="app-desc">Arsip digital & dokumen</div>
-      </div>
+      </a>
 
       <a class="app-card app-card--active" id="cardSettings" href="/settings" style="display:none">
         <div class="app-icon icon-settings">⚙️</div>
@@ -466,15 +466,17 @@
       document.getElementById('userRole').textContent = roleLabel[user.role] || user.role;
 
       const dest = (user.role === 'finance' || user.role === 'super_admin')
-        ? '/finance'
-        : '/dashboard';
+        ? '/duitkau/finance'
+        : '/duitkau/dashboard';
       document.getElementById('cardDuitkau').href = dest;
 
       if (user.role === 'super_admin') {
         document.getElementById('cardSettings').style.display = '';
       }
       if (user.role === 'finance' || user.role === 'super_admin') {
-        document.getElementById('cardHrd').style.display = '';
+        ['cardHrd', 'cardProcurement', 'cardAset', 'cardCrm', 'cardDokumen'].forEach(id => {
+          document.getElementById(id).style.display = '';
+        });
       }
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {
