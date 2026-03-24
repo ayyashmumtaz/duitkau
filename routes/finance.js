@@ -184,6 +184,85 @@ router.get('/report', async (req, res) => {
   }
 });
 
+// ─── Dashboard per karyawan ───────────────────────────────────
+router.get('/employee/:id', async (req, res) => {
+  const userId = parseInt(req.params.id);
+  if (!userId) return res.status(400).json({ error: 'ID tidak valid' });
+  try {
+    const user = await db.getAsync(
+      'SELECT id, username, full_name, role FROM users WHERE id = ?', [userId]
+    );
+    if (!user) return res.status(404).json({ error: 'Karyawan tidak ditemukan' });
+
+    const karyawan = await db.getAsync(
+      'SELECT jabatan, departemen, no_hp, tanggal_masuk, status FROM karyawan WHERE user_id = ?', [userId]
+    );
+
+    const thisMonth = new Date().toISOString().slice(0, 7);
+
+    const [allStats, monthStats, pendingBatches, caStats] = await Promise.all([
+      db.getAsync(
+        `SELECT SUM(CASE WHEN type='masuk' THEN amount ELSE 0 END) as masuk,
+                SUM(CASE WHEN type='keluar' THEN amount ELSE 0 END) as keluar
+         FROM transactions WHERE user_id = ? AND status = 'approved'`, [userId]
+      ),
+      db.getAsync(
+        `SELECT SUM(CASE WHEN type='masuk' THEN amount ELSE 0 END) as masuk,
+                SUM(CASE WHEN type='keluar' THEN amount ELSE 0 END) as keluar
+         FROM transactions WHERE user_id = ? AND status = 'approved'
+         AND DATE_FORMAT(date,'%Y-%m') = ?`, [userId, thisMonth]
+      ),
+      db.allAsync(
+        `SELECT rb.* FROM reimburse_batches rb
+         WHERE rb.user_id = ? AND rb.status = 'pending'
+         AND EXISTS (SELECT 1 FROM transactions t WHERE t.batch_id = rb.id)
+         ORDER BY rb.submitted_at ASC`, [userId]
+      ),
+      db.getAsync(
+        `SELECT COUNT(*) as total,
+                SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) as open_count,
+                SUM(initial_amount) as total_amount
+         FROM cash_advances WHERE request_by = ?`, [userId]
+      ),
+    ]);
+
+    for (const b of pendingBatches) {
+      b.transactions = await db.allAsync(
+        `SELECT t.*, c.name as category_name FROM transactions t
+         LEFT JOIN categories c ON t.category_id = c.id
+         WHERE t.batch_id = ? ORDER BY t.date ASC`, [b.id]
+      );
+      b.total = b.transactions.reduce((s, t) => s + t.amount, 0);
+    }
+
+    const transactions = await db.allAsync(
+      `SELECT t.*, pr.name as project_name, c.name as category_name, ca.title as ca_title
+       FROM transactions t
+       LEFT JOIN projects pr ON t.project_id = pr.id
+       LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN cash_advances ca ON t.ca_id = ca.id
+       WHERE t.user_id = ? AND t.status = 'approved'
+       ORDER BY t.date DESC, t.created_at DESC
+       LIMIT 100`, [userId]
+    );
+
+    res.json({
+      user, karyawan,
+      stats: {
+        all:   { masuk: allStats?.masuk || 0, keluar: allStats?.keluar || 0 },
+        month: { masuk: monthStats?.masuk || 0, keluar: monthStats?.keluar || 0, period: thisMonth },
+        pendingBatchCount: pendingBatches.length,
+        ca: caStats,
+      },
+      pendingBatches,
+      transactions,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengambil data' });
+  }
+});
+
 // ─── Daftar semua user (untuk dropdown input transaksi) ──────
 router.get('/employees', async (req, res) => {
   try {

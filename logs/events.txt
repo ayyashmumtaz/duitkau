@@ -319,3 +319,4 @@
 [2026-03-24T05:00:33.020Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
 [2026-03-24T05:01:20.487Z] [FINANCE:finance] (::1) | PAY_REIMBURSE_BATCH | Menyetujui batch reimburse #1 (8)
 [2026-03-24T05:04:37.438Z] [FINANCE:finance] (::1) | LOGIN | Pengguna finance berhasil login
+[2026-03-24T07:31:23.215Z] [SUPER_ADMIN:admin] (::1) | LOGIN | Pengguna super_admin berhasil login

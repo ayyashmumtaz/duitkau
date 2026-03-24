@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DuitKau - Detail Karyawan</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/duitkau/js/layout.js"></script>
+  <style>
+    .emp-profile {
+      display: flex; align-items: center; gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .emp-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: #fff; flex-shrink: 0;
+    }
+    .emp-info { flex: 1; min-width: 0; }
+    .emp-info-name { font-size: 1.1rem; font-weight: 700; }
+    .emp-info-meta { font-size: .8rem; color: var(--gray-500); margin-top: .2rem; display: flex; flex-wrap: wrap; gap: .5rem; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .75rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 767px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .stat-card {
+      background: #fff; border: 1px solid var(--gray-200);
+      border-radius: 12px; padding: .9rem 1rem;
+    }
+    .stat-label { font-size: .72rem; color: var(--gray-500); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; }
+    .stat-val { font-size: 1rem; font-weight: 700; }
+    .stat-sub { font-size: .72rem; color: var(--gray-400); margin-top: .15rem; }
+
+    /* Responsive tx table */
+    .tx-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .tx-table thead th {
+      text-align: left; padding: .45rem .75rem; font-weight: 600;
+      color: var(--gray-500); border-bottom: 1px solid var(--gray-200); white-space: nowrap;
+    }
+    .tx-table thead th.r { text-align: right; }
+    .tx-table tbody td { padding: .45rem .75rem; vertical-align: middle; }
+    .tx-table tbody tr:hover { background: var(--gray-50); }
+
+    @media (max-width: 767px) {
+      .tx-table thead { display: none; }
+      .tx-table tbody tr { display: block; border-bottom: 1px solid var(--gray-100); padding: .55rem 0; }
+      .tx-table tbody tr:last-child { border-bottom: none; }
+      .tx-table tbody td {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: .2rem .5rem; font-size: .82rem;
+      }
+      .tx-table tbody td::before {
+        content: attr(data-label); color: var(--gray-500);
+        font-size: .75rem; flex-shrink: 0; margin-right: .5rem;
+      }
+      .tx-table tbody td.no-label::before { display: none; }
+      .tx-table tbody td.no-label { justify-content: flex-end; }
+      .tx-table tbody td[data-label="Proyek"] { display: none; }
+    }
+
+    /* Pending batch */
+    .batch-card {
+      border: 1px solid var(--orange-200, #fed7aa);
+      border-radius: 10px; padding: .85rem 1rem;
+      background: var(--orange-50, #fff7ed);
+      margin-bottom: .65rem;
+    }
+    .batch-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .5rem; margin-bottom: .6rem;
+    }
+
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem;
+    }
+
+    .month-filter { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  </style>
+</head>
+<body data-page="finance">
+  <div id="navbar-placeholder"></div>
+  <div class="app-layout">
+    <div id="sidebar-placeholder"></div>
+    <main class="main-content">
+
+      <div id="mainAlert" class="alert alert-error"></div>
+
+      <!-- Profile card -->
+      <div class="card" style="margin-bottom:1rem" id="profileCard">
+        <div style="text-align:center;padding:1.5rem;color:var(--gray-400)">🔄 Memuat...</div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid" style="display:none">
+        <div class="stat-card">
+          <div class="stat-label">Keluar Bulan Ini</div>
+          <div class="stat-val red" id="sMonthKeluar">–</div>
+          <div class="stat-sub" id="sMonthPeriod"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Keluar</div>
+          <div class="stat-val" id="sAllKeluar">–</div>
+          <div class="stat-sub">Sepanjang waktu</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cash Advance</div>
+          <div class="stat-val" id="sCaTotal">–</div>
+          <div class="stat-sub" id="sCaOpen"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Reimburse Pending</div>
+          <div class="stat-val orange" id="sPending">–</div>
+          <div class="stat-sub">Belum dibayarkan</div>
+        </div>
+      </div>
+
+      <!-- Pending reimburse batches -->
+      <div id="pendingSection" style="display:none;margin-bottom:1.25rem">
+        <div class="section-header">
+          <h3 style="font-size:.95rem;font-weight:700">💸 Reimburse Menunggu Pembayaran</h3>
+        </div>
+        <div id="pendingList"></div>
+      </div>
+
+      <!-- Transaction history -->
+      <div id="historySection" style="display:none">
+        <div class="section-header">
+          <h3 style="font-size:.95rem;font-weight:700">📋 Riwayat Transaksi</h3>
+          <div class="month-filter">
+            <label style="font-size:.82rem;color:var(--gray-500)">Bulan:</label>
+            <select id="filterMonth" class="form-control" style="width:auto;font-size:.83rem">
+              <option value="">Semua</option>
+            </select>
+          </div>
+        </div>
+        <div class="card" style="padding:0">
+          <table class="tx-table">
+            <thead>
+              <tr>
+                <th>Tanggal</th><th>Keterangan</th><th>Kategori</th>
+                <th>Proyek</th><th class="r">Nominal</th><th>Bukti</th>
+              </tr>
+            </thead>
+            <tbody id="txBody"></tbody>
+          </table>
+          <div id="txEmpty" style="display:none;text-align:center;padding:2rem;color:var(--gray-400)">
+            Tidak ada transaksi pada periode ini
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div id="bottom-nav-placeholder"></div>
+  <div id="modals-placeholder"></div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-close" id="lightboxClose">✕</div>
+    <img id="lightboxImg" src="" alt="Bukti" />
+  </div>
+
+  <script>
+    const fmt     = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 });
+    const fmtDate = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const fmtDt   = d => new Date(d).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const fmtMonth = m => { const [y, mo] = m.split('-'); return new Date(y, mo - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }); };
+
+    const params = new URLSearchParams(location.search);
+    const userId = params.get('id');
+
+    let _allTx = [];
+
+    window.onLayoutReady = async () => {
+      if (!userId) { showError('Parameter ID tidak ditemukan'); return; }
+      await loadEmployee();
+    };
+
+    async function loadEmployee() {
+      try {
+        const data = await fetch(`/api/finance/employee/${userId}`).then(r => {
+          if (!r.ok) throw new Error();
+          return r.json();
+        });
+        renderProfile(data);
+        renderStats(data.stats);
+        renderPending(data.pendingBatches);
+        renderHistory(data.transactions);
+      } catch {
+        showError('Gagal memuat data karyawan');
+      }
+    }
+
+    function renderProfile(data) {
+      const u = data.user;
+      const k = data.karyawan;
+      const roleLabel = { super_admin: 'Super Admin', finance: 'Finance', employee: 'Karyawan' };
+      const card = document.getElementById('profileCard');
+      card.innerHTML = `
+        <div class="emp-profile">
+          <div class="emp-avatar">👤</div>
+          <div class="emp-info">
+            <div class="emp-info-name">${u.full_name}</div>
+            <div class="emp-info-meta">
+              <span>@${u.username}</span>
+              <span class="badge">${roleLabel[u.role] || u.role}</span>
+              ${k?.jabatan    ? `<span>💼 ${k.jabatan}</span>`           : ''}
+              ${k?.departemen ? `<span>🏢 ${k.departemen}</span>`        : ''}
+              ${k?.no_hp      ? `<span>📱 ${k.no_hp}</span>`            : ''}
+              ${k?.tanggal_masuk ? `<span>📅 Masuk ${fmtDate(k.tanggal_masuk)}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <a href="/duitkau/finance" class="btn btn-ghost btn-sm">← Kembali</a>
+          </div>
+        </div>`;
+    }
+
+    function renderStats(s) {
+      document.getElementById('statsGrid').style.display = '';
+      const monthLabel = fmtMonth(s.month.period);
+      document.getElementById('sMonthKeluar').textContent = fmt.format(s.month.keluar);
+      document.getElementById('sMonthPeriod').textContent = monthLabel;
+      document.getElementById('sAllKeluar').textContent   = fmt.format(s.all.keluar);
+      document.getElementById('sCaTotal').textContent     = `${s.ca?.total || 0} CA`;
+      document.getElementById('sCaOpen').textContent      = s.ca?.open_count > 0 ? `${s.ca.open_count} sedang aktif` : 'Tidak ada yang aktif';
+      document.getElementById('sPending').textContent     = s.pendingBatchCount > 0 ? `${s.pendingBatchCount} batch` : '–';
+    }
+
+    function renderPending(batches) {
+      const section = document.getElementById('pendingSection');
+      const list    = document.getElementById('pendingList');
+      if (!batches.length) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      list.innerHTML = batches.map(b => {
+        const rows = b.transactions.map(t => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid rgba(0,0,0,.06);font-size:.82rem">
+            <div>
+              <div style="font-weight:500">${t.name}</div>
+              <div style="font-size:.75rem;color:var(--gray-500)">${fmtDate(t.date)} · ${t.category_name || '–'}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem">
+              <span style="font-weight:700">${fmt.format(t.amount)}</span>
+              ${t.proof_image ? `<button class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:.2rem .5rem" onclick="openLightbox('${t.proof_image}')">📷</button>` : ''}
+            </div>
+          </div>`).join('');
+        return `
+          <div class="batch-card">
+            <div class="batch-card-header">
+              <div>
+                <div style="font-size:.82rem;color:var(--gray-500)">Dikirim ${fmtDt(b.submitted_at)}</div>
+                <div style="font-weight:700">${b.transactions.length} klaim · ${fmt.format(b.total)}</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="payBatch(${b.id}, this)">✓ Sudah Dibayar</button>
+            </div>
+            ${rows}
+          </div>`;
+      }).join('');
+    }
+
+    function renderHistory(txList) {
+      document.getElementById('historySection').style.display = '';
+      _allTx = txList;
+
+      // Populate month filter
+      const months = [...new Set(txList.map(t => t.date.slice(0, 7)))].sort().reverse();
+      const sel = document.getElementById('filterMonth');
+      months.forEach(m => {
+        const o = document.createElement('option');
+        o.value = m; o.textContent = fmtMonth(m);
+        sel.appendChild(o);
+      });
+
+      filterHistory();
+    }
+
+    function filterHistory() {
+      const month = document.getElementById('filterMonth').value;
+      const filtered = month ? _allTx.filter(t => t.date.startsWith(month)) : _allTx;
+      const body  = document.getElementById('txBody');
+      const empty = document.getElementById('txEmpty');
+
+      if (!filtered.length) {
+        body.innerHTML = '';
+        empty.style.display = '';
+        return;
+      }
+      empty.style.display = 'none';
+      body.innerHTML = filtered.map(t => `
+        <tr>
+          <td data-label="Tanggal">${fmtDate(t.date)}</td>
+          <td data-label="Keterangan">${t.name}${t.ca_title ? `<div style="font-size:.72rem;color:var(--gray-400)">CA: ${t.ca_title}</div>` : ''}</td>
+          <td data-label="Kategori">${t.category_name || '–'}</td>
+          <td data-label="Proyek">${t.project_name || '–'}</td>
+          <td data-label="Nominal" style="text-align:right;font-weight:600" class="amount-${t.type}">${t.type === 'masuk' ? '+' : '−'}${fmt.format(t.amount)}</td>
+          <td class="no-label">
+            ${t.proof_image
+              ? `<button class="btn btn-ghost btn-sm" style="font-size:.75rem" onclick="openLightbox('${t.proof_image}')">📷</button>`
+              : '<span style="color:var(--gray-400);font-size:.8rem">—</span>'}
+          </td>
+        </tr>`).join('');
+    }
+
+    document.getElementById('filterMonth').addEventListener('change', filterHistory);
+
+    async function payBatch(batchId, btn) {
+      btn.disabled = true; btn.textContent = 'Memproses...';
+      try {
+        const res = await fetch(`/api/transactions/batches/${batchId}/pay`, { method: 'PUT' });
+        if (!res.ok) { const d = await res.json(); alert(d.error); btn.disabled = false; btn.textContent = '✓ Sudah Dibayar'; return; }
+        await loadEmployee();
+      } catch { btn.disabled = false; btn.textContent = '✓ Sudah Dibayar'; }
+    }
+
+    function openLightbox(src) {
+      document.getElementById('lightboxImg').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+    document.getElementById('lightboxClose').addEventListener('click', () => document.getElementById('lightbox').classList.remove('open'));
+    document.getElementById('lightbox').addEventListener('click', e => {
+      if (e.target === document.getElementById('lightbox')) document.getElementById('lightbox').classList.remove('open');
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('mainAlert');
+      el.textContent = msg; el.classList.add('show');
+    }
+  </script>
+</body>
+</html>

@@ -32,7 +32,7 @@
     }
     .queue-item:last-child { border-bottom: none; }
     .queue-item-body { flex: 1; min-width: 0; }
-    .queue-item-name { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .queue-item-name { font-weight: 600; font-size: .9rem; word-break: break-word; }
     .queue-item-meta { font-size: .75rem; color: var(--gray-500); margin-top: .15rem; }
     .queue-item-amount { font-weight: 700; font-size: .9rem; color: var(--red); white-space: nowrap; }
     .queue-item-actions { display: flex; gap: .35rem; margin-top: .35rem; }
@@ -65,9 +65,16 @@
     @media (max-width: 768px) {
       .save-bar { bottom: 58px; }
       .main-content { padding-bottom: 140px; }
+
+      /* stack form & queue vertically, queue first on mobile so user sees status */
+      .dashboard-grid {
+        display: flex !important;
+        flex-direction: column-reverse;
+        gap: 1rem;
+      }
     }
 
-    @media (max-width: 500px) {
+    @media (max-width: 768px) {
       .input-grid { grid-template-columns: 1fr; }
       .input-grid .full { grid-column: 1; }
     }
@@ -84,7 +91,7 @@
         Input pengeluaran Anda. Tambah satu per satu, lalu kirim sekaligus untuk disetujui.
       </p>
 
-      <div class="grid-2" style="align-items:start">
+      <div class="grid-2 dashboard-grid" style="align-items:start">
 
         <!-- FORM TAMBAH -->
         <div class="card no-print" style="overflow:visible">
