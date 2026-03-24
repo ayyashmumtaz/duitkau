@@ -297,7 +297,13 @@
       // Pending votes for current user
       const myVotes = await fetch('/api/ca/my-pending-votes').then(r => r.json()).catch(() => []);
 
-      let html = '<div class="notif-popup-header">Notifikasi CA</div>';
+      // Pending reimburse submissions from employees (finance only)
+      let pendingReimburse = [];
+      if (user.role === 'finance' || user.role === 'super_admin') {
+        pendingReimburse = await fetch('/api/transactions/pending').then(r => r.json()).catch(() => []);
+      }
+
+      let html = '<div class="notif-popup-header">Notifikasi</div>';
 
       if (myVotes.length > 0) {
         html += '<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Perlu Persetujuan Anda</div>';
@@ -309,7 +315,23 @@
           </div>`).join('');
       }
 
-      if (items.length === 0 && myVotes.length === 0) {
+      if (pendingReimburse.length > 0) {
+        html += `<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Reimburse Menunggu Pembayaran</div>`;
+        // group by user
+        const byUser = {};
+        for (const t of pendingReimburse) {
+          if (!byUser[t.user_id]) byUser[t.user_id] = { name: t.full_name, count: 0, total: 0 };
+          byUser[t.user_id].count++;
+          byUser[t.user_id].total += t.amount;
+        }
+        html += Object.values(byUser).map(u => `
+          <div class="notif-popup-item" onclick="window.location.href='/duitkau/finance#reimburse'">
+            <div style="font-weight:600;font-size:.82rem">${u.name}</div>
+            <div style="font-size:.75rem;color:var(--gray-500)">💸 ${u.count} klaim · ${fmt.format(u.total)}</div>
+          </div>`).join('');
+      }
+
+      if (items.length === 0 && myVotes.length === 0 && pendingReimburse.length === 0) {
         html += '<div class="notif-popup-empty">✅ Tidak ada notifikasi</div>';
       } else if (items.length > 0) {
         if (myVotes.length > 0) html += '<div style="font-size:.75rem;font-weight:600;padding:.4rem .75rem;color:var(--gray-500);background:var(--gray-50)">Informasi CA</div>';

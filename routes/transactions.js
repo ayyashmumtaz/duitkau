@@ -105,10 +105,11 @@ router.post('/batch', upload.any(), async (req, res) => {
         const projectId   = project_id  ? parseInt(project_id)  || null : null;
         const categoryId  = parseInt(category_id);
         const caId        = ca_id        ? parseInt(ca_id)       || null : null;
+        const txStatus = req.session.role === 'employee' ? 'pending' : 'approved';
         const result = await tx.runAsync(
           `INSERT INTO transactions (user_id, type, name, amount, date, note, proof_image, status, input_by, project_id, category_id, ca_id)
-           VALUES (?, 'keluar', ?, ?, ?, ?, ?, 'approved', ?, ?, ?, ?)`,
-          [req.session.userId, name.trim(), parseFloat(amount), date, note || null, proofImage, req.session.userId, projectId, categoryId, caId]
+           VALUES (?, 'keluar', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [req.session.userId, name.trim(), parseFloat(amount), date, note || null, proofImage, txStatus, req.session.userId, projectId, categoryId, caId]
         );
         const inserted = await tx.getAsync('SELECT * FROM transactions WHERE id = ?', [result.lastID]);
         list.push(inserted);
@@ -121,6 +122,44 @@ router.post('/batch', upload.any(), async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal menyimpan batch transaksi' });
+  }
+});
+
+// Finance: list pending reimburse submissions from employees
+router.get('/pending', async (req, res) => {
+  if (req.session.role !== 'finance' && req.session.role !== 'super_admin')
+    return res.status(403).json({ error: 'Akses ditolak' });
+  try {
+    const rows = await db.allAsync(
+      `SELECT t.*, u.full_name, u.username, c.name as category_name, pr.name as project_name
+       FROM transactions t
+       JOIN users u ON t.user_id = u.id
+       LEFT JOIN categories c ON t.category_id = c.id
+       LEFT JOIN projects pr ON t.project_id = pr.id
+       WHERE t.status = 'pending' AND t.ca_id IS NULL
+       ORDER BY t.date ASC, t.created_at ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal mengambil data' });
+  }
+});
+
+// Finance: mark reimburse as paid
+router.put('/:id/pay', async (req, res) => {
+  if (req.session.role !== 'finance' && req.session.role !== 'super_admin')
+    return res.status(403).json({ error: 'Akses ditolak' });
+  try {
+    const tx = await db.getAsync('SELECT * FROM transactions WHERE id = ?', [req.params.id]);
+    if (!tx) return res.status(404).json({ error: 'Transaksi tidak ditemukan' });
+    if (tx.status !== 'pending') return res.status(400).json({ error: 'Transaksi bukan dalam status menunggu' });
+    await db.runAsync("UPDATE transactions SET status = 'approved' WHERE id = ?", [req.params.id]);
+    logEvent(req, 'PAY_REIMBURSE', `Menandai reimburse #${req.params.id} sebagai sudah dibayar`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gagal memperbarui status' });
   }
 });
 
