@@ -28,12 +28,12 @@ router.post('/ca/:id', requireLogin, async (req, res) => {
     const paramsStr = JSON.stringify({ type: 'ca', caId: ca.id });
     const existing = await db.getAsync('SELECT token FROM share_tokens WHERE params = ?', [paramsStr]);
     if (existing) {
-      return res.json({ token: existing.token, url: `/ca-view.html?token=${existing.token}` });
+      return res.json({ token: existing.token, url: `/duitkau/ca-view?token=${existing.token}` });
     }
 
     const token = crypto.randomBytes(20).toString('hex');
     await db.runAsync('INSERT INTO share_tokens (token, params, label) VALUES (?, ?, ?)', [token, paramsStr, ca.title]);
-    res.json({ token, url: `/ca-view.html?token=${token}` });
+    res.json({ token, url: `/duitkau/ca-view?token=${token}` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gagal membuat link' });
@@ -94,7 +94,7 @@ router.post('/', requireLogin, async (req, res) => {
   const token = crypto.randomBytes(20).toString('hex');
   try {
     await db.runAsync('INSERT INTO share_tokens (token, params, label) VALUES (?, ?, ?)', [token, params, label || null]);
-    res.json({ token, url: `/view.html?token=${token}` });
+    res.json({ token, url: `/duitkau/view?token=${token}` });
   } catch { res.status(500).json({ error: 'Gagal membuat link' }); }
 });
 
