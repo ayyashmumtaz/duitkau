@@ -1,4 +1,4 @@
-// ── Inventory Workshop — Layout Injector ──────────────────────
+// ── AlatKau — Layout Injector ─────────────────────────────────
 (function () {
   const NAV = [
     { href: '/inventory',              icon: '📊', label: 'Dashboard',     page: 'dashboard' },
@@ -29,8 +29,8 @@
         <a href="/apps" class="navbar-brand" title="Kembali ke Apps">
           <img src="/assets/logo/logo-CSK.png" alt="Cakra" class="navbar-brand-logo" onerror="this.style.display='none'" />
           <div class="navbar-brand-text">
-            <div class="brand-name"><span>Inventory</span></div>
-            <div class="brand-sub">Workshop</div>
+            <div class="brand-name"><span>Alat</span>Kau</div>
+            <div class="brand-sub">Tools & Inventory</div>
           </div>
         </a>
         <div class="navbar-body">
@@ -39,7 +39,7 @@
             <span id="dbIndicator" class="db-status-indicator connected" title="Status Database">
               <span class="dot"></span> DB
             </span>
-            <span class="navbar-greeting">Halo, <strong>${user.fullName}</strong><span class="chip">Inventory</span></span>
+            <span class="navbar-greeting">Halo, <strong>${user.fullName}</strong><span class="chip">AlatKau</span></span>
             <a href="/apps" class="btn btn-ghost btn-sm" style="display:inline-flex;align-items:center;gap:.3rem">
               <span style="font-size:.85rem">⊞</span> Apps
             </a>

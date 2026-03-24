@@ -6,6 +6,12 @@ const { requireLogin, requireSuperAdmin } = require('../middleware/auth');
 const { logEvent } = require('../utils/logger');
 const router = express.Router();
 
+// GET departments list
+router.get('/departments', requireLogin, async (req, res) => {
+  try { res.json(await db.allAsync('SELECT * FROM hr_departments ORDER BY name')); }
+  catch { res.status(500).json({ error: 'Gagal mengambil departemen' }); }
+});
+
 // GET all karyawan
 router.get('/', requireLogin, async (req, res) => {
   try {
@@ -133,6 +139,40 @@ router.delete('/:id', requireLogin, requireSuperAdmin, async (req, res) => {
     logEvent(req, 'DELETE_KARYAWAN', `Menghapus karyawan "${kar.nama}" (ID: ${kar.id})`);
     res.status(204).end();
   } catch { res.status(500).json({ error: 'Gagal menghapus karyawan' }); }
+});
+
+// ─── DEPARTMENTS CRUD (super_admin only) ──────────────────────
+router.post('/departments', requireLogin, requireSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama departemen wajib diisi' });
+  try {
+    const r = await db.runAsync('INSERT INTO hr_departments (name) VALUES (?)', [name.trim()]);
+    res.status(201).json(await db.getAsync('SELECT * FROM hr_departments WHERE id=?', [r.lastID]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Departemen sudah ada' });
+    res.status(500).json({ error: 'Gagal menambah departemen' });
+  }
+});
+
+router.put('/departments/:id', requireLogin, requireSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama departemen wajib diisi' });
+  try {
+    await db.runAsync('UPDATE hr_departments SET name=? WHERE id=?', [name.trim(), req.params.id]);
+    res.json(await db.getAsync('SELECT * FROM hr_departments WHERE id=?', [req.params.id]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Departemen sudah ada' });
+    res.status(500).json({ error: 'Gagal memperbarui departemen' });
+  }
+});
+
+router.delete('/departments/:id', requireLogin, requireSuperAdmin, async (req, res) => {
+  try {
+    const used = await db.getAsync('SELECT id FROM karyawan WHERE departemen=(SELECT name FROM hr_departments WHERE id=?) LIMIT 1', [req.params.id]);
+    if (used) return res.status(400).json({ error: 'Departemen masih digunakan oleh karyawan' });
+    await db.runAsync('DELETE FROM hr_departments WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'Gagal menghapus departemen' }); }
 });
 
 module.exports = router;

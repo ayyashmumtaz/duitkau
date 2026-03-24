@@ -113,8 +113,9 @@
           </div>
           <div class="form-group">
             <label>Departemen</label>
-            <input type="text" id="karDepartemen" list="deptSuggestions" placeholder="Contoh: Teknik, Finance..." autocomplete="off" />
-            <datalist id="deptSuggestions"></datalist>
+            <select id="karDepartemen">
+              <option value="">— Pilih Departemen —</option>
+            </select>
           </div>
           <div class="form-group">
             <label>No. KTP</label>
@@ -191,11 +192,23 @@
     let _isSuperAdmin = false;
     let _editMode = false;
 
+    let _departments = [];
+
     window.onLayoutReady = async function(user) {
       _isSuperAdmin = user.role === 'super_admin';
       if (!_isSuperAdmin) document.getElementById('btnAdd').style.display = 'none';
-      await loadKaryawan();
+      await Promise.all([loadDepartments(), loadKaryawan()]);
     };
+
+    async function loadDepartments() {
+      _departments = await fetch('/api/karyawan/departments').then(r => r.json()).catch(() => []);
+      const sel = document.getElementById('karDepartemen');
+      sel.innerHTML = '<option value="">— Pilih Departemen —</option>';
+      _departments.forEach(d => {
+        const o = document.createElement('option');
+        o.value = d.name; o.textContent = d.name; sel.appendChild(o);
+      });
+    }
 
     async function loadKaryawan() {
       try {
@@ -230,13 +243,13 @@
     }
 
     function populateDeptFilter() {
-      const depts = [...new Set(_allData.filter(k => k.departemen).map(k => k.departemen))].sort();
+      // Merge managed departments + any ad-hoc values already in karyawan data
+      const managed = _departments.map(d => d.name);
+      const fromData = _allData.filter(k => k.departemen && !managed.includes(k.departemen)).map(k => k.departemen);
+      const all = [...managed, ...fromData].sort();
       const sel = document.getElementById('filterDept');
       sel.innerHTML = '<option value="">Semua Departemen</option>';
-      depts.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
-      const dl = document.getElementById('deptSuggestions');
-      dl.innerHTML = '';
-      depts.forEach(d => { const o = document.createElement('option'); o.value = d; dl.appendChild(o); });
+      all.forEach(d => { const o = document.createElement('option'); o.value = d; o.textContent = d; sel.appendChild(o); });
     }
 
     function renderTable() {
@@ -288,9 +301,10 @@
     // ── Form ──
     function resetForm(isEdit = false) {
       _editMode = isEdit;
-      ['karId','karNama','karJabatan','karDepartemen','karKtp','karHp','karAlamat','karUsername','karPassword'].forEach(id => {
+      ['karId','karNama','karJabatan','karKtp','karHp','karAlamat','karUsername','karPassword'].forEach(id => {
         document.getElementById(id).value = '';
       });
+      document.getElementById('karDepartemen').value = '';
       document.getElementById('karTglMasuk').value = '';
       document.getElementById('karStatus').value = 'aktif';
       hideAlert('formAlert');

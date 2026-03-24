@@ -185,13 +185,29 @@
 
     /* ── Grid ── */
     .apps-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 1.1rem;
       max-width: 880px;
       margin: 0 auto;
       padding: 1rem 2rem 4rem;
       width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+    }
+
+    .app-section-label {
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .35);
+      margin-bottom: .7rem;
+      padding-left: .1rem;
+    }
+
+    .app-section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1.1rem;
     }
 
     /* ── Card ── */
@@ -335,21 +351,59 @@
       }
 
       .hero {
-        padding: 2.5rem 1.25rem 1.5rem;
+        padding: 1.5rem 1.25rem .75rem;
       }
+
+      .hero-title { font-size: 1.35rem; }
+      .hero-sub   { font-size: .8rem; }
 
       .apps-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: .85rem;
-        padding: .75rem 1.1rem 3rem;
+        gap: 1.25rem;
+        padding: .75rem 1rem 3rem;
       }
 
-      .app-icon {
-        width: 52px;
-        height: 52px;
-        font-size: 1.5rem;
-        border-radius: 14px;
+      /* Switch to single-column horizontal list */
+      .app-section-grid {
+        grid-template-columns: 1fr;
+        gap: .55rem;
       }
+
+      .app-card {
+        flex-direction: row;
+        align-items: center;
+        padding: .85rem 1rem;
+        border-radius: 14px;
+        gap: .9rem;
+        text-align: left;
+      }
+
+      /* undo center-alignment set on desktop */
+      .app-name { text-align: left; }
+      .app-desc  { text-align: left; }
+
+      .app-icon {
+        width: 48px;
+        height: 48px;
+        font-size: 1.4rem;
+        border-radius: 13px;
+        flex-shrink: 0;
+      }
+
+      /* push badge to stay top-right */
+      .app-badge {
+        top: .55rem;
+        right: .65rem;
+      }
+
+      /* chevron hint on mobile */
+      .app-card::after {
+        content: '›';
+        margin-left: auto;
+        font-size: 1.2rem;
+        color: rgba(255,255,255,.3);
+        flex-shrink: 0;
+      }
+      .app-card--soon::after { display: none; }
     }
   </style>
 </head>
@@ -392,60 +446,86 @@
     <!-- App grid -->
     <div class="apps-grid">
 
-      <a class="app-card app-card--active" id="cardDuitkau" href="#">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-duitkau">💰</div>
-        <div class="app-name">DuitKau</div>
-        <div class="app-desc">Keuangan, reimburse & cash advance</div>
-      </a>
+      <!-- Keuangan -->
+      <div class="app-section" id="secKeuangan">
+        <div class="app-section-label">💰 Keuangan</div>
+        <div class="app-section-grid">
+          <a class="app-card app-card--active" id="cardDuitkau" href="#">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-duitkau">💰</div>
+            <div class="app-name">DuitKau</div>
+            <div class="app-desc">Keuangan, reimburse & cash advance</div>
+          </a>
+        </div>
+      </div>
 
-      <a class="app-card app-card--active" id="cardHrd" href="/hrd/karyawan" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-hrd">👥</div>
-        <div class="app-name">HRD</div>
-        <div class="app-desc">Data karyawan & jabatan</div>
-      </a>
+      <!-- Operasional -->
+      <div class="app-section" id="secOperasional" style="display:none">
+        <div class="app-section-label">🔧 Operasional</div>
+        <div class="app-section-grid">
+          <a class="app-card app-card--active" id="cardPinjam" href="/inventory/pinjam" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon" style="background:linear-gradient(135deg,#fb923c,#ea580c)">🔧</div>
+            <div class="app-name">Pinjam Alat</div>
+            <div class="app-desc">Pinjam & kembalikan tools via AlatKau</div>
+          </a>
+          <a class="app-card app-card--active" id="cardInventory" href="/inventory" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-asset" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🔧</div>
+            <div class="app-name">AlatKau</div>
+            <div class="app-desc">Workshop tools & sparepart multi-lokasi</div>
+          </a>
+          <a class="app-card app-card--active" id="cardAset" href="/aset" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-asset">🏗️</div>
+            <div class="app-name">Aset</div>
+            <div class="app-desc">Inventaris & manajemen aset</div>
+          </a>
+          <a class="app-card app-card--active" id="cardProcurement" href="/procurement" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-procurement">🛒</div>
+            <div class="app-name">Procurement</div>
+            <div class="app-desc">Pengadaan barang & vendor</div>
+          </a>
+        </div>
+      </div>
 
-      <a class="app-card app-card--active" id="cardProcurement" href="/procurement" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-procurement">🛒</div>
-        <div class="app-name">Procurement</div>
-        <div class="app-desc">Pengadaan barang & vendor</div>
-      </a>
+      <!-- SDM & Bisnis -->
+      <div class="app-section" id="secSdm" style="display:none">
+        <div class="app-section-label">👥 SDM & Bisnis</div>
+        <div class="app-section-grid">
+          <a class="app-card app-card--active" id="cardHrd" href="/hrd/karyawan" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-hrd">👥</div>
+            <div class="app-name">HRD</div>
+            <div class="app-desc">Data karyawan & jabatan</div>
+          </a>
+          <a class="app-card app-card--active" id="cardCrm" href="/crm" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-crm">📞</div>
+            <div class="app-name">CRM</div>
+            <div class="app-desc">Klien & pipeline penjualan</div>
+          </a>
+        </div>
+      </div>
 
-      <a class="app-card app-card--active" id="cardInventory" href="/inventory" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-asset" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🔧</div>
-        <div class="app-name">Inventory</div>
-        <div class="app-desc">Workshop tools & sparepart multi-lokasi</div>
-      </a>
-
-      <a class="app-card app-card--active" id="cardAset" href="/aset" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-asset">🏗️</div>
-        <div class="app-name">Aset</div>
-        <div class="app-desc">Inventaris & manajemen aset</div>
-      </a>
-
-      <a class="app-card app-card--active" id="cardCrm" href="/crm" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-crm">📞</div>
-        <div class="app-name">CRM</div>
-        <div class="app-desc">Klien & pipeline penjualan</div>
-      </a>
-
-      <a class="app-card app-card--active" id="cardDokumen" href="/dokumen" style="display:none">
-        <div class="app-badge badge-active">Aktif</div>
-        <div class="app-icon icon-dokumen">📄</div>
-        <div class="app-name">Dokumen</div>
-        <div class="app-desc">Arsip digital & dokumen</div>
-      </a>
-
-      <a class="app-card app-card--active" id="cardSettings" href="/settings" style="display:none">
-        <div class="app-icon icon-settings">⚙️</div>
-        <div class="app-name">Pengaturan</div>
-        <div class="app-desc">Database, data master & konfigurasi sistem</div>
-      </a>
+      <!-- Administrasi -->
+      <div class="app-section" id="secAdmin" style="display:none">
+        <div class="app-section-label">📁 Administrasi</div>
+        <div class="app-section-grid">
+          <a class="app-card app-card--active" id="cardDokumen" href="/dokumen" style="display:none">
+            <div class="app-badge badge-active">Aktif</div>
+            <div class="app-icon icon-dokumen">📄</div>
+            <div class="app-name">Dokumen</div>
+            <div class="app-desc">Arsip digital & dokumen</div>
+          </a>
+          <a class="app-card app-card--active" id="cardSettings" href="/settings" style="display:none">
+            <div class="app-icon icon-settings">⚙️</div>
+            <div class="app-name">Pengaturan</div>
+            <div class="app-desc">Database, data master & konfigurasi sistem</div>
+          </a>
+        </div>
+      </div>
 
     </div>
 
@@ -477,13 +557,21 @@
         : '/duitkau/dashboard';
       document.getElementById('cardDuitkau').href = dest;
 
+      // Pinjam Alat — semua user yang login
+      show('cardPinjam', 'secOperasional');
+
       if (user.role === 'super_admin') {
-        document.getElementById('cardSettings').style.display = '';
+        show('cardSettings', 'secAdmin');
       }
       if (user.role === 'finance' || user.role === 'super_admin') {
-        ['cardHrd', 'cardProcurement', 'cardInventory', 'cardAset', 'cardCrm', 'cardDokumen'].forEach(id => {
-          document.getElementById(id).style.display = '';
-        });
+        ['cardInventory', 'cardAset', 'cardProcurement'].forEach(id => show(id, 'secOperasional'));
+        ['cardHrd', 'cardCrm'].forEach(id => show(id, 'secSdm'));
+        show('cardDokumen', 'secAdmin');
+      }
+
+      function show(cardId, sectionId) {
+        document.getElementById(cardId).style.display = '';
+        document.getElementById(sectionId).style.display = '';
       }
 
       document.getElementById('logoutBtn').addEventListener('click', async () => {

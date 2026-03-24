@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory — Master Barang</title>
+  <title>AlatKau — Master Barang</title>
   <link rel="stylesheet" href="/css/style.css" />
   <script src="/inventory/js/layout.js"></script>
   <style>
@@ -96,8 +96,7 @@
           <div class="form-group">
             <label>Kategori <span style="color:var(--red)">*</span></label>
             <select id="fCategory">
-              <option value="tools">Tools</option>
-              <option value="consumable">Consumable</option>
+              <option value="">Pilih kategori...</option>
             </select>
           </div>
           <div class="form-group full">
@@ -106,7 +105,9 @@
           </div>
           <div class="form-group">
             <label>Satuan</label>
-            <input type="text" id="fUnit" value="pcs" placeholder="pcs, m, kg..." />
+            <select id="fUnit">
+              <option value="pcs">pcs</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Minimum Stok</label>
@@ -121,6 +122,24 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" id="modalCancel">Batal</button>
         <button class="btn btn-primary" id="modalSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Konfirmasi Hapus -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">🗑️ Hapus Barang</span>
+        <button class="modal-close" id="deleteModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteModalMsg" style="font-size:.9rem"></p>
+        <p class="text-muted mt-1" style="font-size:.82rem">Barang hanya bisa dihapus jika stok sudah nol.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="deleteModalCancel">Batal</button>
+        <button class="btn btn-danger" id="deleteModalConfirm">Hapus</button>
       </div>
     </div>
   </div>
@@ -244,9 +263,32 @@
     let _editId = null;
     let _activeItemId = null;
 
+    let _itemCategories = [];
+    let _units = [];
+
     window.onLayoutReady = async () => {
-      await Promise.all([loadItems(), loadRacks()]);
+      await Promise.all([loadMasterData(), loadItems(), loadRacks()]);
     };
+
+    async function loadMasterData() {
+      [_itemCategories, _units] = await Promise.all([
+        fetch('/api/inventory/item-categories').then(r => r.json()).catch(() => []),
+        fetch('/api/inventory/units').then(r => r.json()).catch(() => []),
+      ]);
+      const catSel = document.getElementById('fCategory');
+      catSel.innerHTML = '<option value="">Pilih kategori...</option>';
+      _itemCategories.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name; catSel.appendChild(o);
+      });
+      const unitSel = document.getElementById('fUnit');
+      unitSel.innerHTML = '';
+      _units.forEach(u => {
+        const o = document.createElement('option');
+        o.value = u.name; o.textContent = u.name; unitSel.appendChild(o);
+      });
+      if (!_units.length) { const o = document.createElement('option'); o.value = 'pcs'; o.textContent = 'pcs'; unitSel.appendChild(o); }
+    }
 
     async function loadItems() {
       const q   = document.getElementById('searchInput').value;
@@ -278,7 +320,7 @@
           <tr>
             <td data-label="Kode"><code style="font-size:.78rem">${item.code}</code></td>
             <td data-label="Nama" style="font-weight:600">${item.name}${isLow ? ' <span class="low-tag">Low</span>' : ''}</td>
-            <td data-label="Kategori"><span class="cat-badge cat-${item.category}">${item.category === 'tools' ? '🔧 Tools' : '🔩 Consumable'}</span></td>
+            <td data-label="Kategori"><span class="cat-badge cat-${item.category}">${item.item_category_name || (item.category === 'tools' ? '🔧 Tools' : '🔩 Consumable')}</span></td>
             <td data-label="Satuan">${item.unit}</td>
             <td data-label="Stok Total" class="r">
               <span style="font-weight:700">${fmt.format(avail)}</span>
@@ -348,12 +390,12 @@
     function openModal(item) {
       _editId = item?.id || null;
       document.getElementById('modalTitle').textContent = item ? 'Edit Barang' : 'Tambah Barang';
-      document.getElementById('fCode').value     = item?.code || '';
-      document.getElementById('fName').value     = item?.name || '';
-      document.getElementById('fCategory').value = item?.category || 'tools';
-      document.getElementById('fUnit').value     = item?.unit || 'pcs';
-      document.getElementById('fMinStock').value = item?.min_stock || 0;
-      document.getElementById('fDesc').value     = item?.description || '';
+      document.getElementById('fCode').value         = item?.code || '';
+      document.getElementById('fName').value         = item?.name || '';
+      document.getElementById('fCategory').value     = item?.item_category_id || '';
+      document.getElementById('fUnit').value         = item?.unit || (_units[0]?.name || 'pcs');
+      document.getElementById('fMinStock').value     = item?.min_stock || 0;
+      document.getElementById('fDesc').value         = item?.description || '';
       hideAlert('modalAlert');
       document.getElementById('itemModal').classList.add('open');
     }
@@ -362,14 +404,15 @@
 
     async function saveItem() {
       const body = {
-        code:     document.getElementById('fCode').value.trim(),
-        name:     document.getElementById('fName').value.trim(),
-        category: document.getElementById('fCategory').value,
-        unit:     document.getElementById('fUnit').value.trim() || 'pcs',
-        min_stock: document.getElementById('fMinStock').value,
-        description: document.getElementById('fDesc').value.trim(),
+        code:             document.getElementById('fCode').value.trim(),
+        name:             document.getElementById('fName').value.trim(),
+        item_category_id: document.getElementById('fCategory').value,
+        unit:             document.getElementById('fUnit').value || 'pcs',
+        min_stock:        document.getElementById('fMinStock').value,
+        description:      document.getElementById('fDesc').value.trim(),
       };
       if (!body.code || !body.name) return showAlert('modalAlert', 'Kode dan nama wajib diisi');
+      if (!body.item_category_id)   return showAlert('modalAlert', 'Kategori wajib dipilih');
 
       const url    = _editId ? `/api/inventory/items/${_editId}` : '/api/inventory/items';
       const method = _editId ? 'PUT' : 'POST';
@@ -382,7 +425,8 @@
     }
 
     async function deleteItem(id, name) {
-      if (!confirm(`Hapus barang "${name}"?`)) return;
+      const ok = await confirmDelete(`Hapus barang "${name}"?`);
+      if (!ok) return;
       const res = await fetch(`/api/inventory/items/${id}`, { method:'DELETE' });
       const data = await res.json();
       if (!res.ok) { showAlert('pageAlert', data.error); return; }
@@ -515,6 +559,26 @@
     function showSuccess(id, msg) {
       const el=document.getElementById(id); el.textContent=msg; el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    function confirmDelete(msg) {
+      return new Promise(resolve => {
+        document.getElementById('deleteModalMsg').textContent = msg;
+        document.getElementById('deleteModal').classList.add('open');
+        const confirm = document.getElementById('deleteModalConfirm');
+        const cancel  = document.getElementById('deleteModalCancel');
+        const close   = document.getElementById('deleteModalClose');
+        const cleanup = (val) => {
+          closeModal('deleteModal');
+          confirm.replaceWith(confirm.cloneNode(true));
+          cancel.replaceWith(cancel.cloneNode(true));
+          close.replaceWith(close.cloneNode(true));
+          resolve(val);
+        };
+        document.getElementById('deleteModalConfirm').addEventListener('click', () => cleanup(true),  { once: true });
+        document.getElementById('deleteModalCancel').addEventListener('click',  () => cleanup(false), { once: true });
+        document.getElementById('deleteModalClose').addEventListener('click',   () => cleanup(false), { once: true });
+      });
     }
 
     let _searchTimer;

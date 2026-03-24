@@ -288,6 +288,30 @@ const TABLES = [
     KEY idx_type       (type),
     KEY idx_created_at (created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // ── Inventory master data ────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS inv_units (
+    id   INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(20) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_name (name)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS inv_item_categories (
+    id   INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    type ENUM('tools','consumable') NOT NULL DEFAULT 'consumable',
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_name (name)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  // ── HRD master data ──────────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS hr_departments (
+    id   INT NOT NULL AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_name (name)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 async function initSchema(p) {
@@ -340,6 +364,42 @@ async function initSchema(p) {
     for (const name of ['Transport', 'Makan', 'Beli Barang', 'Jasa', 'Lainnya']) {
       await p.query('INSERT IGNORE INTO categories (name) VALUES (?)', [name]);
     }
+  }
+
+  // Seed inv_units
+  const [[{ uc }]] = await p.query('SELECT COUNT(*) AS uc FROM inv_units');
+  if (uc === 0) {
+    for (const name of ['pcs', 'unit', 'm', 'cm', 'kg', 'g', 'L', 'ml', 'set', 'roll', 'lembar', 'box', 'buah']) {
+      await p.query('INSERT IGNORE INTO inv_units (name) VALUES (?)', [name]);
+    }
+  }
+
+  // Seed inv_item_categories
+  const [[{ icc }]] = await p.query('SELECT COUNT(*) AS icc FROM inv_item_categories');
+  if (icc === 0) {
+    await p.query("INSERT IGNORE INTO inv_item_categories (name, type) VALUES ('Tools', 'tools'), ('Consumable', 'consumable')");
+  }
+
+  // Seed hr_departments
+  const [[{ hdc }]] = await p.query('SELECT COUNT(*) AS hdc FROM hr_departments');
+  if (hdc === 0) {
+    for (const name of ['Teknik', 'Finance', 'HRD', 'Operasional', 'Marketing', 'IT', 'Produksi']) {
+      await p.query('INSERT IGNORE INTO hr_departments (name) VALUES (?)', [name]);
+    }
+  }
+
+  // Migration: add item_category_id to inv_items
+  const [invCatCol] = await p.query(
+    `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inv_items' AND COLUMN_NAME = 'item_category_id'`
+  );
+  if (!invCatCol.length) {
+    await p.query(`ALTER TABLE inv_items ADD COLUMN item_category_id INT NULL AFTER category`);
+    // Backfill from existing category ENUM
+    await p.query(
+      `UPDATE inv_items i JOIN inv_item_categories ic ON ic.type = i.category
+       SET i.item_category_id = ic.id WHERE i.item_category_id IS NULL`
+    );
   }
 }
 

@@ -183,6 +183,17 @@
         <button class="nav-item" data-section="categories">🏷️ Kategori</button>
       </div>
 
+      <div class="nav-group" id="navGroupInventory">
+        <div class="nav-group-title">Inventory</div>
+        <button class="nav-item" data-section="inv-units">📐 Satuan</button>
+        <button class="nav-item" data-section="inv-categories">📦 Kategori Barang</button>
+      </div>
+
+      <div class="nav-group" id="navGroupHRD">
+        <div class="nav-group-title">HRD</div>
+        <button class="nav-item" data-section="hrd-departments">🏢 Departemen</button>
+      </div>
+
       <div class="nav-group">
         <div class="nav-group-title">Sistem</div>
         <button class="nav-item" data-section="eventlogs" id="navEventLogs">📜 Event Log</button>
@@ -343,6 +354,67 @@
         </div>
       </div>
 
+      <!-- ══ SECTION: Satuan Inventory ══ -->
+      <div class="settings-section" id="sec-inv-units">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <h2 style="font-size:1rem;font-weight:700">Kelola Satuan</h2>
+          <button class="btn btn-primary" id="unitBtnAdd">+ Tambah Satuan</button>
+        </div>
+        <div id="unitAlert" class="alert alert-error"></div>
+        <div id="unitSuccess" class="alert alert-success"></div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>#</th><th>Nama Satuan</th><th class="text-right">Aksi</th></tr></thead>
+              <tbody id="unitBody">
+                <tr><td colspan="3"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SECTION: Kategori Barang ══ -->
+      <div class="settings-section" id="sec-inv-categories">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <h2 style="font-size:1rem;font-weight:700">Kelola Kategori Barang</h2>
+          <button class="btn btn-primary" id="icBtnAdd">+ Tambah Kategori</button>
+        </div>
+        <p class="text-muted" style="font-size:.82rem;margin-bottom:1rem">Tipe menentukan apakah barang bisa dipinjam (Tools) atau hanya stok masuk/keluar (Consumable).</p>
+        <div id="icAlert" class="alert alert-error"></div>
+        <div id="icSuccess" class="alert alert-success"></div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>#</th><th>Nama Kategori</th><th>Tipe</th><th class="text-right">Aksi</th></tr></thead>
+              <tbody id="icBody">
+                <tr><td colspan="4"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ SECTION: Departemen HRD ══ -->
+      <div class="settings-section" id="sec-hrd-departments">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:.75rem">
+          <h2 style="font-size:1rem;font-weight:700">Kelola Departemen</h2>
+          <button class="btn btn-primary" id="deptBtnAdd">+ Tambah Departemen</button>
+        </div>
+        <div id="deptAlert" class="alert alert-error"></div>
+        <div id="deptSuccess" class="alert alert-success"></div>
+        <div class="card">
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>#</th><th>Nama Departemen</th><th class="text-right">Aksi</th></tr></thead>
+              <tbody id="deptBody">
+                <tr><td colspan="3"><div class="empty"><div class="empty-icon">🔄</div>Memuat...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ══ SECTION: Zona Bahaya ══ -->
       <div class="settings-section" id="sec-danger">
         <div id="dangerAlert" class="alert alert-error"></div>
@@ -457,6 +529,103 @@
   </div>
 </div>
 
+<!-- ══ MODAL: Satuan ══ -->
+<div class="modal-overlay" id="unitModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="unitModalTitle">Tambah Satuan</span>
+      <button class="modal-close" id="unitModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="unitModalAlert" class="alert alert-error"></div>
+      <div class="form-group"><label for="unitName">Nama Satuan</label><input type="text" id="unitName" placeholder="Contoh: pcs, kg, m..." /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="unitModalCancel">Batal</button>
+      <button class="btn btn-primary" id="unitModalSave">Simpan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="unitDeleteOverlay">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Hapus Satuan</span><button class="modal-close" id="unitDeleteClose">✕</button></div>
+    <div class="modal-body"><p>Hapus satuan <strong id="unitDeleteName"></strong>?</p></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="unitDeleteCancel">Batal</button>
+      <button class="btn btn-danger" id="unitDeleteConfirm">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Kategori Barang ══ -->
+<div class="modal-overlay" id="icModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="icModalTitle">Tambah Kategori</span>
+      <button class="modal-close" id="icModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="icModalAlert" class="alert alert-error"></div>
+      <div class="form-group"><label for="icName">Nama Kategori</label><input type="text" id="icName" placeholder="Contoh: Hand Tools, Sparepart..." /></div>
+      <div class="form-group">
+        <label for="icType">Tipe</label>
+        <select id="icType">
+          <option value="tools">Tools (dapat dipinjam)</option>
+          <option value="consumable">Consumable (stok habis pakai)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="icModalCancel">Batal</button>
+      <button class="btn btn-primary" id="icModalSave">Simpan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="icDeleteOverlay">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Hapus Kategori</span><button class="modal-close" id="icDeleteClose">✕</button></div>
+    <div class="modal-body">
+      <p>Hapus kategori <strong id="icDeleteName"></strong>?</p>
+      <p class="text-muted" style="font-size:.85rem">Tidak bisa dihapus jika masih ada barang yang menggunakannya.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="icDeleteCancel">Batal</button>
+      <button class="btn btn-danger" id="icDeleteConfirm">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: Departemen ══ -->
+<div class="modal-overlay" id="deptModalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="deptModalTitle">Tambah Departemen</span>
+      <button class="modal-close" id="deptModalClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="deptModalAlert" class="alert alert-error"></div>
+      <div class="form-group"><label for="deptName">Nama Departemen</label><input type="text" id="deptName" placeholder="Contoh: Teknik, Finance..." /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="deptModalCancel">Batal</button>
+      <button class="btn btn-primary" id="deptModalSave">Simpan</button>
+    </div>
+  </div>
+</div>
+<div class="modal-overlay" id="deptDeleteOverlay">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Hapus Departemen</span><button class="modal-close" id="deptDeleteClose">✕</button></div>
+    <div class="modal-body">
+      <p>Hapus departemen <strong id="deptDeleteName"></strong>?</p>
+      <p class="text-muted" style="font-size:.85rem">Tidak bisa dihapus jika masih ada karyawan di departemen ini.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="deptDeleteCancel">Batal</button>
+      <button class="btn btn-danger" id="deptDeleteConfirm">Hapus</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const fmtDate = d => new Date(d).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
 
@@ -479,9 +648,12 @@ function activateSection(sectionKey) {
   if (sec)  sec.classList.add('active');
   if (!sectionLoaded[sectionKey]) {
     sectionLoaded[sectionKey] = true;
-    if (sectionKey === 'users')      loadEmployees();
-    if (sectionKey === 'categories') loadCategories();
-    if (sectionKey === 'eventlogs')  loadLogs();
+    if (sectionKey === 'users')           loadEmployees();
+    if (sectionKey === 'categories')      loadCategories();
+    if (sectionKey === 'eventlogs')       loadLogs();
+    if (sectionKey === 'inv-units')       loadUnits();
+    if (sectionKey === 'inv-categories')  loadItemCategories();
+    if (sectionKey === 'hrd-departments') loadDepartments();
   }
   // Close mobile sidebar
   document.getElementById('settingsSidebar').classList.remove('mobile-open');
@@ -520,6 +692,8 @@ document.getElementById('mobileMenuBtn').addEventListener('click', () => {
   if (isSetupMode) {
     // In setup mode only show DB connection section
     document.getElementById('navGroupDuitkau').style.display = 'none';
+    document.getElementById('navGroupInventory').style.display = 'none';
+    document.getElementById('navGroupHRD').style.display = 'none';
     document.getElementById('navUsers').style.display = 'none';
     document.getElementById('navDanger').style.display = 'none';
   }
@@ -841,6 +1015,266 @@ document.getElementById('btnDeleteAllCA').addEventListener('click', async () => 
     setTimeout(() => hideAlert('dangerSuccess'), 4000);
   } catch { showAlert('dangerAlert', 'Gagal menghapus cash advance'); }
 });
+
+// ══════════════════════════════════════════════════════════════
+// SATUAN (INV_UNITS)
+// ══════════════════════════════════════════════════════════════
+let unitEditId = null, unitDeleteId = null;
+
+async function loadUnits() {
+  try {
+    const data = await fetch('/api/inventory/units').then(r => r.json());
+    const tbody = document.getElementById('unitBody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="3"><div class="empty"><div class="empty-icon">📐</div>Belum ada satuan</div></td></tr>`; return; }
+    tbody.innerHTML = data.map((u, i) => `
+      <tr>
+        <td class="text-muted">${i+1}</td>
+        <td><strong>${u.name}</strong></td>
+        <td class="text-right">
+          <button class="btn btn-ghost btn-sm" onclick="unitOpenEdit(${u.id},'${u.name.replace(/'/g,"\\'")}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="unitOpenDelete(${u.id},'${u.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </td>
+      </tr>`).join('');
+  } catch { showAlert('unitAlert', 'Gagal memuat satuan'); }
+}
+
+document.getElementById('unitBtnAdd').addEventListener('click', () => {
+  unitEditId = null;
+  document.getElementById('unitModalTitle').textContent = 'Tambah Satuan';
+  document.getElementById('unitName').value = '';
+  hideAlert('unitModalAlert');
+  openModal('unitModalOverlay');
+  document.getElementById('unitName').focus();
+});
+
+function unitOpenEdit(id, name) {
+  unitEditId = id;
+  document.getElementById('unitModalTitle').textContent = 'Edit Satuan';
+  document.getElementById('unitName').value = name;
+  hideAlert('unitModalAlert');
+  openModal('unitModalOverlay');
+}
+
+function unitOpenDelete(id, name) {
+  unitDeleteId = id;
+  document.getElementById('unitDeleteName').textContent = name;
+  openModal('unitDeleteOverlay');
+}
+
+document.getElementById('unitModalSave').addEventListener('click', async () => {
+  hideAlert('unitModalAlert');
+  const name = document.getElementById('unitName').value.trim();
+  if (!name) { showAlert('unitModalAlert', 'Nama satuan wajib diisi'); return; }
+  const btn = document.getElementById('unitModalSave');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    const res = await fetch(unitEditId ? `/api/inventory/units/${unitEditId}` : '/api/inventory/units', {
+      method: unitEditId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAlert('unitModalAlert', data.error); return; }
+    closeModal('unitModalOverlay');
+    showAlert('unitSuccess', unitEditId ? 'Satuan diperbarui!' : 'Satuan ditambahkan!');
+    await loadUnits();
+    setTimeout(() => hideAlert('unitSuccess'), 3000);
+  } catch { showAlert('unitModalAlert', 'Terjadi kesalahan'); }
+  finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+});
+
+document.getElementById('unitDeleteConfirm').addEventListener('click', async () => {
+  const btn = document.getElementById('unitDeleteConfirm');
+  btn.disabled = true; btn.textContent = 'Menghapus...';
+  try {
+    const res = await fetch(`/api/inventory/units/${unitDeleteId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); showAlert('unitAlert', d.error || 'Gagal menghapus'); closeModal('unitDeleteOverlay'); return; }
+    closeModal('unitDeleteOverlay');
+    showAlert('unitSuccess', 'Satuan dihapus');
+    await loadUnits();
+    setTimeout(() => hideAlert('unitSuccess'), 3000);
+  } catch { showAlert('unitAlert', 'Terjadi kesalahan'); closeModal('unitDeleteOverlay'); }
+  finally { btn.disabled = false; btn.textContent = 'Hapus'; }
+});
+
+['unitModalClose','unitModalCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('unitModalOverlay')));
+['unitDeleteClose','unitDeleteCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('unitDeleteOverlay')));
+backdropClose('unitModalOverlay'); backdropClose('unitDeleteOverlay');
+
+// ══════════════════════════════════════════════════════════════
+// KATEGORI BARANG (INV_ITEM_CATEGORIES)
+// ══════════════════════════════════════════════════════════════
+let icEditId = null, icDeleteId = null;
+const IC_TYPE_LABEL = { tools: 'Tools', consumable: 'Consumable' };
+
+async function loadItemCategories() {
+  try {
+    const data = await fetch('/api/inventory/item-categories').then(r => r.json());
+    const tbody = document.getElementById('icBody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📦</div>Belum ada kategori</div></td></tr>`; return; }
+    tbody.innerHTML = data.map((c, i) => `
+      <tr>
+        <td class="text-muted">${i+1}</td>
+        <td><strong>${c.name}</strong></td>
+        <td><span class="badge ${c.type === 'tools' ? 'badge-masuk' : 'badge-keluar'}" style="font-size:.72rem">${IC_TYPE_LABEL[c.type]}</span></td>
+        <td class="text-right">
+          <button class="btn btn-ghost btn-sm" onclick="icOpenEdit(${c.id},'${c.name.replace(/'/g,"\\'")}','${c.type}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="icOpenDelete(${c.id},'${c.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </td>
+      </tr>`).join('');
+  } catch { showAlert('icAlert', 'Gagal memuat kategori barang'); }
+}
+
+document.getElementById('icBtnAdd').addEventListener('click', () => {
+  icEditId = null;
+  document.getElementById('icModalTitle').textContent = 'Tambah Kategori';
+  document.getElementById('icName').value = '';
+  document.getElementById('icType').value = 'tools';
+  hideAlert('icModalAlert');
+  openModal('icModalOverlay');
+  document.getElementById('icName').focus();
+});
+
+function icOpenEdit(id, name, type) {
+  icEditId = id;
+  document.getElementById('icModalTitle').textContent = 'Edit Kategori';
+  document.getElementById('icName').value = name;
+  document.getElementById('icType').value = type;
+  hideAlert('icModalAlert');
+  openModal('icModalOverlay');
+}
+
+function icOpenDelete(id, name) {
+  icDeleteId = id;
+  document.getElementById('icDeleteName').textContent = name;
+  openModal('icDeleteOverlay');
+}
+
+document.getElementById('icModalSave').addEventListener('click', async () => {
+  hideAlert('icModalAlert');
+  const name = document.getElementById('icName').value.trim();
+  const type = document.getElementById('icType').value;
+  if (!name) { showAlert('icModalAlert', 'Nama kategori wajib diisi'); return; }
+  const btn = document.getElementById('icModalSave');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    const res = await fetch(icEditId ? `/api/inventory/item-categories/${icEditId}` : '/api/inventory/item-categories', {
+      method: icEditId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAlert('icModalAlert', data.error); return; }
+    closeModal('icModalOverlay');
+    showAlert('icSuccess', icEditId ? 'Kategori diperbarui!' : 'Kategori ditambahkan!');
+    await loadItemCategories();
+    setTimeout(() => hideAlert('icSuccess'), 3000);
+  } catch { showAlert('icModalAlert', 'Terjadi kesalahan'); }
+  finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+});
+
+document.getElementById('icDeleteConfirm').addEventListener('click', async () => {
+  const btn = document.getElementById('icDeleteConfirm');
+  btn.disabled = true; btn.textContent = 'Menghapus...';
+  try {
+    const res = await fetch(`/api/inventory/item-categories/${icDeleteId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); showAlert('icAlert', d.error || 'Gagal menghapus'); closeModal('icDeleteOverlay'); return; }
+    closeModal('icDeleteOverlay');
+    showAlert('icSuccess', 'Kategori dihapus');
+    await loadItemCategories();
+    setTimeout(() => hideAlert('icSuccess'), 3000);
+  } catch { showAlert('icAlert', 'Terjadi kesalahan'); closeModal('icDeleteOverlay'); }
+  finally { btn.disabled = false; btn.textContent = 'Hapus'; }
+});
+
+['icModalClose','icModalCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('icModalOverlay')));
+['icDeleteClose','icDeleteCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('icDeleteOverlay')));
+backdropClose('icModalOverlay'); backdropClose('icDeleteOverlay');
+
+// ══════════════════════════════════════════════════════════════
+// DEPARTEMEN (HR_DEPARTMENTS)
+// ══════════════════════════════════════════════════════════════
+let deptEditId = null, deptDeleteId = null;
+
+async function loadDepartments() {
+  try {
+    const data = await fetch('/api/karyawan/departments').then(r => r.json());
+    const tbody = document.getElementById('deptBody');
+    if (!data.length) { tbody.innerHTML = `<tr><td colspan="3"><div class="empty"><div class="empty-icon">🏢</div>Belum ada departemen</div></td></tr>`; return; }
+    tbody.innerHTML = data.map((d, i) => `
+      <tr>
+        <td class="text-muted">${i+1}</td>
+        <td><strong>${d.name}</strong></td>
+        <td class="text-right">
+          <button class="btn btn-ghost btn-sm" onclick="deptOpenEdit(${d.id},'${d.name.replace(/'/g,"\\'")}')">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" style="margin-left:.3rem" onclick="deptOpenDelete(${d.id},'${d.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </td>
+      </tr>`).join('');
+  } catch { showAlert('deptAlert', 'Gagal memuat departemen'); }
+}
+
+document.getElementById('deptBtnAdd').addEventListener('click', () => {
+  deptEditId = null;
+  document.getElementById('deptModalTitle').textContent = 'Tambah Departemen';
+  document.getElementById('deptName').value = '';
+  hideAlert('deptModalAlert');
+  openModal('deptModalOverlay');
+  document.getElementById('deptName').focus();
+});
+
+function deptOpenEdit(id, name) {
+  deptEditId = id;
+  document.getElementById('deptModalTitle').textContent = 'Edit Departemen';
+  document.getElementById('deptName').value = name;
+  hideAlert('deptModalAlert');
+  openModal('deptModalOverlay');
+}
+
+function deptOpenDelete(id, name) {
+  deptDeleteId = id;
+  document.getElementById('deptDeleteName').textContent = name;
+  openModal('deptDeleteOverlay');
+}
+
+document.getElementById('deptModalSave').addEventListener('click', async () => {
+  hideAlert('deptModalAlert');
+  const name = document.getElementById('deptName').value.trim();
+  if (!name) { showAlert('deptModalAlert', 'Nama departemen wajib diisi'); return; }
+  const btn = document.getElementById('deptModalSave');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  try {
+    const res = await fetch(deptEditId ? `/api/karyawan/departments/${deptEditId}` : '/api/karyawan/departments', {
+      method: deptEditId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAlert('deptModalAlert', data.error); return; }
+    closeModal('deptModalOverlay');
+    showAlert('deptSuccess', deptEditId ? 'Departemen diperbarui!' : 'Departemen ditambahkan!');
+    await loadDepartments();
+    setTimeout(() => hideAlert('deptSuccess'), 3000);
+  } catch { showAlert('deptModalAlert', 'Terjadi kesalahan'); }
+  finally { btn.disabled = false; btn.textContent = 'Simpan'; }
+});
+
+document.getElementById('deptDeleteConfirm').addEventListener('click', async () => {
+  const btn = document.getElementById('deptDeleteConfirm');
+  btn.disabled = true; btn.textContent = 'Menghapus...';
+  try {
+    const res = await fetch(`/api/karyawan/departments/${deptDeleteId}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json(); showAlert('deptAlert', d.error || 'Gagal menghapus'); closeModal('deptDeleteOverlay'); return; }
+    closeModal('deptDeleteOverlay');
+    showAlert('deptSuccess', 'Departemen dihapus');
+    await loadDepartments();
+    setTimeout(() => hideAlert('deptSuccess'), 3000);
+  } catch { showAlert('deptAlert', 'Terjadi kesalahan'); closeModal('deptDeleteOverlay'); }
+  finally { btn.disabled = false; btn.textContent = 'Hapus'; }
+});
+
+['deptModalClose','deptModalCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('deptModalOverlay')));
+['deptDeleteClose','deptDeleteCancel'].forEach(id => document.getElementById(id).addEventListener('click', () => closeModal('deptDeleteOverlay')));
+backdropClose('deptModalOverlay'); backdropClose('deptDeleteOverlay');
 
 // ── Event Log ─────────────────────────────────────────────────
 const LOG_PAGE_SIZE = 100;

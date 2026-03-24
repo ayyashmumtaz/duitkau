@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pinjam Alat — AlatKau</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f7; min-height: 100vh; color: #1e293b;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #1e293b; color: #fff;
+      padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+      box-shadow: 0 2px 12px rgba(0,0,0,.2);
+    }
+    .header-brand { display: flex; align-items: center; gap: .6rem; }
+    .header-brand .icon { font-size: 1.3rem; }
+    .header-brand .title { font-size: .95rem; font-weight: 700; }
+    .header-brand .sub { font-size: .7rem; color: rgba(255,255,255,.5); margin-top: .1rem; }
+    .header-user { font-size: .78rem; color: rgba(255,255,255,.6); text-align: right; }
+    .header-user strong { color: #fff; display: block; }
+
+    /* ── Content ── */
+    .page { max-width: 520px; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+
+    /* ── Rack banner ── */
+    .rack-banner {
+      background: #fff; border-radius: 12px; padding: .9rem 1.1rem;
+      margin-bottom: 1rem; border: 1px solid #e2e8f0;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .rack-banner .rack-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .rack-banner .rack-loc { font-size: .75rem; color: #64748b; }
+    .rack-banner .rack-name { font-weight: 700; font-size: 1rem; }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: .72rem; font-weight: 700; color: #64748b;
+      text-transform: uppercase; letter-spacing: .07em; margin-bottom: .65rem;
+    }
+
+    /* ── Search ── */
+    .search-wrap {
+      position: relative; margin-bottom: .75rem;
+    }
+    .search-wrap .search-icon {
+      position: absolute; left: .75rem; top: 50%; transform: translateY(-50%);
+      font-size: .9rem; pointer-events: none;
+    }
+    .search-wrap input {
+      width: 100%; padding: .65rem .9rem .65rem 2.25rem;
+      border: 1.5px solid #e2e8f0; border-radius: 10px;
+      font-size: .9rem; color: #1e293b; background: #fff; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .search-wrap input:focus {
+      outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.12);
+    }
+    .search-wrap .search-clear {
+      position: absolute; right: .6rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; font-size: 1rem; color: #94a3b8;
+      cursor: pointer; padding: .2rem; line-height: 1; display: none;
+    }
+    .search-wrap input:not(:placeholder-shown) ~ .search-clear { display: block; }
+
+    /* ── Item card ── */
+    .item-card {
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      padding: .85rem 1rem; margin-bottom: .6rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      transition: border-color .12s, box-shadow .12s;
+    }
+    .item-card:hover { border-color: #f97316; box-shadow: 0 4px 12px rgba(249,115,22,.12); }
+    .item-card .item-name { font-weight: 600; font-size: .92rem; }
+    .item-card .item-meta { font-size: .75rem; color: #64748b; margin-top: .15rem; }
+    .item-card .item-avail {
+      text-align: right; flex-shrink: 0;
+      font-size: 1.1rem; font-weight: 800; color: #16a34a;
+    }
+    .item-card .item-avail span { display: block; font-size: .68rem; font-weight: 500; color: #64748b; }
+
+    /* ── Borrow form ── */
+    .borrow-form { display: none; }
+    .borrow-form.active { display: block; }
+
+    .back-btn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      background: none; border: none; color: #64748b; font-size: .85rem;
+      cursor: pointer; padding: 0; margin-bottom: 1rem; font-family: inherit;
+    }
+    .back-btn:hover { color: #1e293b; }
+
+    .selected-item-card {
+      background: linear-gradient(135deg, #fff7ed, #fff);
+      border: 1.5px solid #fdba74; border-radius: 12px;
+      padding: 1rem 1.1rem; margin-bottom: 1rem;
+    }
+    .selected-item-card .item-name { font-weight: 700; font-size: 1rem; }
+    .selected-item-card .item-avail { font-size: .85rem; color: #16a34a; margin-top: .25rem; font-weight: 600; }
+
+    .form-group { margin-bottom: .85rem; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: .35rem; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: .65rem .9rem; border: 1.5px solid #e2e8f0; border-radius: 9px;
+      font-size: .9rem; color: #1e293b; background: #fff; font-family: inherit;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.12);
+    }
+    .qty-row { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
+
+    .btn-submit {
+      width: 100%; padding: .85rem; background: #f97316; color: #fff;
+      border: none; border-radius: 10px; font-size: .95rem; font-weight: 700;
+      cursor: pointer; font-family: inherit; transition: background .12s, transform .1s;
+    }
+    .btn-submit:hover { background: #ea6c10; }
+    .btn-submit:active { transform: scale(.98); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
+
+    /* ── Success screen ── */
+    .success-screen {
+      display: none; text-align: center; padding: 2rem 1rem;
+    }
+    .success-screen.active { display: block; }
+    .success-icon { font-size: 3.5rem; margin-bottom: .75rem; }
+    .success-title { font-size: 1.25rem; font-weight: 800; color: #15803d; margin-bottom: .35rem; }
+    .success-sub { font-size: .88rem; color: #64748b; margin-bottom: 1.5rem; }
+
+    .pickup-card {
+      background: #fff; border: 1.5px solid #86efac; border-radius: 14px;
+      padding: 1.25rem; margin: 0 auto 1.5rem; max-width: 340px;
+      box-shadow: 0 4px 16px rgba(21,128,61,.08);
+    }
+    .pickup-label { font-size: .72rem; font-weight: 700; color: #15803d; letter-spacing: .07em; text-transform: uppercase; margin-bottom: .65rem; }
+    .pickup-item-name { font-size: 1.05rem; font-weight: 700; margin-bottom: .85rem; }
+    .pickup-loc { display: flex; align-items: center; gap: .5rem; padding: .55rem .75rem; background: #f0fdf4; border-radius: 8px; margin-bottom: .4rem; }
+    .pickup-loc .ploc-icon { font-size: 1.1rem; }
+    .pickup-loc .ploc-text { font-size: .88rem; font-weight: 600; }
+    .pickup-loc .ploc-sub { font-size: .72rem; color: #64748b; }
+
+    .btn-again {
+      display: inline-block; padding: .7rem 1.5rem; background: #fff;
+      border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: .88rem;
+      font-weight: 600; color: #475569; cursor: pointer; font-family: inherit;
+      margin-right: .5rem; transition: border-color .12s;
+    }
+    .btn-again:hover { border-color: #f97316; color: #f97316; }
+
+    /* ── Tabs ── */
+    .tab-bar {
+      display: flex; background: #fff; border-radius: 10px;
+      border: 1.5px solid #e2e8f0; margin-bottom: 1rem; overflow: hidden;
+    }
+    .tab-btn {
+      flex: 1; padding: .6rem .5rem; border: none; background: none;
+      font-size: .82rem; font-weight: 600; color: #64748b;
+      cursor: pointer; font-family: inherit; transition: background .12s, color .12s;
+      display: flex; align-items: center; justify-content: center; gap: .35rem;
+    }
+    .tab-btn.active { background: #f97316; color: #fff; }
+    .tab-btn .tab-badge {
+      background: #ef4444; color: #fff; font-size: .6rem; font-weight: 700;
+      border-radius: 99px; padding: .05rem .35rem; min-width: 16px; text-align: center;
+    }
+    .tab-btn.active .tab-badge { background: rgba(255,255,255,.35); }
+
+    /* ── Return list ── */
+    .return-card {
+      background: #fff; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      padding: .85rem 1rem; margin-bottom: .6rem;
+    }
+    .return-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+    .return-card .item-name { font-weight: 600; font-size: .92rem; }
+    .return-card .item-meta { font-size: .75rem; color: #64748b; margin-top: .15rem; }
+    .return-card .item-qty  { font-size: .85rem; font-weight: 700; color: #1e293b; white-space: nowrap; }
+    .return-card-loc {
+      display: flex; align-items: center; gap: .4rem; margin-top: .6rem;
+      padding: .4rem .6rem; background: #f8fafc; border-radius: 7px;
+      font-size: .75rem; color: #475569;
+    }
+    .overdue { border-color: #fca5a5; background: #fff8f8; }
+    .overdue .overdue-tag {
+      display: inline-block; font-size: .6rem; font-weight: 700; color: #b91c1c;
+      background: #fee2e2; border-radius: 99px; padding: .05rem .4rem; margin-left: .4rem;
+      vertical-align: middle;
+    }
+    .btn-return-item {
+      margin-top: .7rem; width: 100%; padding: .55rem;
+      background: #1e293b; color: #fff; border: none; border-radius: 8px;
+      font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit;
+      transition: background .12s;
+    }
+    .btn-return-item:hover { background: #334155; }
+    .btn-return-item:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Alert ── */
+    .alert { padding: .65rem .9rem; border-radius: 8px; font-size: .83rem; margin-bottom: .75rem; display: none; }
+    .alert.show { display: block; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-success { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+
+    /* ── Empty / loading ── */
+    .empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
+    .empty .empty-icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .empty .empty-text { font-size: .9rem; }
+
+    .loading { text-align: center; padding: 2rem; color: #94a3b8; font-size: .9rem; }
+
+    /* ── Scanner screen ── */
+    .scanner-screen {
+      display: none; flex-direction: column; align-items: center;
+      padding: 1.5rem 1rem 3rem;
+    }
+    .scanner-screen.active { display: flex; }
+
+    .scanner-title { font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: .35rem; text-align: center; }
+    .scanner-sub { font-size: .8rem; color: #64748b; margin-bottom: 1.25rem; text-align: center; }
+
+    .scanner-wrap {
+      position: relative; width: 100%; max-width: 320px;
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,.18);
+      background: #000;
+    }
+
+    /* Crosshair overlay drawn on top of the video via CSS */
+    .scanner-wrap::after {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        /* top-left corner */
+        linear-gradient(to right,  #f97316 3px, transparent 3px) 16px 16px / 36px 3px no-repeat,
+        linear-gradient(to bottom, #f97316 3px, transparent 3px) 16px 16px / 3px 36px no-repeat,
+        /* top-right corner */
+        linear-gradient(to left,   #f97316 3px, transparent 3px) right 16px top 16px / 36px 3px no-repeat,
+        linear-gradient(to bottom, #f97316 3px, transparent 3px) right 16px top 16px / 3px 36px no-repeat,
+        /* bottom-left corner */
+        linear-gradient(to right,  #f97316 3px, transparent 3px) 16px bottom 16px / 36px 3px no-repeat,
+        linear-gradient(to top,    #f97316 3px, transparent 3px) 16px bottom 16px / 3px 36px no-repeat,
+        /* bottom-right corner */
+        linear-gradient(to left,   #f97316 3px, transparent 3px) right 16px bottom 16px / 36px 3px no-repeat,
+        linear-gradient(to top,    #f97316 3px, transparent 3px) right 16px bottom 16px / 3px 36px no-repeat;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #qrReader { width: 100% !important; }
+    /* hide default html5-qrcode chrome */
+    #qrReader > img { display: none !important; }
+    #qrReader__scan_region > img { display: none !important; }
+    #qrReader__dashboard { display: none !important; }
+
+    .scanner-hint {
+      margin-top: 1rem; font-size: .8rem; color: #64748b;
+      display: flex; align-items: center; gap: .4rem;
+    }
+    .scanner-hint span { animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.35; } }
+
+    .scanner-error {
+      margin-top: .75rem; font-size: .8rem; color: #b91c1c;
+      background: #fee2e2; border-radius: 8px; padding: .5rem .85rem;
+      text-align: center; display: none;
+    }
+    .scanner-error.show { display: block; }
+
+    .scanner-manual {
+      margin-top: 1.25rem; width: 100%; max-width: 320px;
+    }
+    .scanner-manual-label { font-size: .75rem; color: #94a3b8; text-align: center; margin-bottom: .65rem; position: relative; }
+    .scanner-manual-label::before, .scanner-manual-label::after {
+      content: ''; display: inline-block; width: 30%; height: 1px;
+      background: #e2e8f0; vertical-align: middle; margin: 0 .5rem;
+    }
+    .scanner-manual-row { display: flex; gap: .5rem; }
+    .scanner-manual-row input {
+      flex: 1; padding: .6rem .85rem; border: 1.5px solid #e2e8f0; border-radius: 9px;
+      font-size: .9rem; color: #1e293b; font-family: inherit;
+    }
+    .scanner-manual-row input:focus { outline: none; border-color: #f97316; box-shadow: 0 0 0 3px rgba(249,115,22,.12); }
+    .scanner-manual-row button {
+      padding: .6rem 1rem; background: #f97316; color: #fff; border: none;
+      border-radius: 9px; font-weight: 700; font-size: .85rem; cursor: pointer;
+      font-family: inherit; transition: background .12s;
+    }
+    .scanner-manual-row button:hover { background: #ea6c10; }
+
+    .btn-back-apps {
+      margin-top: 1.5rem; padding: .6rem 1.25rem; background: #fff;
+      border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: .82rem;
+      font-weight: 600; color: #64748b; cursor: pointer; font-family: inherit;
+      transition: border-color .12s;
+    }
+    .btn-back-apps:hover { border-color: #f97316; color: #f97316; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-brand">
+      <span class="icon">🔧</span>
+      <div>
+        <div class="title">Pinjam Alat</div>
+        <div class="sub">AlatKau</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <div class="header-user" id="headerUser" style="display:none">
+        <strong id="headerName">–</strong>
+        <span id="headerRole">–</span>
+      </div>
+      <a href="/apps" style="padding:.35rem .75rem;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);font-size:.75rem;font-weight:600;text-decoration:none;white-space:nowrap">⊞ Apps</a>
+    </div>
+  </div>
+
+  <!-- Scanner screen (shown when no ?rack= param) -->
+  <div class="page">
+    <div class="scanner-screen" id="stateScanner">
+      <div class="scanner-title">Scan QR Rak</div>
+      <div class="scanner-sub">Arahkan kamera ke QR code yang tertempel di rak</div>
+      <div class="scanner-wrap">
+        <div id="qrReader"></div>
+      </div>
+      <div class="scanner-hint"><span>●</span> Kamera aktif — cari QR di rak alat</div>
+      <div class="scanner-error" id="scannerError"></div>
+      <div class="scanner-manual">
+        <div class="scanner-manual-label">atau masukkan kode rak manual</div>
+        <div class="scanner-manual-row">
+          <input type="text" id="manualRackId" placeholder="ID rak (mis. 3)" inputmode="numeric" />
+          <button onclick="loadRackById(document.getElementById('manualRackId').value)">Cari</button>
+        </div>
+      </div>
+      <button class="btn-back-apps" id="btnScannerReturn" style="margin-top:.75rem;display:none" onclick="showReturnPage('scanner')">↩️ Kembalikan Alat</button>
+      <button class="btn-back-apps" onclick="window.location.href='/apps'">← Kembali ke Apps</button>
+    </div>
+  </div>
+
+  <!-- Return page (accessible from scanner & rack view) -->
+  <div class="page" id="returnPage" style="display:none">
+    <button class="back-btn" id="btnReturnBack">← Kembali</button>
+    <div class="section-title">Pinjaman Aktif Saya</div>
+    <div class="alert alert-success" id="returnSuccess"></div>
+    <div class="alert alert-error"   id="returnError"></div>
+    <div id="returnList"><div class="loading">🔄 Memuat...</div></div>
+  </div>
+
+  <div class="page" id="mainPage" style="display:none">
+    <!-- Loading state -->
+    <div class="loading" id="stateLoading">🔄 Memuat data rak...</div>
+
+    <!-- Error state -->
+    <div id="stateError" style="display:none">
+      <div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-text" id="stateErrorMsg">Rak tidak ditemukan</div>
+        <div style="margin-top:.75rem;font-size:.8rem;color:#94a3b8">Pastikan QR code sudah benar</div>
+        <button class="btn-again" style="margin-top:1rem" onclick="window.location.href='/inventory/pinjam'">Scan Ulang</button>
+      </div>
+    </div>
+
+    <!-- Main content (step 1: pilih barang) -->
+    <div id="stateMain" style="display:none">
+
+      <!-- Rack info -->
+      <div class="rack-banner" id="rackBanner"></div>
+
+      <!-- Tab bar -->
+      <div class="tab-bar" id="tabBar">
+        <button class="tab-btn active" id="tabPinjam" onclick="switchTab('pinjam')">🔧 Pinjam</button>
+        <button class="tab-btn" id="tabKembali" onclick="showReturnPage('rack')">↩️ Kembalikan <span class="tab-badge" id="tabBadge" style="display:none">0</span></button>
+      </div>
+
+      <!-- Form alert -->
+      <div class="alert alert-error" id="mainAlert"></div>
+
+      <!-- Items list -->
+      <div id="stateItems">
+        <div class="section-title">Pilih barang yang ingin dipinjam</div>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="itemSearch" placeholder="Cari nama atau kode barang..." autocomplete="off" />
+          <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+        </div>
+        <div id="itemsList"></div>
+      </div>
+
+      <!-- Borrow form (step 2) -->
+      <div class="borrow-form" id="borrowForm">
+        <button class="back-btn" id="btnBack">← Pilih barang lain</button>
+        <div class="selected-item-card" id="selectedCard"></div>
+        <div id="formAlert" class="alert alert-error"></div>
+        <div class="qty-row">
+          <div class="form-group">
+            <label>Jumlah <span style="color:#ef4444">*</span></label>
+            <input type="number" id="fQty" min="1" value="1" />
+          </div>
+          <div class="form-group">
+            <label>Satuan</label>
+            <input type="text" id="fUnit" readonly style="background:#f8fafc;color:#64748b" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Kembali paling lambat</label>
+          <input type="date" id="fReturn" />
+        </div>
+        <div class="form-group">
+          <label>Catatan <span style="color:#94a3b8;font-weight:400">(opsional)</span></label>
+          <input type="text" id="fNotes" placeholder="mis. untuk proyek gedung A..." />
+        </div>
+        <button class="btn-submit" id="btnSubmit">Konfirmasi Pinjam</button>
+      </div>
+
+    </div><!-- /stateMain -->
+
+    <!-- Success screen (step 3) -->
+    <div class="success-screen" id="stateSuccess">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Berhasil Dipinjam!</div>
+      <div class="success-sub" id="successSub"></div>
+      <div class="pickup-card" id="pickupCard"></div>
+      <div>
+        <button class="btn-again" id="btnAgain">Pinjam Lagi</button>
+        <button class="btn-submit" style="width:auto;padding:.7rem 1.5rem" onclick="window.location.href='/apps'">Selesai</button>
+      </div>
+    </div>
+
+  </div><!-- /mainPage -->
+
+  <script>
+    const TYPE_ICON = { warehouse:'🏭', vehicle:'🚗', workbench:'🪑', area:'🏗️' };
+
+    let _rack     = null;
+    let _items    = [];
+    let _selected = null;
+    let _user     = null;
+    let _scanner  = null;
+    let _myBorrows = [];
+    let _returnFrom = null; // 'scanner' | 'rack'
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      // Auth check
+      const me = await fetch('/api/auth/me').then(r => r.ok ? r.json() : null).catch(() => null);
+      if (!me?.userId) { location.href = '/login'; return; }
+      _user = me;
+      document.getElementById('headerUser').style.display = '';
+      document.getElementById('headerName').textContent  = me.fullName;
+      document.getElementById('headerRole').textContent  = me.role === 'super_admin' ? 'Super Admin' : me.role === 'finance' ? 'Finance' : 'Karyawan';
+
+      // Pre-load my borrows count for badge
+      fetch('/api/inventory/borrows/mine').then(r => r.json()).then(rows => {
+        _myBorrows = Array.isArray(rows) ? rows : [];
+        const badge = document.getElementById('tabBadge');
+        if (_myBorrows.length) { badge.textContent = _myBorrows.length; badge.style.display = ''; }
+        // Show "kembalikan" button on scanner page if user has active borrows
+        if (_myBorrows.length) document.getElementById('btnScannerReturn').style.display = '';
+      }).catch(() => {});
+
+      // Get rack from URL
+      const rackId = new URLSearchParams(location.search).get('rack');
+      if (rackId) {
+        showMainPage();
+        await loadRackById(rackId);
+      } else {
+        startScanner();
+      }
+    })();
+
+    // ── Scanner ───────────────────────────────────────────────
+    function startScanner() {
+      document.getElementById('stateScanner').classList.add('active');
+      _scanner = new Html5Qrcode('qrReader');
+      _scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
+        onQrSuccess,
+        () => {} // silent per-frame failures
+      ).catch(err => {
+        // Camera permission denied or not available
+        document.getElementById('scannerError').textContent = 'Kamera tidak tersedia: ' + (err.message || err);
+        document.getElementById('scannerError').classList.add('show');
+      });
+    }
+
+    async function stopScanner() {
+      if (_scanner) {
+        try { await _scanner.stop(); } catch {}
+        _scanner = null;
+      }
+    }
+
+    function onQrSuccess(decodedText) {
+      // Prevent multiple fires
+      if (_rack !== null) return;
+      _rack = {}; // sentinel while loading
+
+      stopScanner();
+
+      // Parse rack ID from QR — supports full URL or bare numeric ID
+      let rackId = decodedText.trim();
+      try {
+        const url = new URL(rackId);
+        rackId = url.searchParams.get('rack') || '';
+      } catch { /* bare value — use as-is */ }
+
+      if (!rackId) {
+        _rack = null;
+        document.getElementById('scannerError').textContent = 'QR tidak valid — coba scan ulang';
+        document.getElementById('scannerError').classList.add('show');
+        startScanner();
+        return;
+      }
+
+      // Update URL without reload so browser back works naturally
+      history.replaceState(null, '', `?rack=${encodeURIComponent(rackId)}`);
+
+      showMainPage();
+      loadRackById(rackId);
+    }
+
+    function showMainPage() {
+      document.getElementById('stateScanner').classList.remove('active');
+      document.getElementById('returnPage').style.display = 'none';
+      document.getElementById('mainPage').style.display = '';
+    }
+
+    // ── Return page ───────────────────────────────────────────
+    async function showReturnPage(from = 'scanner') {
+      _returnFrom = from;
+      await stopScanner();
+      document.getElementById('stateScanner').classList.remove('active');
+      document.getElementById('mainPage').style.display = 'none';
+      document.getElementById('returnPage').style.display = '';
+      hideAlert('returnSuccess'); hideAlert('returnError');
+      await loadMyBorrows('returnList');
+    }
+
+    document.getElementById('btnReturnBack').addEventListener('click', () => {
+      document.getElementById('returnPage').style.display = 'none';
+      if (_returnFrom === 'rack') {
+        document.getElementById('mainPage').style.display = '';
+        switchTab('pinjam');
+      } else {
+        _rack = null;
+        history.replaceState(null, '', '/inventory/pinjam');
+        document.getElementById('stateScanner').classList.add('active');
+        startScanner();
+      }
+    });
+
+    async function loadMyBorrows(listId, successId, errorId) {
+      const listEl = document.getElementById(listId);
+      listEl.innerHTML = '<div class="loading">🔄 Memuat...</div>';
+      const rows = await fetch('/api/inventory/borrows/mine').then(r => r.json()).catch(() => []);
+      _myBorrows = Array.isArray(rows) ? rows : [];
+
+      // Update badge
+      const badge = document.getElementById('tabBadge');
+      if (_myBorrows.length) {
+        badge.textContent = _myBorrows.length;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      if (!_myBorrows.length) {
+        listEl.innerHTML = `<div class="empty">
+          <div class="empty-icon">✅</div>
+          <div class="empty-text">Tidak ada pinjaman aktif</div>
+        </div>`;
+        return;
+      }
+      const today = new Date().toISOString().split('T')[0];
+      listEl.innerHTML = _myBorrows.map(b => {
+        const overdue = b.expected_return && b.expected_return < today;
+        return `<div class="return-card${overdue ? ' overdue' : ''}">
+          <div class="return-card-top">
+            <div>
+              <div class="item-name">${b.item_name}${overdue ? '<span class="overdue-tag">Terlambat</span>' : ''}</div>
+              <div class="item-meta">${b.item_code} · dipinjam ${fmtDate(b.borrowed_at)}</div>
+            </div>
+            <div class="item-qty">${b.qty} ${b.unit}</div>
+          </div>
+          <div class="return-card-loc">
+            <span>${TYPE_ICON[b.location_type] || '📍'}</span>
+            <span>${b.from_location_name} — ${b.from_rack_name}</span>
+          </div>
+          ${b.expected_return ? `<div style="font-size:.72rem;color:${overdue?'#b91c1c':'#64748b'};margin-top:.35rem">
+            Kembali: ${fmtDate(b.expected_return)}</div>` : ''}
+          <button class="btn-return-item" id="retBtn${b.id}"
+            onclick="doReturn(${b.id},'${listId}','${successId||''}','${errorId||''}')">
+            ↩️ Kembalikan ke ${b.from_rack_name}
+          </button>
+        </div>`;
+      }).join('');
+    }
+
+    async function doReturn(borrowId, listId, successId, errorId) {
+      const btn = document.getElementById(`retBtn${borrowId}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Memproses...'; }
+      const res  = await fetch(`/api/inventory/borrows/${borrowId}/return-self`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (!res.ok) {
+        if (btn) { btn.disabled = false; btn.textContent = `↩️ Kembalikan`; }
+        if (errorId) showAlert(errorId, data.error);
+        return;
+      }
+      if (successId) showAlert(successId, '✅ Barang berhasil dikembalikan!');
+      await loadMyBorrows(listId, successId, errorId);
+    }
+
+    // ── Tab switcher (inside rack view) ───────────────────────
+    function switchTab(tab) {
+      const isPinjam = tab === 'pinjam';
+      document.getElementById('tabPinjam').classList.toggle('active', isPinjam);
+      document.getElementById('tabKembali').classList.toggle('active', !isPinjam);
+    }
+
+    function fmtDate(d) {
+      if (!d) return '–';
+      return new Date(d).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+    }
+
+    // ── Load rack ─────────────────────────────────────────────
+    async function loadRackById(rackId) {
+      rackId = String(rackId).trim();
+      if (!rackId) return;
+
+      document.getElementById('stateLoading').style.display = '';
+      document.getElementById('stateError').style.display   = 'none';
+      document.getElementById('stateMain').style.display    = 'none';
+
+      let data = null, status = 0;
+      try {
+        const res = await fetch(`/api/inventory/lookup/rack/${rackId}`);
+        status = res.status;
+        data = await res.json();
+      } catch (e) { /* network error */ }
+
+      if (!data || data.error) {
+        _rack = null;
+        const msg = data?.error || `Gagal memuat rak (HTTP ${status || 'network error'}, rack=${rackId})`;
+        showError(msg);
+        return;
+      }
+
+      _rack  = data.rack;
+      _items = data.items;
+
+      renderRackBanner();
+      renderItems();
+      document.getElementById('stateLoading').style.display = 'none';
+      document.getElementById('stateMain').style.display    = '';
+    }
+
+    // ── Render ────────────────────────────────────────────────
+    function renderRackBanner() {
+      document.getElementById('rackBanner').innerHTML = `
+        <span class="rack-icon">${TYPE_ICON[_rack.location_type] || '📍'}</span>
+        <div>
+          <div class="rack-loc">${_rack.location_name}</div>
+          <div class="rack-name">🗄️ ${_rack.name}</div>
+        </div>`;
+    }
+
+    function renderItems(filter = '') {
+      const el = document.getElementById('itemsList');
+      if (!_items.length) {
+        el.innerHTML = `<div class="empty">
+          <div class="empty-icon">📦</div>
+          <div class="empty-text">Tidak ada alat tersedia di rak ini</div>
+        </div>`;
+        return;
+      }
+      const q = filter.toLowerCase();
+      const filtered = q
+        ? _items.filter(i => i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q))
+        : _items;
+
+      if (!filtered.length) {
+        el.innerHTML = `<div class="empty">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-text">Tidak ada barang yang cocok</div>
+        </div>`;
+        return;
+      }
+      el.innerHTML = filtered.map(item => `
+        <div class="item-card" onclick="selectItem(${item.id})">
+          <div>
+            <div class="item-name">${item.name}</div>
+            <div class="item-meta">${item.item_category_name || (item.category === 'tools' ? '🔧 Tools' : item.category)} · ${item.code}</div>
+          </div>
+          <div class="item-avail">
+            ${item.available}
+            <span>${item.unit}</span>
+          </div>
+        </div>`).join('');
+    }
+
+    document.getElementById('itemSearch').addEventListener('input', e => {
+      renderItems(e.target.value);
+    });
+
+    function clearSearch() {
+      document.getElementById('itemSearch').value = '';
+      renderItems();
+    }
+
+    // ── Select item → show form ────────────────────────────────
+    function selectItem(itemId) {
+      _selected = _items.find(i => i.id === itemId);
+      if (!_selected) return;
+
+      document.getElementById('selectedCard').innerHTML = `
+        <div class="item-name">${_selected.name}</div>
+        <div class="item-avail">Tersedia: ${_selected.available} ${_selected.unit}</div>`;
+
+      document.getElementById('fQty').max  = _selected.available;
+      document.getElementById('fQty').value = 1;
+      document.getElementById('fUnit').value = _selected.unit;
+
+      // Default return date = 7 days from today
+      const d = new Date(); d.setDate(d.getDate() + 7);
+      document.getElementById('fReturn').value = d.toISOString().split('T')[0];
+      document.getElementById('fReturn').min   = new Date().toISOString().split('T')[0];
+
+      document.getElementById('fNotes').value = '';
+      hideAlert('formAlert');
+
+      document.getElementById('stateItems').style.display = 'none';
+      document.getElementById('borrowForm').classList.add('active');
+    }
+
+    document.getElementById('btnBack').addEventListener('click', () => {
+      document.getElementById('borrowForm').classList.remove('active');
+      document.getElementById('stateItems').style.display = '';
+      _selected = null;
+      clearSearch();
+    });
+
+    // ── Submit borrow ─────────────────────────────────────────
+    document.getElementById('btnSubmit').addEventListener('click', async () => {
+      hideAlert('formAlert');
+      const qty = parseInt(document.getElementById('fQty').value);
+      if (!qty || qty < 1) return showAlert('formAlert', 'Jumlah harus minimal 1');
+      if (qty > _selected.available) return showAlert('formAlert', `Maksimal tersedia ${_selected.available} ${_selected.unit}`);
+
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true; btn.textContent = 'Memproses...';
+
+      try {
+        const res = await fetch('/api/inventory/borrows', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id:         _selected.id,
+            from_rack_id:    _rack.id,
+            qty,
+            expected_return: document.getElementById('fReturn').value || null,
+            notes:           document.getElementById('fNotes').value.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showAlert('formAlert', data.error); return; }
+
+        showSuccess(qty);
+      } catch { showAlert('formAlert', 'Terjadi kesalahan, coba lagi'); }
+      finally { btn.disabled = false; btn.textContent = 'Konfirmasi Pinjam'; }
+    });
+
+    // ── Success screen ────────────────────────────────────────
+    function showSuccess(qty) {
+      document.getElementById('successSub').textContent =
+        `${qty}x ${_selected.name} berhasil dicatat atas nama ${_user.fullName}`;
+
+      document.getElementById('pickupCard').innerHTML = `
+        <div class="pickup-label">✅ Ambil dari sini</div>
+        <div class="pickup-item-name">${qty}× ${_selected.name}</div>
+        <div class="pickup-loc">
+          <span class="ploc-icon">${TYPE_ICON[_rack.location_type] || '📍'}</span>
+          <div>
+            <div class="ploc-text">${_rack.location_name}</div>
+            <div class="ploc-sub">Lokasi</div>
+          </div>
+        </div>
+        <div class="pickup-loc">
+          <span class="ploc-icon">🗄️</span>
+          <div>
+            <div class="ploc-text">${_rack.name}</div>
+            <div class="ploc-sub">Rak</div>
+          </div>
+        </div>`;
+
+      document.getElementById('stateMain').style.display    = 'none';
+      document.getElementById('stateSuccess').classList.add('active');
+    }
+
+    document.getElementById('btnAgain').addEventListener('click', () => {
+      _selected = null;
+      document.getElementById('borrowForm').classList.remove('active');
+      document.getElementById('stateItems').style.display = '';
+      document.getElementById('stateSuccess').classList.remove('active');
+      document.getElementById('stateMain').style.display = '';
+
+      // Refresh items availability
+      fetch(`/api/inventory/lookup/rack/${_rack.id}`)
+        .then(r => r.json()).then(data => {
+          _items = data.items || [];
+          renderItems();
+        });
+    });
+
+    // ── Helpers ───────────────────────────────────────────────
+    function showError(msg) {
+      showMainPage();
+      document.getElementById('stateLoading').style.display = 'none';
+      document.getElementById('stateMain').style.display    = 'none';
+      document.getElementById('stateErrorMsg').textContent  = msg;
+      document.getElementById('stateError').style.display   = '';
+    }
+    function showAlert(id, msg) {
+      const el = document.getElementById(id); el.textContent = msg; el.classList.add('show');
+    }
+    function hideAlert(id) { document.getElementById(id)?.classList.remove('show'); }
+  </script>
+</body>
+</html>

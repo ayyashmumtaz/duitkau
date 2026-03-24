@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory — Lokasi & Rak</title>
+  <title>AlatKau — Lokasi &amp; Rak</title>
   <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/inventory/js/layout.js"></script>
   <style>
     .loc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
@@ -21,12 +22,40 @@
     .lt-workbench { background:#fef9c3; color:#854d0e; }
     .lt-area      { background:#f3f4f6; color:#374151; }
 
-    .rack-item { display:flex; align-items:center; justify-content:space-between; padding:.4rem .5rem; border-radius:7px; background:var(--gray-50); margin-bottom:.35rem; font-size:.83rem; }
-    .rack-name { font-weight:600; }
-    .rack-actions { display:flex; gap:.25rem; }
+    .rack-item { display:flex; align-items:center; justify-content:space-between; padding:.55rem .65rem; border-radius:9px; background:var(--gray-50); margin-bottom:.4rem; font-size:.84rem; }
+    .rack-name { font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rack-actions { display:flex; gap:.3rem; flex-shrink:0; }
+    .rack-actions .btn { min-width:34px; min-height:34px; display:flex; align-items:center; justify-content:center; }
+
+    @media (max-width:600px) {
+      .loc-grid { grid-template-columns:1fr; }
+      .loc-card-header { padding:.75rem .85rem; }
+      .loc-card-body { padding:.65rem .85rem; }
+    }
 
     .qr-placeholder { padding:.75rem; border:1.5px dashed var(--gray-200); border-radius:8px; text-align:center; color:var(--gray-400); font-size:.8rem; cursor:pointer; margin-top:.5rem; }
     .qr-code-text { font-family:monospace; font-size:.85rem; background:var(--gray-100); padding:.3rem .6rem; border-radius:5px; }
+
+    /* QR Modal */
+    .qr-modal-inner { text-align:center; }
+    .qr-sticker {
+      display:inline-flex; align-items:center; gap:1rem;
+      background:#fff; border:2px solid #1e293b;
+      border-radius:14px; padding:.9rem 1.1rem; margin-bottom:.85rem;
+      box-shadow: 0 4px 16px rgba(0,0,0,.1); text-align:left;
+    }
+    .qr-sticker canvas, .qr-sticker img { display:block; border-radius:6px; flex-shrink:0; }
+    .qr-sticker-info { display:flex; flex-direction:column; justify-content:center; }
+    .qr-brand-row {
+      display:flex; align-items:center; gap:.3rem; margin-bottom:.5rem;
+    }
+    .qr-brand-name { font-size:.75rem; font-weight:800; color:#1e293b; letter-spacing:.02em; }
+    .qr-brand-name span { color:#f97316; }
+    .qr-sticker-rack { font-weight:800; font-size:1rem; color:#1e293b; line-height:1.2; }
+    .qr-sticker-id   { font-size:.65rem; color:#94a3b8; margin-top:.15rem; font-family:monospace; letter-spacing:.04em; }
+    .qr-sticker-loc  { font-size:.72rem; color:#64748b; margin-top:.2rem; }
+    .qr-sticker-hint { font-size:.6rem; color:#94a3b8; margin-top:.5rem; letter-spacing:.04em; text-transform:uppercase; }
+    .qr-url { font-size:.7rem; color:var(--gray-400); word-break:break-all; margin-bottom:.65rem; }
   </style>
 </head>
 <body data-page="locations">
@@ -83,6 +112,59 @@
       <div class="modal-footer">
         <button class="btn btn-ghost" id="locCancel">Batal</button>
         <button class="btn btn-primary" id="locSave">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Konfirmasi Hapus -->
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">🗑️ Hapus</span>
+        <button class="modal-close" id="deleteModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteModalMsg" style="font-size:.9rem"></p>
+        <p class="text-muted mt-1" style="font-size:.82rem" id="deleteModalSub"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="deleteModalCancel">Batal</button>
+        <button class="btn btn-danger" id="deleteModalConfirm">Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: QR Pinjam -->
+  <div class="modal-overlay" id="qrModal">
+    <div class="modal" style="max-width:340px">
+      <div class="modal-header">
+        <span class="modal-title">📱 QR Pinjam Alat</span>
+        <button class="modal-close" id="qrModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="qr-modal-inner">
+          <div class="qr-sticker">
+            <div id="qrCanvas"></div>
+            <div class="qr-sticker-info">
+              <div class="qr-brand-row">
+                <span style="font-size:.8rem">🔧</span>
+                <div class="qr-brand-name"><span>Alat</span>Kau</div>
+              </div>
+              <div class="qr-sticker-rack" id="qrRackLabel"></div>
+              <div class="qr-sticker-id"  id="qrRackId"></div>
+              <div class="qr-sticker-loc" id="qrLocLabel"></div>
+              <div class="qr-sticker-hint">Scan untuk pinjam alat</div>
+            </div>
+          </div>
+          <div class="qr-url" id="qrUrl"></div>
+          <p style="font-size:.75rem;color:var(--gray-400)">
+            Tempel sticker ini di rak. Karyawan scan → langsung ke halaman pinjam.
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="qrModalClose2">Tutup</button>
+        <button class="btn btn-primary" id="qrPrintBtn">🖨️ Print</button>
       </div>
     </div>
   </div>
@@ -164,6 +246,7 @@
                   <div class="rack-item">
                     <span class="rack-name">🗄️ ${r.name}</span>
                     <div class="rack-actions">
+                      <button class="btn btn-ghost btn-sm" title="QR Pinjam" onclick="showQR(${r.id},'${r.name.replace(/'/g,"\\'")}','${loc.name.replace(/'/g,"\\'")}')">📱</button>
                       <button class="btn btn-ghost btn-sm" onclick="openEditRack(${r.id},${loc.id},'${loc.name.replace(/'/g,"\\'")}')">✏️</button>
                       <button class="btn btn-ghost btn-sm text-red" onclick="deleteRack(${r.id},'${r.name.replace(/'/g,"\\'")}')">🗑️</button>
                     </div>
@@ -212,7 +295,11 @@
     }
 
     async function deleteLoc(id, name) {
-      if (!confirm(`Hapus lokasi "${name}"?\nSemua rak di lokasi ini harus kosong.`)) return;
+      const ok = await confirmDelete(
+        `Hapus lokasi "${name}"?`,
+        'Semua rak di lokasi ini harus sudah kosong.'
+      );
+      if (!ok) return;
       const res = await fetch(`/api/inventory/locations/${id}`, { method:'DELETE' });
       const data = await res.json();
       if (!res.ok) { showAlert('pageAlert', data.error); return; }
@@ -261,16 +348,100 @@
       closeModal('rackModal');
       showSuccess('pageSuccess', `Rak "${data.name}" berhasil disimpan`);
       await loadAll();
+      // Auto-show QR for new racks so user can print the sticker right away
+      if (!_editRackId) {
+        const loc = _locs.find(l => l.id === _curLocId);
+        showQR(data.id, data.name, loc?.name || '');
+      }
     }
 
     async function deleteRack(id, name) {
-      if (!confirm(`Hapus rak "${name}"?`)) return;
+      const ok = await confirmDelete(`Hapus rak "${name}"?`, 'Tidak bisa dihapus jika masih ada stok.');
+      if (!ok) return;
       const res = await fetch(`/api/inventory/racks/${id}`, { method:'DELETE' });
       const data = await res.json();
       if (!res.ok) { showAlert('pageAlert', data.error); return; }
       showSuccess('pageSuccess', `Rak "${name}" dihapus`);
       await loadAll();
     }
+
+    // ── QR Code ───────────────────────────────────────────────
+    let _qrRackId = null;
+
+    function showQR(rackId, rackName, locName) {
+      _qrRackId = rackId;
+      const url = `${location.origin}/inventory/pinjam?rack=${rackId}`;
+      document.getElementById('qrRackLabel').textContent = `🗄️ ${rackName}`;
+      document.getElementById('qrRackId').textContent    = `ID: ${rackId}`;
+      document.getElementById('qrLocLabel').textContent  = `📍 ${locName}`;
+      document.getElementById('qrUrl').textContent       = url;
+
+      const container = document.getElementById('qrCanvas');
+      container.innerHTML = '';
+      new QRCode(container, {
+        text: url, width: 140, height: 140,
+        colorDark: '#1e293b', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.H,
+      });
+      document.getElementById('qrModal').classList.add('open');
+    }
+
+    document.getElementById('qrModalClose').addEventListener('click',  () => closeModal('qrModal'));
+    document.getElementById('qrModalClose2').addEventListener('click', () => closeModal('qrModal'));
+    document.getElementById('qrModal').addEventListener('click', e => { if (e.target.id === 'qrModal') closeModal('qrModal'); });
+
+    document.getElementById('qrPrintBtn').addEventListener('click', () => {
+      const container = document.getElementById('qrCanvas');
+      const rack    = document.getElementById('qrRackLabel').textContent;
+      const loc     = document.getElementById('qrLocLabel').textContent;
+      const cvs     = container.querySelector('canvas');
+      const imgData = cvs ? cvs.toDataURL('image/png') : '';
+      const win = window.open('', '_blank', 'width=420,height=580');
+      win.document.write(`<!DOCTYPE html><html><head><title>QR ${rack}</title>
+        <style>
+          *{box-sizing:border-box;margin:0;padding:0}
+          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+            background:#f8fafc;display:flex;align-items:center;justify-content:center;
+            min-height:100vh;padding:1.5rem}
+          .sticker{background:#fff;border:2.5px solid #1e293b;border-radius:14px;
+            padding:.9rem 1.1rem;display:inline-flex;align-items:center;gap:.85rem;
+            box-shadow:0 4px 20px rgba(0,0,0,.12)}
+          .qr-img{display:block;border-radius:6px;width:110px;height:110px;flex-shrink:0}
+          .info{display:flex;flex-direction:column;justify-content:center}
+          .brand{display:flex;align-items:center;gap:.3rem;margin-bottom:.45rem}
+          .brand-name{font-size:.75rem;font-weight:800;color:#1e293b}
+          .brand-name span{color:#f97316}
+          .rack-name{font-weight:800;font-size:1rem;color:#1e293b;line-height:1.2}
+          .rack-id{font-size:.65rem;color:#94a3b8;margin-top:.15rem;font-family:monospace;letter-spacing:.04em}
+          .loc-name{font-size:.7rem;color:#64748b;margin-top:.2rem}
+          .hint{font-size:.58rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-top:.45rem}
+          .no-print{margin-top:1.5rem;text-align:center}
+          .btn-print{padding:.55rem 1.5rem;background:#f97316;color:#fff;border:none;
+            border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit}
+          @media print{.no-print{display:none}body{background:#fff}
+            .sticker{box-shadow:none;border-color:#000}}
+        </style></head><body>
+        <div>
+          <div class="sticker">
+            <img class="qr-img" src="${imgData}" />
+            <div class="info">
+              <div class="brand"><span>🔧</span>
+                <div class="brand-name"><span>Alat</span>Kau</div>
+              </div>
+              <div class="rack-name">${rack}</div>
+              <div class="rack-id">ID: ${_qrRackId}</div>
+              <div class="loc-name">${loc}</div>
+              <div class="hint">Scan untuk pinjam alat</div>
+            </div>
+          </div>
+          <div class="no-print">
+            <button class="btn-print" onclick="window.print()">🖨️ Print Sticker</button>
+          </div>
+        </div>
+        <script>window.onload=()=>window.print()<\/script>
+      </body></html>`);
+      win.document.close();
+    });
 
     // ── Helpers ──────────────────────────────────────────────
     function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -279,6 +450,27 @@
     function showSuccess(id, msg) {
       const el=document.getElementById(id); el.textContent=msg; el.classList.add('show');
       setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    function confirmDelete(msg, sub = '') {
+      return new Promise(resolve => {
+        document.getElementById('deleteModalMsg').textContent = msg;
+        document.getElementById('deleteModalSub').textContent = sub;
+        document.getElementById('deleteModal').classList.add('open');
+        const confirm = document.getElementById('deleteModalConfirm');
+        const cancel  = document.getElementById('deleteModalCancel');
+        const close   = document.getElementById('deleteModalClose');
+        const cleanup = (val) => {
+          closeModal('deleteModal');
+          confirm.replaceWith(confirm.cloneNode(true));
+          cancel.replaceWith(cancel.cloneNode(true));
+          close.replaceWith(close.cloneNode(true));
+          resolve(val);
+        };
+        document.getElementById('deleteModalConfirm').addEventListener('click', () => cleanup(true),  { once: true });
+        document.getElementById('deleteModalCancel').addEventListener('click',  () => cleanup(false), { once: true });
+        document.getElementById('deleteModalClose').addEventListener('click',   () => cleanup(false), { once: true });
+      });
     }
   </script>
 </body>

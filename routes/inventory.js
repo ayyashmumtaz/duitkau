@@ -133,12 +133,13 @@ router.get('/items', async (req, res) => {
     if (category) { where += ' AND i.category = ?'; params.push(category); }
 
     const rows = await db.allAsync(
-      `SELECT i.*,
+      `SELECT i.*, ic.name AS item_category_name,
          COALESCE(SUM(s.qty), 0)          as total_qty,
          COALESCE(SUM(s.qty_borrowed), 0) as total_borrowed,
          COALESCE(SUM(s.qty_damaged), 0)  as total_damaged,
          COALESCE(SUM(s.qty_lost), 0)     as total_lost
        FROM inv_items i
+       LEFT JOIN inv_item_categories ic ON ic.id = i.item_category_id
        LEFT JOIN inv_stock s ON s.item_id = i.id
        WHERE ${where}
        GROUP BY i.id
@@ -166,18 +167,19 @@ router.get('/items/:id', async (req, res) => {
 });
 
 router.post('/items', requireFinanceOrSuperAdmin, async (req, res) => {
-  const { code, name, category, unit, min_stock, description } = req.body;
+  const { code, name, item_category_id, unit, min_stock, description } = req.body;
   if (!code?.trim())  return res.status(400).json({ error: 'Kode barang wajib diisi' });
   if (!name?.trim())  return res.status(400).json({ error: 'Nama barang wajib diisi' });
-  if (!['tools','consumable'].includes(category))
-    return res.status(400).json({ error: 'Kategori tidak valid' });
+  if (!item_category_id) return res.status(400).json({ error: 'Kategori wajib dipilih' });
   try {
+    const ic = await db.getAsync('SELECT * FROM inv_item_categories WHERE id=?', [item_category_id]);
+    if (!ic) return res.status(400).json({ error: 'Kategori tidak valid' });
     const r = await db.runAsync(
-      `INSERT INTO inv_items (code, name, category, unit, min_stock, description) VALUES (?, ?, ?, ?, ?, ?)`,
-      [code.trim().toUpperCase(), name.trim(), category, unit || 'pcs', parseInt(min_stock) || 0, description || null]
+      `INSERT INTO inv_items (code, name, category, item_category_id, unit, min_stock, description) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [code.trim().toUpperCase(), name.trim(), ic.type, ic.id, unit || 'pcs', parseInt(min_stock) || 0, description || null]
     );
-    const row = await db.getAsync('SELECT * FROM inv_items WHERE id=?', [r.lastID]);
-    logEvent(req, 'INV_CREATE_ITEM', `Barang "${name}" [${code}] kategori ${category}`);
+    const row = await db.getAsync('SELECT i.*, ic.name AS item_category_name FROM inv_items i LEFT JOIN inv_item_categories ic ON ic.id = i.item_category_id WHERE i.id=?', [r.lastID]);
+    logEvent(req, 'INV_CREATE_ITEM', `Barang "${name}" [${code}] kategori ${ic.name}`);
     res.status(201).json(row);
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Kode barang sudah digunakan' });
@@ -186,14 +188,19 @@ router.post('/items', requireFinanceOrSuperAdmin, async (req, res) => {
 });
 
 router.put('/items/:id', requireFinanceOrSuperAdmin, async (req, res) => {
-  const { code, name, category, unit, min_stock, description } = req.body;
+  const { code, name, item_category_id, unit, min_stock, description } = req.body;
   if (!code?.trim() || !name?.trim()) return res.status(400).json({ error: 'Kode dan nama wajib diisi' });
   try {
-    await db.runAsync(
-      `UPDATE inv_items SET code=?, name=?, category=?, unit=?, min_stock=?, description=? WHERE id=?`,
-      [code.trim().toUpperCase(), name.trim(), category, unit || 'pcs', parseInt(min_stock) || 0, description || null, req.params.id]
-    );
-    res.json(await db.getAsync('SELECT * FROM inv_items WHERE id=?', [req.params.id]));
+    const ic = item_category_id ? await db.getAsync('SELECT * FROM inv_item_categories WHERE id=?', [item_category_id]) : null;
+    const catType = ic ? ic.type : null;
+    const fields = catType
+      ? `code=?, name=?, category=?, item_category_id=?, unit=?, min_stock=?, description=?`
+      : `code=?, name=?, unit=?, min_stock=?, description=?`;
+    const vals = catType
+      ? [code.trim().toUpperCase(), name.trim(), catType, ic.id, unit || 'pcs', parseInt(min_stock) || 0, description || null, req.params.id]
+      : [code.trim().toUpperCase(), name.trim(), unit || 'pcs', parseInt(min_stock) || 0, description || null, req.params.id];
+    await db.runAsync(`UPDATE inv_items SET ${fields} WHERE id=?`, vals);
+    res.json(await db.getAsync('SELECT i.*, ic.name AS item_category_name FROM inv_items i LEFT JOIN inv_item_categories ic ON ic.id = i.item_category_id WHERE i.id=?', [req.params.id]));
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Kode barang sudah digunakan' });
     res.status(500).json({ error: err.message });
@@ -336,6 +343,56 @@ router.post('/stock/adjustment', requireFinanceOrSuperAdmin, async (req, res) =>
 });
 
 // ─── BORROWS (TOOLS) ──────────────────────────────────────────
+// ─── My active borrows (any logged-in user) ───────────────────
+router.get('/borrows/mine', async (req, res) => {
+  try {
+    const rows = await db.allAsync(
+      `SELECT b.*, i.name as item_name, i.code as item_code, i.unit,
+         r.name as from_rack_name, l.name as from_location_name, l.type as location_type
+       FROM inv_borrows b
+       JOIN inv_items i  ON i.id = b.item_id
+       JOIN inv_racks r  ON r.id = b.from_rack_id
+       JOIN inv_locations l ON l.id = r.location_id
+       WHERE b.borrower_user_id = ? AND b.status = 'active'
+       ORDER BY b.borrowed_at DESC`,
+      [req.session.userId]
+    );
+    res.json(rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── Self-return (employee returns own borrow, goes back to original rack) ─
+router.put('/borrows/:id/return-self', async (req, res) => {
+  const { notes } = req.body;
+  try {
+    await db.transaction(async tx => {
+      const borrow = await tx.getAsync(
+        "SELECT * FROM inv_borrows WHERE id=? AND status='active' AND borrower_user_id=?",
+        [req.params.id, req.session.userId]
+      );
+      if (!borrow) throw new Error('Peminjaman tidak ditemukan atau bukan milik Anda');
+
+      await tx.runAsync(
+        'UPDATE inv_stock SET qty_borrowed = GREATEST(0, qty_borrowed - ?) WHERE item_id=? AND rack_id=?',
+        [borrow.qty, borrow.item_id, borrow.from_rack_id]
+      );
+      await tx.runAsync(
+        `UPDATE inv_borrows SET status='returned', returned_at=NOW(), return_rack_id=?,
+         notes=COALESCE(NULLIF(?, ''), notes) WHERE id=?`,
+        [borrow.from_rack_id, notes || '', borrow.id]
+      );
+      await tx.runAsync(
+        `INSERT INTO inv_transactions (type, item_id, rack_id, to_rack_id, qty, ref_id, notes, created_by)
+         VALUES ('return', ?, ?, ?, ?, ?, ?, ?)`,
+        [borrow.item_id, borrow.from_rack_id, borrow.from_rack_id, borrow.qty, borrow.id,
+         `Dikembalikan oleh ${borrow.borrower_name}`, req.session.userId]
+      );
+    });
+    logEvent(req, 'INV_RETURN_SELF', `Self-return pinjam ID ${req.params.id} ke rack asal`);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/borrows', async (req, res) => {
   const { status = 'active' } = req.query;
   try {
@@ -356,11 +413,13 @@ router.get('/borrows', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/borrows', requireFinanceOrSuperAdmin, async (req, res) => {
+router.post('/borrows', async (req, res) => {
   const { item_id, from_rack_id, qty, borrower_name, expected_return, notes } = req.body;
+  // Allow all logged-in users; borrower_name defaults to session user
   const q = parseInt(qty) || 1;
+  const name = borrower_name?.trim() || req.session.fullName;
   if (!item_id || !from_rack_id)  return res.status(400).json({ error: 'Item dan rak wajib dipilih' });
-  if (!borrower_name?.trim())     return res.status(400).json({ error: 'Nama peminjam wajib diisi' });
+  if (!name)                      return res.status(400).json({ error: 'Nama peminjam wajib diisi' });
   if (q <= 0)                     return res.status(400).json({ error: 'Qty harus lebih dari 0' });
 
   try {
@@ -382,7 +441,7 @@ router.post('/borrows', requireFinanceOrSuperAdmin, async (req, res) => {
       const br = await tx.runAsync(
         `INSERT INTO inv_borrows (item_id, from_rack_id, qty, borrower_name, borrower_user_id, expected_return, notes, created_by)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [item_id, from_rack_id, q, borrower_name.trim(), req.session.userId, expected_return || null, notes || null, req.session.userId]
+        [item_id, from_rack_id, q, name, req.session.userId, expected_return || null, notes || null, req.session.userId]
       );
       borrowId = br.lastID;
 
@@ -390,11 +449,11 @@ router.post('/borrows', requireFinanceOrSuperAdmin, async (req, res) => {
         `INSERT INTO inv_transactions (type, item_id, rack_id, qty, qty_before, qty_after, ref_id, notes, created_by)
          VALUES ('borrow', ?, ?, ?, ?, ?, ?, ?, ?)`,
         [item_id, from_rack_id, q, stock?.qty || 0, stock?.qty || 0, borrowId,
-         `Dipinjam oleh ${borrower_name}`, req.session.userId]
+         `Dipinjam oleh ${name}`, req.session.userId]
       );
     });
     const row = await db.getAsync('SELECT * FROM inv_borrows WHERE id=?', [borrowId]);
-    logEvent(req, 'INV_BORROW', `${borrower_name} meminjam ${q}x item ID ${item_id}`);
+    logEvent(req, 'INV_BORROW', `${name} meminjam ${q}x item ID ${item_id}`);
     res.status(201).json(row);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -490,7 +549,7 @@ router.get('/dashboard', async (req, res) => {
     );
 
     const recentTx = await db.allAsync(
-      `SELECT t.*, i.name as item_name, i.code as item_code,
+      `SELECT t.*, i.name as item_name, i.code as item_code, i.unit,
          r.name as rack_name, l.name as location_name, u.full_name as created_by_name
        FROM inv_transactions t
        JOIN inv_items i      ON i.id = t.item_id
@@ -510,6 +569,114 @@ router.get('/dashboard', async (req, res) => {
       lowStockItems,
       recentTx,
     });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── RACK LOOKUP for borrow page (all logged-in users) ────────
+router.get('/lookup/rack/:rackId', async (req, res) => {
+  try {
+    const rack = await db.getAsync(
+      `SELECT r.*, l.name AS location_name, l.type AS location_type
+       FROM inv_racks r JOIN inv_locations l ON l.id = r.location_id
+       WHERE r.id = ?`, [req.params.rackId]
+    );
+    if (!rack) return res.status(404).json({ error: 'Rak tidak ditemukan' });
+
+    const items = await db.allAsync(
+      `SELECT i.id, i.code, i.name, i.unit, i.category,
+         ic.name AS item_category_name,
+         s.qty, s.qty_borrowed, s.qty_damaged, s.qty_lost,
+         (s.qty - s.qty_borrowed - s.qty_damaged - s.qty_lost) AS available
+       FROM inv_stock s
+       JOIN inv_items i ON i.id = s.item_id
+       LEFT JOIN inv_item_categories ic ON ic.id = i.item_category_id
+       WHERE s.rack_id = ? AND i.category = 'tools'
+         AND (s.qty - s.qty_borrowed - s.qty_damaged - s.qty_lost) > 0
+       ORDER BY i.name`, [req.params.rackId]
+    );
+    res.json({ rack, items });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── UNITS ────────────────────────────────────────────────────
+router.get('/units', async (req, res) => {
+  try { res.json(await db.allAsync('SELECT * FROM inv_units ORDER BY name')); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/units', requireFinanceOrSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama satuan wajib diisi' });
+  try {
+    const r = await db.runAsync('INSERT INTO inv_units (name) VALUES (?)', [name.trim()]);
+    res.status(201).json(await db.getAsync('SELECT * FROM inv_units WHERE id=?', [r.lastID]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Satuan sudah ada' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/units/:id', requireFinanceOrSuperAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama satuan wajib diisi' });
+  try {
+    await db.runAsync('UPDATE inv_units SET name=? WHERE id=?', [name.trim(), req.params.id]);
+    res.json(await db.getAsync('SELECT * FROM inv_units WHERE id=?', [req.params.id]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Satuan sudah ada' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/units/:id', requireFinanceOrSuperAdmin, async (req, res) => {
+  try {
+    const used = await db.getAsync('SELECT id FROM inv_items WHERE unit=(SELECT name FROM inv_units WHERE id=?) LIMIT 1', [req.params.id]);
+    if (used) return res.status(400).json({ error: 'Satuan masih digunakan oleh barang' });
+    await db.runAsync('DELETE FROM inv_units WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── ITEM CATEGORIES ──────────────────────────────────────────
+router.get('/item-categories', async (req, res) => {
+  try { res.json(await db.allAsync('SELECT * FROM inv_item_categories ORDER BY type, name')); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/item-categories', requireFinanceOrSuperAdmin, async (req, res) => {
+  const { name, type } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
+  if (!['tools','consumable'].includes(type)) return res.status(400).json({ error: 'Tipe tidak valid' });
+  try {
+    const r = await db.runAsync('INSERT INTO inv_item_categories (name, type) VALUES (?, ?)', [name.trim(), type]);
+    res.status(201).json(await db.getAsync('SELECT * FROM inv_item_categories WHERE id=?', [r.lastID]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Kategori sudah ada' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/item-categories/:id', requireFinanceOrSuperAdmin, async (req, res) => {
+  const { name, type } = req.body;
+  if (!name?.trim()) return res.status(400).json({ error: 'Nama kategori wajib diisi' });
+  if (!['tools','consumable'].includes(type)) return res.status(400).json({ error: 'Tipe tidak valid' });
+  try {
+    await db.runAsync('UPDATE inv_item_categories SET name=?, type=? WHERE id=?', [name.trim(), type, req.params.id]);
+    // Sync category ENUM on items using this category
+    await db.runAsync('UPDATE inv_items SET category=? WHERE item_category_id=?', [type, req.params.id]);
+    res.json(await db.getAsync('SELECT * FROM inv_item_categories WHERE id=?', [req.params.id]));
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Kategori sudah ada' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/item-categories/:id', requireFinanceOrSuperAdmin, async (req, res) => {
+  try {
+    const used = await db.getAsync('SELECT id FROM inv_items WHERE item_category_id=? LIMIT 1', [req.params.id]);
+    if (used) return res.status(400).json({ error: 'Kategori masih digunakan oleh barang' });
+    await db.runAsync('DELETE FROM inv_item_categories WHERE id=?', [req.params.id]);
+    res.json({ ok: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
